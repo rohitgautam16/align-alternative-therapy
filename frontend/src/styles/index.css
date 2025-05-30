@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+
+.gallery-item.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    .columns-2 {
+      columns: 1;
+    }
+  }
+
+  html{
+   overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+    display: none;
+  }
+  
+  a{
+    color: white;
+  }
+  
+  .playlist-details {
+    position: relative;
+    z-index: 10;
+  }
+  
+.slick-dots li button:before {
+  color: white;
+  opacity: 0.3;            
+  font-size: 6px;      
+}
+
+.slick-dots li.slick-active button:before {
+  color: white;
+  opacity: 1;
+  font-size: 7px;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.transition-width {
+  transition-property: width;
+}

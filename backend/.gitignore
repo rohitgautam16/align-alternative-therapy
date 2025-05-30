@@ -1,0 +1,15 @@
+# Node modules
+/node_modules
+
+# Logs
+logs
+*.log
+
+# Environment variables
+.env
+
+# Compiled output (if using TypeScript)
+/dist
+
+# Debug output
+npm-debug.log*
