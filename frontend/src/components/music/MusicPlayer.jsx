@@ -154,7 +154,7 @@ export default function MusicPlayer() {
       transition={{ type: 'spring', stiffness: 400, damping: 40, duration: 0.6 }}
       className={`
         fixed left-0 right-0 z-50 overflow-visible
-        ${expanded || isFullscreen ? 'backdrop-blur-md bg-black/80' : ''}
+        ${expanded || isFullscreen ? 'backdrop-blur-2xl bg-black/80' : ''}
       `}
     >
       {/* Handle (hidden in fullscreen) */}
@@ -209,7 +209,7 @@ export default function MusicPlayer() {
             {/* ── Carousel Section (85vh) ── */}
             <div
               className="flex-1 flex flex-col items-center justify-center pt-16 pb-4"
-              style={{ height: '85vh' }}
+              style={{ height: '75vh' }}
             >
               <div className="mx-auto max-w-screen-lg w-full">
                 <Slider ref={sliderRef} {...sliderSettings}>
@@ -260,9 +260,9 @@ export default function MusicPlayer() {
             </div>
 
             {/* ── Bottom Player Bar (15vh) ── */}
-            <div className="backdrop-blur-3xl" style={{ height: '15vh', minHeight: '120px' }}>
+            <div className="backdrop-blur-3xl" style={{ height: '15vh' }}>
               {/* Progress Bar */}
-              <div className="mb-1 pt-0">
+              <div className="mb-1 flex flex-col">
                 <input
                   type="range"
                   min={0}
@@ -273,18 +273,18 @@ export default function MusicPlayer() {
                     seekTo(t);
                     dispatch(setProgress(t));
                   }}
-                  className="w-full h-1 bg-gray-600 rounded-lg accent-red-500 cursor-pointer"
+                  className="w-full h-1 mb-1 rounded-lg accent-red-500 cursor-pointer"
                 />
-                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <div className="flex justify-between text-xs text-gray-400">
                   <span>{fmt(progress)}</span>
                   <span>{fmt(duration)}</span>
                 </div>
               </div>
 
               {/* Controls Row: three equal segments */}
-              <div className="flex h-full">
+              <div className="flex">
                 {/* Left (1/3): Album art + Title/Artist */}
-                <div className="flex items-center space-x-3 w-1/3 px-4">
+                <div className="flex items-center gap-1 w-1/3 px-4">
                   <img
                     src={currentTrack.image}
                     alt={currentTrack.title}
