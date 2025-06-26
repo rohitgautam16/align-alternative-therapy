@@ -66,16 +66,14 @@ jobs:
             "echo SSH OK"
 
       - name: Sync Frontend Build
-        run: |
-          rsync -avz --delete \
-            frontend/dist/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
+        run: rsync -avz --delete \
+          $GITHUB_WORKSPACE/frontend/dist/ \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
 
       - name: Sync Backend Code
-        run: |
-          rsync -avz --delete \
-            backend/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
+        run: rsync -avz --delete \
+          $GITHUB_WORKSPACE/backend/ \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
 
       - name: Install backend deps & restart
         run: |
