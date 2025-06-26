@@ -1,83 +1,41 @@
-name: CI/CD Pipeline
+deploy:
+  needs: build
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/main'
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  steps:
+    - uses: actions/checkout@v4
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project: [frontend, backend]
-    steps:
-      - uses: actions/checkout@v4
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Setup Node.js for ${{ matrix.project }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+    - name: Add droplet to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
 
-      - name: Install dependencies (${{ matrix.project }})
-        working-directory: ${{ matrix.project }}
-        run: npm install
+    - name: Debug SSH (verbose)
+      run: ssh -vvv -o StrictHostKeyChecking=yes \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo SSH OK" || true
 
-      - name: Run backend tests
-        if: matrix.project == 'backend'
-        working-directory: backend
-        run: npm test
+    - name: Sync Frontend Build
+      working-directory: frontend
+      run: rsync -avz --delete dist/ \
+        ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
 
-      - name: Build frontend
-        if: matrix.project == 'frontend'
-        working-directory: frontend
-        run: npm run build
+    - name: Sync Backend Code
+      working-directory: backend
+      run: rsync -avz --delete . \
+        ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.8.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add droplet to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-      - name: Debug SSH (verbose)
-        run: |
-          ssh -vvv -o StrictHostKeyChecking=yes \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "echo SSH OK" || true
-
-      - name: Sync Frontend Build
-        working-directory: frontend
-        run: |
-          rsync -avz --delete dist/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
-
-      - name: Sync Backend Code
-        working-directory: backend
-        run: |
-          rsync -avz --delete . \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
-
-      - name: Install backend deps & restart
-        run: |
-          ssh -o StrictHostKeyChecking=yes \
+    - name: Install backend deps & restart
+      run: ssh -o StrictHostKeyChecking=yes \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-              cd ~/align-alternative-therapy/backend
-              npm install
-              pm2 restart align-api
-            EOF
+        cd ~/align-alternative-therapy/backend
+        npm install
+        pm2 restart align-api
+      EOF
 
