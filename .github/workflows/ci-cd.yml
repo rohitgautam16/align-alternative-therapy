@@ -18,11 +18,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Node.js
+    - name: Setup Node.js for ${{ matrix.project }}
       uses: actions/setup-node@v4
       with:
         node-version: '22'
         cache: 'npm'
+        cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
     - name: Install dependencies
       working-directory: ${{ matrix.project }}
@@ -33,7 +34,7 @@ jobs:
       working-directory: backend
       run: npm test
 
-    - name: Build
+    - name: Build frontend
       if: matrix.project == 'frontend'
       working-directory: frontend
       run: npm run build
@@ -63,7 +64,8 @@ jobs:
     - name: Install backend deps & restart
       run: |
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-        cd ~/align-alternative-therapy/backend
-        npm install
-        pm2 restart align-api
+          cd ~/align-alternative-therapy/backend
+          npm install
+          pm2 restart align-api
         EOF
+
