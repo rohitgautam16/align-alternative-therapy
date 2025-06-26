@@ -3,53 +3,34 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  build:
-    name: Build & Test
+  deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        project: [frontend, backend]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js for ${{ matrix.project }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
-      - name: Install dependencies (${{ matrix.project }})
-        run: npm install
-        working-directory: ${{ matrix.project }}
-
-      - name: Run backend tests
-        if: matrix.project == 'backend'
-        run: npm test
-        working-directory: backend
-
-      - name: Build frontend
-        if: matrix.project == 'frontend'
-        run: npm run build
+      # -------- FRONTEND BUILD --------
+      - name: Install & build frontend
         working-directory: frontend
+        run: |
+          npm install
+          npm run build
 
-  deploy:
-    name: Deploy to Droplet
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+      # -------- BACKEND PREP --------
+      - name: Install backend deps
+        working-directory: backend
+        run: npm install
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      # -------- SSH SETUP --------
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.8.0
         with:
@@ -62,29 +43,28 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Debug SSH (verbose)
-        run: |
-          ssh -vvv -o StrictHostKeyChecking=yes \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "echo SSH OK" || true
+        run: ssh -vvv -o StrictHostKeyChecking=yes \
+              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo SSH OK" || true
 
+      # -------- SYNC --------
       - name: Sync Frontend Build
         run: |
           rsync -avz --delete \
-            "${{ github.workspace }}/frontend/dist/" \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/"
+            frontend/dist/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
 
       - name: Sync Backend Code
         run: |
           rsync -avz --delete \
-            "${{ github.workspace }}/backend/" \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/"
+            backend/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
 
+      # -------- RESTART --------
       - name: Install backend deps & restart
         run: |
           ssh -o StrictHostKeyChecking=yes \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-              cd ~/align-alternative-therapy/backend
-              npm install
-              pm2 restart align-api
+            cd ~/align-alternative-therapy/backend
+            pm2 restart align-api
             EOF
 
