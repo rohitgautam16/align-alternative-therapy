@@ -48,41 +48,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1) Load your private key into ssh-agent
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # 2) Add your droplet to known_hosts
       - name: Add droplet to known_hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-    
-         - name: Test SSH connectivity
+
+      - name: Test SSH connectivity
         run: |
-         ssh -o StrictHostKeyChecking=yes \
-         ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-         "echo SSH OK"
+          ssh -o StrictHostKeyChecking=yes \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "echo SSH OK"
 
-
-      # 3) Sync the built frontend
       - name: Sync Frontend Build
         run: |
           rsync -avz --delete \
             frontend/dist/ \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
 
-      # 4) Sync the backend code
       - name: Sync Backend Code
         run: |
           rsync -avz --delete \
             backend/ \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
 
-      # 5) Install backend deps & restart PM2
       - name: Install backend deps & restart
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
