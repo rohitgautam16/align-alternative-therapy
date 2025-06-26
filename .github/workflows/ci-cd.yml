@@ -26,17 +26,17 @@ jobs:
           cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
       - name: Install dependencies (${{ matrix.project }})
-        working-directory: ${{ matrix.project }}
+        working-directory: ${{ github.workspace }}/${{ matrix.project }}
         run: npm install
 
       - name: Run backend tests
         if: matrix.project == 'backend'
-        working-directory: backend
+        working-directory: ${{ github.workspace }}/backend
         run: npm test
 
       - name: Build frontend
         if: matrix.project == 'frontend'
-        working-directory: frontend
+        working-directory: ${{ github.workspace }}/frontend
         run: npm run build
 
   deploy:
@@ -68,13 +68,13 @@ jobs:
       - name: Sync Frontend Build
         run: |
           rsync -avz --delete \
-            "$GITHUB_WORKSPACE/frontend/dist/" \
+            "${{ github.workspace }}/frontend/dist/" \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/"
 
       - name: Sync Backend Code
         run: |
           rsync -avz --delete \
-            "$GITHUB_WORKSPACE/backend/" \
+            "${{ github.workspace }}/backend/" \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/"
 
       - name: Install backend deps & restart
