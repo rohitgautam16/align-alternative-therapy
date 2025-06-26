@@ -48,36 +48,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Load only your private key into the agent
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      # Add your droplet’s fingerprint so SSH trusts it
       - name: Add droplet to known_hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Test SSH connectivity
+      # DEBUG: Verbose SSH to show which key is being offered and why it fails
+      - name: Debug SSH (verbose)
         run: |
-          ssh -o StrictHostKeyChecking=yes \
+          ssh -vvv -o StrictHostKeyChecking=yes \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "echo SSH OK"
+            "echo SSH OK" || true
 
+      # Sync your built frontend to the server
       - name: Sync Frontend Build
         run: rsync -avz --delete \
           $GITHUB_WORKSPACE/frontend/dist/ \
           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
 
+      # Sync your backend code to the server
       - name: Sync Backend Code
         run: rsync -avz --delete \
           $GITHUB_WORKSPACE/backend/ \
           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
 
+      # Install backend deps & restart under PM2
       - name: Install backend deps & restart
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=yes \
+              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ~/align-alternative-therapy/backend
             npm install
             pm2 restart align-api
