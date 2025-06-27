@@ -1,0 +1,71 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 3. Build Frontend
+      - name: Install & Build Frontend
+        working-directory: frontend
+        run: |
+          npm install
+          npm run build
+
+      # 4. Install Backend Deps
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm install
+
+      # 5. Configure SSH
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add droplet to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      # 6. Verify SSH
+      - name: Debug SSH
+        run: ssh -o StrictHostKeyChecking=yes \
+               ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+               "echo SSH OK"
+
+      # 7. Sync Frontend
+      - name: Sync Frontend Build
+        run: |
+          rsync -avz --delete \
+            ./frontend/dist/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
+
+      # 8. Sync Backend
+      - name: Sync Backend Code
+        run: |
+          rsync -avz --delete \
+            ./backend/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
+
+      # 9. Restart Backend
+      - name: Restart Backend
+        run: ssh -o StrictHostKeyChecking=yes \
+             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+             "cd ~/align-alternative-therapy/backend && npm install && $(which pm2) restart align-api"
+
