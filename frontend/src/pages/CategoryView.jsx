@@ -2,7 +2,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetCategoriesQuery, useGetPlaylistByIdQuery } from '../utils/api';
-import PlaylistCard from '../components/ui/PlaylistCard';
+import PlaylistCard from '../components/custom-ui/PlaylistCard';
 
 const FALLBACK_BG =
   'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop';

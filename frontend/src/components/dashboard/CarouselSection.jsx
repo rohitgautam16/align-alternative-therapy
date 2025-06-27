@@ -1,13 +1,13 @@
 // src/components/dashboard/CarouselSection.jsx
 import React from 'react';
 import * as apiHooks from '../../utils/api';
-import PlaylistCard from '../ui/PlaylistCard';
+import PlaylistCard from '../custom-ui/PlaylistCard';
 
 
 function SkeletonCard() {
   return (
     <div
-      className="w-48 h-48 bg-gray-900 rounded-lg animate-pulse animate-ping flex-shrink-0"
+      className="w-48 h-48 bg-gray-900 rounded-lg animate-pulse flex-shrink-0"
       style={{ animationDuration: '2000ms', animationIterationCount: 'infinite' }}
     />
   );
@@ -25,7 +25,7 @@ export default function CarouselSection({
     
     return (
       <section className="space-y-2 p-6">
-        <h2 className="text-2xl font-semibold text-gray-400 animate-pulse animate-ping" style={{ animationDuration: '5000ms', animationIterationCount: 'infinite' }}>
+        <h2 className="text-2xl font-semibold text-gray-400 animate-pulse" style={{ animationDuration: '5000ms', animationIterationCount: 'infinite' }}>
           Loading {title}…
         </h2>
         <div className="flex space-x-4 overflow-x-auto pb-2">

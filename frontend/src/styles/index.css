@@ -1,38 +1,77 @@
 @import "tailwindcss";
+@import "./fonts.css";
 
-
-.gallery-item.show {
-    opacity: 1;
-    transform: translateY(0);
+@theme {
+  --font-family-sans: "Bosch", ui-sans-serif, system-ui, sans-serif;
+  --font-family-heading: "Billiers", ui-serif, serif;
+}
+@layer base {
+  :root {
+    --font-heading: "Billiers", ui-serif, serif;
+    --font-body: "Bosch", ui-sans-serif, system-ui, sans-serif;
   }
 
-  @media (max-width: 768px) {
-    .columns-2 {
-      columns: 1;
-    }
+  body {
+    font-family: var(--font-body);
   }
 
-  html{
-   overflow-x: hidden;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
 }
 
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+}
+
+.gallery-item.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .columns-2 {
+    columns: 1;
+  }
+}
+
+html {
+  overflow-x: hidden;
+}
+
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+
 ::-webkit-scrollbar {
-    display: none;
-  }
-  
-  a{
-    color: white;
-  }
-  
-  .playlist-details {
-    position: relative;
-    z-index: 10;
-  }
-  
+  display: none;
+}
+
+a {
+  color: white;
+}
+
+.playlist-details {
+  position: relative;
+  z-index: 10;
+}
+
 .slick-dots li button:before {
   color: white;
-  opacity: 0.3;            
-  font-size: 6px;      
+  opacity: 0.3;
+  font-size: 6px;
 }
 
 .slick-dots li.slick-active button:before {
@@ -59,3 +98,43 @@
 .transition-width {
   transition-property: width;
 }
+
+/* 
+.slide-in,
+.slide-out {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: #efefef;
+  z-index: 50;
+}
+
+.slide-in {
+  transform-origin: bottom;
+}
+
+.slide-out {
+  transform-origin: top;
+} */
+
+.slide-in {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100vh;
+background:#ffffff;
+transform-origin: bottom;
+}
+.slide-out {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100vh;
+background:#ff0000;
+transform-origin: top;
+}
+

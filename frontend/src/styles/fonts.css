@@ -1,0 +1,21 @@
+/* Billiers font for headings */
+@font-face {
+  font-family: 'Billiers';
+  src: url('../assets/fonts/Billiers-Regular.woff2') format('woff2'),
+       url('../assets/fonts/Billiers-Regular.woff') format('woff'),
+       url('../assets/fonts/Billiers-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Bosch font for body */
+@font-face {
+  font-family: 'Bosch';
+  src: url('../assets/fonts/BoschRegular.woff2') format('woff2'),
+       url('../assets/fonts/BoschRegular.woff') format('woff'),
+       url('../assets/fonts/Bosch-Display.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

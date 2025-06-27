@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '../hooks/useDebounce';
 import { useGetSearchResultsQuery } from '../utils/api';
-import PlaylistCard from '../components/ui/PlaylistCard';
-import CategoryBanner from '../components/ui/CategoryBanner';
+import PlaylistCard from '../components/custom-ui/PlaylistCard';
+import CategoryBanner from '../components/custom-ui/CategoryBanner';
 import { Play } from 'lucide-react';
 
 const FALLBACK_SONG =

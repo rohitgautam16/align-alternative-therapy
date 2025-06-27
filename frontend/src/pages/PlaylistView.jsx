@@ -96,9 +96,9 @@ export default function PlaylistView() {
   
   dispatch(setTrack({
     id:       song.id,
-    title:    song.title || song.name,
+    title:    song.name || song.title,
     artist:   song.artistName,
-    image:    playlist.image || FALLBACK_BG,
+    image:    song.image || FALLBACK_BG,
     audioUrl: song.audioUrl,
     audio_src: song.audio_src
   }));

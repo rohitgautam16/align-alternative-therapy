@@ -1,4 +1,3 @@
-// src/components/dashboard/DashboardLayout.jsx
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -21,11 +20,11 @@ function InnerLayout() {
       <Topbar />
 
       <div
-        className="flex flex-1 overflow-hidden pt-[4.375rem] gap-1.5 m-1.5 transition-all duration-300 ease-in-out"
+        className="flex flex-1 overflow-hidden pt-[4.375rem] gap-1.5 m-1.5 transition-all duration-300 ease-in-out scroll-smooth"
         style={{ paddingBottom: `${padBottom}px` }}
       >
         <Sidebar />
-        <main className="flex-1 bg-black rounded-lg overflow-auto">
+        <main className="flex-1 bg-black rounded-lg overflow-auto scroll-smooth">
           <Outlet />
         </main>
       </div>

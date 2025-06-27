@@ -6,6 +6,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App';
 import './styles/index.css';
+import './styles/fonts.css'
 import { MenuProvider } from './context/MenuContext';
 import { PlayerUIProvider } from './context/PlayerUIContext';
 

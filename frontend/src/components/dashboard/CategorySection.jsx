@@ -3,7 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import Slider from 'react-slick';
 import { useGetCategoriesQuery } from '../../utils/api';
 import { useSidebar } from '../../context/SidebarContext';
-import CategoryBanner from '../ui/CategoryBanner';
+import CategoryBanner from '../custom-ui/CategoryBanner';
 
 export default function CategorySection() {
   const { data: categories = [], isLoading, isError } = useGetCategoriesQuery();

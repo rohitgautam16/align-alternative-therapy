@@ -13,7 +13,7 @@ import { MdLibraryMusic, MdFavorite, MdQueueMusic } from 'react-icons/md';
 import { useGetCategoriesQuery } from '../../utils/api';
 import { useSidebar } from '../../context/SidebarContext';
 
-export default function Sidebar() {
+export default function Sidebar({ className = '' }) {
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useGetCategoriesQuery();
   const categories = Array.isArray(data) ? data : data?.categories || [];

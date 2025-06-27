@@ -1,8 +1,9 @@
 import React from 'react';
 import CarouselSection from '../components/dashboard/CarouselSection';
-import CategoryBanner from '../components/ui/CategoryBanner';
-import PlaylistCard from '../components/ui/PlaylistCard';
+import CategoryBanner from '../components/custom-ui/CategoryBanner';
+import PlaylistCard from '../components/custom-ui/PlaylistCard';
 import CategorySection from '../components/dashboard/CategorySection';
+import TransitionWrapper from '../components/custom-ui/transition';
 
 
 import {
@@ -14,7 +15,7 @@ import {
 } from '../utils/api';
 
 
-export default function DashboardHome() {
+const DashboardHome = () => {
   return (
     <div className="space-y-12 rounded-2xl">
       {/* <CarouselSection title="Categories" useQuery={useGetCategoriesQuery} renderItem={(cat) => <CategoryBanner category={cat} />} /> */}
@@ -26,4 +27,7 @@ export default function DashboardHome() {
       <CarouselSection title="New Releases" useQuery={useGetPlaylistByIdQuery} />
     </div>
   );
-}
+};
+
+export default TransitionWrapper(DashboardHome);
+

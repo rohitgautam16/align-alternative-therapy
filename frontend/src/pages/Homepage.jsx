@@ -7,6 +7,10 @@ import Benefits from '../components/landing/Benefits';
 import Features from '../components/landing/Features';
 import Plans from '../components/landing/Plans';
 import Footer from '../components/common/Footer';
+import Introduction from '../components/landing/Introduction';
+import TwoImageReveal from '../components/landing/TwoImageReveal';
+import AnimatedTestimonialsDemo from '../components/landing/animated-testimonials-demo';
+import TransitionWrapper from '../components/custom-ui/transition';
 
 const Homepage = () => {
   return (
@@ -17,6 +21,12 @@ const Homepage = () => {
       <section className="hero-section">
         <HeroSection />
       </section>
+      <section className="introduction">
+        <Introduction />
+      </section>
+      <section className="two-image-reveal">
+        <TwoImageReveal />
+      </section>
       <section className="playlist-carousel">
         <PlaylistCarousel />
       </section>
@@ -26,9 +36,12 @@ const Homepage = () => {
       <section className="benefits">
         <Benefits />
       </section>
-      <section className="features">
-        <Features />
+      <section className="testimonials">
+        <AnimatedTestimonialsDemo />
       </section>
+      {/* <section className="features">
+        <Features />
+      </section> */}
       <section className="plans">
         <Plans />
       </section>
@@ -37,4 +50,4 @@ const Homepage = () => {
   );
 };
 
-export default Homepage;
+export default TransitionWrapper(Homepage);

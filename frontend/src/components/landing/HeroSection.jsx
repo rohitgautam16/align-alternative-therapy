@@ -1,115 +1,139 @@
-import React, { useState } from 'react';
-import { useNavigate } from "react-router-dom";
-import Logo from '../../assets/icons/Logo.png';
-import GlobeIcon from '../../assets/icons/Globe-icon.svg';
-import MenuIcon from '../../assets/icons/menu.png';
-import FullScreenMenu from '../common/FullScreenMenu/FullScreenMenu'; 
-import heroWomen from '../../assets/images/woman-8798473.jpg';
+import React, { useRef, useLayoutEffect } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const HeroSection = () => {
+  const heroRef = useRef(null);
+  const headingRef = useRef(null);
+  const videoRef = useRef(null);
 
+  useLayoutEffect(() => {
+    const heroEl = heroRef.current;
+    const textLines = headingRef.current.querySelectorAll(".text-line");
+    const videoEl = videoRef.current;
+
+    // 1) Animate heading lines in with slide-up reveal effect
+    gsap.fromTo(
+      textLines,
+      { 
+        yPercent: 100,
+        opacity: 0
+      },
+      {
+        yPercent: 0,
+        opacity: 1,
+        duration: 2,
+        ease: "power4.out",
+        stagger: 0.3,
+      }
+    );
+
+    // 2) Animate video "clip-path" from fully clipped to fully shown
+    gsap.fromTo(
+      videoEl,
+      {
+        clipPath: "inset(0 100% 0 0)",
+        webkitClipPath: "inset(0 100% 0 0)",
+      },
+      {
+        clipPath: "inset(0 0% 0 0)",
+        webkitClipPath: "inset(0 0% 0 0)",
+        duration: 1.2,
+        delay: 3.2,
+        ease: "power4.out",
+      }
+    );
+
+    // 3) Create timeline for scroll-triggered animations
+    const scrollTimeline = gsap.timeline({
+      scrollTrigger: {
+        trigger: heroEl,
+        start: "top top",
+        end: "bottom top",
+        scrub: 1,
+        pin: true,
+      },
+    });
+
+    // 4) Scale video to fullscreen with proper object-fit cover
+    scrollTimeline.to(videoEl, {
+      width: "100vw",
+      height: "100vh",
+      borderRadius: "0px",
+      position: "fixed",
+      top: "50%",
+      left: "50%",
+      objectFit: "cover",
+      transform: "translate(-50%, -50%)",
+      maxWidth: "none",
+      maxHeight: "none",
+      margin: "0",
+      padding: "0",
+      zIndex: 20,
+      duration: 1,
+      ease: "power2.out",
+    }, 0);
+
+    // 5) Fade out and slide up the text simultaneously
+    scrollTimeline.to(headingRef.current, {
+      opacity: 0,
+      y: -150,
+      scale: 0.5,
+      duration: 0.8,
+      ease: "power2.out",
+    }, 0);
+
+    return () => {
+      ScrollTrigger.getAll().forEach((st) => st.kill());
+    };
+  }, []);
 
   return (
-    <div className="flex flex-col min-h-screen w-full">
-      {/* Hero Section */}
-      <div
-        className="relative w-full h-screen bg-cover bg-center text-white"
-        style={{
-          backgroundImage: `url(${heroWomen})`,
-        }}
+    <>
+      {/* HERO SECTION: full‐screen dark, with multi‐line heading + clip‐anim video */}
+      <header
+        ref={heroRef}
+        className="relative w-screen h-screen bg-black"
       >
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/15"></div>
-
-        {/* Main Content */}
-        <div className="relative z-10 flex items-center justify-center h-full">
-          <h1 className="text-[12rem] font-bold uppercase leading-none tracking-wide">
-            ALIGN
+        <div
+          ref={headingRef}
+          className=" inset-0 flex items-center w-screen h-screen justify-center z-10 px-4 text-center"
+        >
+          <h1
+            className="text-white font-heading uppercase tracking-wide"
+            style={{
+              fontSize: "6rem",
+              lineHeight: 1.5,
+            }}
+          >
+            <div className="overflow-hidden">
+              <div className="text-line block">&nbsp;Your</div>
+            </div>
+            <div className="overflow-hidden">
+              <div className="text-line block">Inner&nbsp;Harmony</div>
+            </div>
+            <div className="overflow-hidden">
+              <div className="text-line block">Amplified</div>
+            </div>
           </h1>
-          <div className="absolute right-10 flex items-center">
-            <p className="text-xl tracking-widest transform rotate-90">
-              ® Alternative Therapy
-            </p>
-          </div>
         </div>
 
-        {/* Bottom Left Section */}
-        <div className="absolute bottom-16 left-8 flex gap-4">
-          <div className="flex items-center gap-4">
-            <img src={GlobeIcon} alt="Globe Icon" className="h-12 w-auto" />
-            <span className="font-bold text-lg"></span>
-          </div>
-          <div className="flex flex-col border rounded-full py-2 px-4 items-start">
-            <div className="text-xs font-bold tracking-widest">MUSICIAN</div>
-            <div className="text-xs tracking-wider opacity-80">
-              Do not access if you're afraid of change
-            </div>
-          </div>
-        </div>
+        {/* VIDEO ELEMENT (absolutely positioned to allow free scaling) */}
+        <video
+          ref={videoRef}
+          className="absolute top-1/2 left-1/2 w-72 max-w-lg object-cover rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-1/2 z-20"
+          src="https://cdn.pixabay.com/video/2025/02/16/258614_large.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{ objectFit: "cover" }}
+        />
+      </header>
 
-        {/* Bottom Right Section */}
-        <div className="absolute bottom-16 right-8">
-          <div className="flex items-center gap-2">
-            <button className="px-4 py-2 border border-white rounded-full text-xs uppercase">
-              Want to Invest | Heal Yourself
-            </button>
-            <div className="h-12 w-12 border rounded-full flex items-center justify-center">
-              ▶
-            </div>
-          </div>
-        </div>
-
-        
-      </div>
-
-      {/* Bottom Icons Section */}
-      <div className="flex flex-col items-center h-full justify-between py-36 bg-[#000000]">
-        <div className="flex items-center justify-center gap-16">
-          <div className="animate-pulse">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 100 100"
-              className="w-20 h-20 fill-gray-400"
-            >
-              <path d="M50 10 L60 40 L90 50 L60 60 L50 90 L40 60 L10 50 L40 40 Z" />
-            </svg>
-          </div>
-          <p className="text-2xl font-medium text-white text-center max-w-4xl">
-            Our approach blends different audio therapies like affirmations, binaural beats 
-            and solfeggio frequencies. Each audio experience is thoughtfully curated to provide 
-            you with a significant advantage, aiding in aligning your mind, body and spirit for 
-            optimal harmony and growth
-          </p>
-          <div className="relative">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 100 100"
-              className="w-20 h-20 text-gray-600 animate-spin"
-            >
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                stroke="gray"
-                strokeWidth="2"
-                fill="none"
-              />
-              <polygon points="50,10 60,40 40,40" fill="gray" />
-            </svg>
-            <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-lg">
-              <p className="text-gray-400 uppercase tracking-widest rotate-[20deg]">
-                Channel Peace
-              </p>
-            </div>
-          </div>
-        </div>
-        <h2 className="text-3xl font-bold bebas-neue-regular tracking-wide text-white text-center uppercase mt-8">
-          We tap into the transformative power of sound to enrich your well-being
-        </h2>
-      </div>
-
-
-    </div>
+    </>
   );
 };
 
