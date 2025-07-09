@@ -94,7 +94,7 @@ const TwoImageReveal = () => {
         <div className="relative overflow-hidden h-[500px] rounded-lg">
           <img
             ref={leftImgRef}
-            src="https://images.pexels.com/photos/1055691/pexels-photo-1055691.jpeg"
+            src="https://cdn.pixabay.com/photo/2024/06/10/14/07/ai-generated-8820840_1280.png"
             alt="Left Reveal"
             className="object-cover w-full h-full rounded-lg"
           />
@@ -103,7 +103,7 @@ const TwoImageReveal = () => {
         <div className="relative overflow-hidden h-[500px] rounded-lg">
           <img
             ref={rightImgRef}
-            src="https://images.pexels.com/photos/3225517/pexels-photo-3225517.jpeg"
+            src="https://images.pexels.com/photos/4038317/pexels-photo-4038317.jpeg"
             alt="Right Reveal"
             className="object-cover w-full h-full rounded-lg"
           />

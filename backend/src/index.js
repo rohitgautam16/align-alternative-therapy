@@ -7,22 +7,31 @@ const helmet  = require('helmet');
 const cors    = require('cors');
 const morgan  = require('morgan');
 const routes  = require('./routes');
-
+const cookieParser = require('cookie-parser');
 const NODE_ENV    = process.env.NODE_ENV || 'development';
 const PORT        = parseInt(process.env.PORT, 10) || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const { webhookController } = require('./controllers/subscriptionController');
+
 
 const app = express();
 
 console.log('Starting server with config:', { NODE_ENV, PORT, CORS_ORIGIN });
 
 app.use(helmet());
-app.use(cors({ origin: CORS_ORIGIN }));
+app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
+app.use(cookieParser());
+app.post(
+  '/api/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  webhookController
+);
 app.use(express.json());
 
 if (NODE_ENV !== 'test') {
   app.use(morgan('tiny'));
 }
+
 
 
 app.get('/health', (_req, res) => res.json({ status: 'OK' }));

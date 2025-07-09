@@ -69,7 +69,7 @@ const Plan = ({
       ))}
     </ul>
 
-    <button className="w-full bg-white text-black py-3 rounded-full font-medium hover:bg-gray-100 transition-colors">
+    <button className="w-full bg-white text-black py-3 rounded-full font-medium hover:bg-secondary cursor-pointer transition-colors">
       {buttonText}
     </button>
   </motion.div>
@@ -100,7 +100,7 @@ const plans = [
   },
   {
     name: "Yearly Plan",
-    originalPrice: 216,
+    originalPrice: 120,
     discountedPrice: 108,
     features: [
       { text: "Higher Audio Quality" },
@@ -113,6 +113,8 @@ const plans = [
     buttonText: "Select Yearly Plan",
   }
 ];
+
+
 
 export default function Plans() {
   return (
@@ -147,7 +149,7 @@ export default function Plans() {
             <h3 className="text-xl text-gray-800 font-light mb-4 flex-grow">
               Discover tranquility through a curated selection of products and practices for mind, body, and soul.
             </h3>
-            <button className="w-full bg-white text-black py-3 rounded-full font-medium hover:bg-gray-100 transition-colors">
+            <button className="w-full bg-white text-black cursor-pointer py-3 rounded-full font-medium hover:bg-secondary transition-colors">
               Contact Sale
             </button>
           </motion.div>

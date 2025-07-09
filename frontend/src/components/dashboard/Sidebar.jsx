@@ -191,20 +191,7 @@ export default function Sidebar({ className = '' }) {
          <Settings size={20} />
          {!collapsed && 'Settings'}
        </button>
-        <button
-         onClick={() =>
-           handleExpand(() => {
-             navigate('/logout');
-           })
-         }
-         className={`
-           flex items-center gap-2 py-2 rounded-lg hover:bg-red-700 transition w-full text-lg
-           ${collapsed ? 'justify-center px-0' : 'px-4'}
-         `}
-       >
-         <LogOut size={20} />
-         {!collapsed && 'Logout'}
-       </button>
+       
       </div>
     </aside>
   );

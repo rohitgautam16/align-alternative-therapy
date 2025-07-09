@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   const footerRef = useRef(null);
@@ -9,6 +10,18 @@ const Footer = () => {
   const subscribeRefs = useRef([]);
   const copyrightRef = useRef(null);
   const backgroundTextRef = useRef(null);
+
+  const companyLinks = [
+    { label: 'About', path: '/about' },
+    { label: 'Careers', path: '/blog' },
+    { label: 'Contact', path: '/contact-us' },
+  ];
+
+  const socialLinks = [
+    { label: 'Twitter', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
+    { label: 'Instagram', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
+    { label: 'Facebook', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
+  ];
 
   useEffect(() => {
     // Custom GSAP-style fromTo animation
@@ -123,7 +136,7 @@ const Footer = () => {
         </h1>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
+      <div className="relative z-10  mx-auto px-8 py-20">
         {/* Main content grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-16">
           
@@ -163,51 +176,56 @@ const Footer = () => {
           </div>
 
           {/* CENTER: Navigation Links */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-            {/* Company */}
-            <div 
-              ref={el => menuRefs.current[0] = el}
-              className="overflow-hidden"
-              style={{ opacity: 0, transform: 'translateY(100%)' }}
-            >
-              <h3 className="text-xl font-bold mb-6 text-white">Company</h3>
-              <ul className="space-y-4">
-                {["About", "Careers", "Contact"].map((item, i) => (
-                  <li key={i}>
-                    <a
-                      href="#"
-                      className="text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300 inline-flex items-center group"
-                    >
-                      <span className="group-hover:mr-2 transition-all duration-300">{item}</span>
-                      <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+        {/* Company */}
+        <div ref={el => menuRefs.current[0] = el} className="overflow-hidden" style={{ opacity: 0, transform: 'translateY(100%)' }}>
+          <h3 className="text-xl font-bold mb-6 text-white">Company</h3>
+          <ul className="space-y-4">
+            {companyLinks.map(({ label, path }, i) => (
+              <li key={i}>
+                {/* Using Link */}
+                <Link
+                  to={path}
+                  className="text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300 inline-flex items-center group"
+                >
+                  <span className="group-hover:mr-2 transition-all duration-300">{label}</span>
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                </Link>
 
-            {/* Follow us */}
-            <div 
-              ref={el => menuRefs.current[1] = el}
-              className="overflow-hidden"
-              style={{ opacity: 0, transform: 'translateY(100%)' }}
-            >
-              <h3 className="text-xl font-bold mb-6 text-white">Follow us</h3>
-              <ul className="space-y-4">
-                {["Twitter", "Github", "Instagram", "Facebook"].map((item, i) => (
-                  <li key={i}>
-                    <a
-                      href="#"
-                      className="text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300 inline-flex items-center group"
-                    >
-                      <span className="group-hover:mr-2 transition-all duration-300">{item}</span>
-                      <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+                {/* Or, if you’d rather use useNavigate:
+                <button
+                  onClick={() => navigate(path)}
+                  className="text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300 inline-flex items-center group"
+                >
+                  <span className="group-hover:mr-2 transition-all duration-300">{label}</span>
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                </button>
+                */}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Follow us */}
+        <div ref={el => menuRefs.current[1] = el} className="overflow-hidden" style={{ opacity: 0, transform: 'translateY(100%)' }}>
+          <h3 className="text-xl font-bold mb-6 text-white">Follow us</h3>
+          <ul className="space-y-4">
+            {socialLinks.map(({ label, url }, i) => (
+              <li key={i}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300 inline-flex items-center group"
+                >
+                  <span className="group-hover:mr-2 transition-all duration-300">{label}</span>
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
           {/* RIGHT: Newsletter */}
           <div className="space-y-6">
@@ -232,7 +250,7 @@ const Footer = () => {
                 />
                 <button
                   onClick={handleSubscribe}
-                  className="w-full bg-white text-black px-6 py-4 font-semibold transition-all duration-300 hover:bg-gray-200 flex items-center justify-center space-x-3"
+                  className="w-full bg-white text-black px-6 py-4 font-semibold transition-all duration-300 hover:bg-secondary cursor-pointer flex items-center justify-center space-x-3"
                 >
                   <span>Subscribe</span>
                   <ArrowRight className="w-5 h-5" />

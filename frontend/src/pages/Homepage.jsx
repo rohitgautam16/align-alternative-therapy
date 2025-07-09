@@ -21,12 +21,9 @@ const Homepage = () => {
       <section className="hero-section">
         <HeroSection />
       </section>
-      <section className="introduction">
+      {/* <section className="introduction">
         <Introduction />
-      </section>
-      <section className="two-image-reveal">
-        <TwoImageReveal />
-      </section>
+      </section> */}
       <section className="playlist-carousel">
         <PlaylistCarousel />
       </section>
@@ -38,6 +35,9 @@ const Homepage = () => {
       </section>
       <section className="testimonials">
         <AnimatedTestimonialsDemo />
+      </section>
+      <section className="two-image-reveal">
+        <TwoImageReveal />
       </section>
       {/* <section className="features">
         <Features />

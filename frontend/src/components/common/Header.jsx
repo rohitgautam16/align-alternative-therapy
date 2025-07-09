@@ -10,7 +10,7 @@ export default function Header() {
   const { toggleMenu } = useMenu();
 
   return (
-    <header className="absolute top-0 left-0 w-full z-50">
+    <header className="absolute top-0 left-0 w-full z-80">
       <div className="relative flex items-center justify-center h-16">
        
         <div

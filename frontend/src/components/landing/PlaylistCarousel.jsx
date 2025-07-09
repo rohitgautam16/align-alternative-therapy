@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 // Your original image imports
 import Image1 from "../../assets/images/billy-huynh-W8KTS-mhFUE-unsplash-1-scaled.jpg";
@@ -11,7 +13,7 @@ import Image7 from "../../assets/images/runze-shi-1kIyfRdLMxI-unsplash-scaled.jp
 
 const PlaylistCarousel = () => {
   const artists = [
-    { img: Image1, name: "CATEGORY", description: "Fitness & Workout" },
+    { img: Image1, name: "CATEGORY", description: "Fitness & Workout", slug: "fitness-workouts-weight-loss", },
     { img: Image2, name: "CATEGORY", description: "Animals & Pets" },
     { img: Image3, name: "CATEGORY", description: "Mind" },
     { img: Image4, name: "CATEGORY", description: "Ultimate Stress Relief" },
@@ -151,61 +153,62 @@ const PlaylistCarousel = () => {
 
   return (
     <div className="bg-black text-white py-8 md:py-12 lg:py-16 relative">
-      <style jsx>{`
+     <style>{`
+      :root {
+        --item-width: clamp(250px, 30vw, 350px);
+        --item-height: clamp(250px, 25vw, 300px);
+        --gap: clamp(1rem, 2.5vw, 2.5rem);
+      }
+
+      .carousel-item {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: width, transform;
+      }
+
+      .carousel-item:hover {
+        transform: translateY(-0.5rem);
+      }
+
+      @media (max-width: 768px) {
         :root {
-          --item-width: clamp(250px, 30vw, 350px);
-          --item-height: clamp(250px, 25vw, 300px);
-          --gap: clamp(1rem, 2.5vw, 2.5rem);
+          --item-width: clamp(200px, 45vw, 280px);
+          --item-height: clamp(200px, 35vw, 250px);
+          --gap: clamp(0.75rem, 2vw, 1.5rem);
         }
-        
-        .carousel-item {
-          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-          will-change: width, transform;
-        }
-        
-        .carousel-item:hover {
-          transform: translateY(-0.5rem);
-        }
-        
-        @media (max-width: 768px) {
-          :root {
-            --item-width: clamp(200px, 45vw, 280px);
-            --item-height: clamp(200px, 35vw, 250px);
-            --gap: clamp(0.75rem, 2vw, 1.5rem);
-          }
-        }
-        
-        .scroll-button {
-          transition: all 0.3s ease;
-          backdrop-filter: blur(8px);
-          will-change: transform, background-color, border-color;
-        }
-        
-        .scroll-button:hover:not(:disabled) {
-          transform: scale(1.05);
-          background: rgba(255, 255, 255, 0.1) !important;
-          border-color: rgba(255, 255, 255, 0.8) !important;
-        }
-        
-        .scroll-button:active:not(:disabled) {
-          transform: scale(0.95);
-        }
-        
-        .scroll-button:disabled {
-          opacity: 0.3;
-          cursor: not-allowed;
-          transform: scale(1);
-        }
-        
-        .carousel-container {
-          cursor: ${isDragging ? 'grabbing' : 'grab'};
-          user-select: none;
-        }
-        
-        .carousel-container:active {
-          cursor: grabbing;
-        }
-      `}</style>
+      }
+
+      .scroll-button {
+        transition: all 0.3s ease;
+        backdrop-filter: blur(8px);
+        will-change: transform, background-color, border-color;
+      }
+
+      .scroll-button:hover:not(:disabled) {
+        transform: scale(1.05);
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.8) !important;
+      }
+
+      .scroll-button:active:not(:disabled) {
+        transform: scale(0.95);
+      }
+
+      .scroll-button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        transform: scale(1);
+      }
+
+      .carousel-container {
+        cursor: ${isDragging ? 'grabbing' : 'grab'};
+        user-select: none;
+      }
+
+      .carousel-container:active {
+        cursor: grabbing;
+      }
+    `}</style>
+
 
       {/* Padding Container */}
       <div className="px-2 md:px-7 lg:px-10">
@@ -289,7 +292,9 @@ const PlaylistCarousel = () => {
                           style={{
                             borderRadius: '50% / 50%'
                           }}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
                         >
                           Listen
                         </button>

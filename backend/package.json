@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"No tests defined\" && exit 0",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "anonymize:users": "node src/cli/anonymizeUsers.js",
+    "purge:deleted-users": "node src/cli/purgeDeletedUsers.js"
   },
   "keywords": [],
   "author": "",
@@ -14,14 +16,18 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.816.0",
     "aws-sdk": "^2.1692.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mime-types": "^3.0.1",
     "morgan": "^1.10.0",
     "multer": "^2.0.0",
     "music-metadata": "^11.2.3",
-    "mysql2": "^3.14.1"
+    "mysql2": "^3.14.1",
+    "stripe": "^18.2.1"
   }
 }

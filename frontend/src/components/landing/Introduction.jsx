@@ -8,7 +8,7 @@ const BottomIconsSection = () => {
   const bottomHeadingRef = useRef(null);
 
   useEffect(() => {
-    // Import GSAP and ScrollTrigger
+
     const gsapScript = document.createElement('script');
     gsapScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
     
@@ -175,7 +175,7 @@ const BottomIconsSection = () => {
   };
 
   return (
-    <div ref={sectionRef} className="flex flex-col items-center h-full justify-between pt-28 py-25 bg-black">
+    <div ref={sectionRef} className="flex flex-col items-center h-full justify-between pt-28 py-25 bg-primary">
       <div className="flex items-center justify-center gap-16 max-w-6xl mx-auto px-8">
 
         

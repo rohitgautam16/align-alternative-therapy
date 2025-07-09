@@ -124,7 +124,7 @@ const HeroSection = () => {
         <video
           ref={videoRef}
           className="absolute top-1/2 left-1/2 w-72 max-w-lg object-cover rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-1/2 z-20"
-          src="https://cdn.pixabay.com/video/2025/02/16/258614_large.mp4"
+          src="https://cdn.pixabay.com/video/2023/08/31/178474-860033394_large.mp4"
           autoPlay
           muted
           loop

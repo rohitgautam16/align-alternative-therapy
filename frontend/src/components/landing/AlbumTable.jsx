@@ -206,7 +206,7 @@ const AlbumTable = () => {
                 onMouseEnter={() => handleRowEnter(index)}
                 onMouseLeave={handleRowLeave}
                 className={`transition-colors duration-300 ease-out ${
-                  hoveredRow === index ? "bg-red-500" : "bg-black"
+                  hoveredRow === index ? "bg-secondary" : "bg-black"
                 }`}
               >
                 <td className="p-6 border-b border-gray-600 text-center text-base">{row.Name}</td>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Facebook, Instagram, Linkedin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
+  const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(0);
   const [nextImageIndex, setNextImageIndex] = useState(null);
 
@@ -28,11 +30,12 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
     }
   }, [isMenuOpen]);
 
+  // Define menu items with paths
   const menuItems = [
-    { title: 'Home', image: 'https://images.unsplash.com/photo-1545389336-cf090694435e?w=600&h=800&fit=crop' },
-    { title: 'About Us', image: 'https://images.unsplash.com/photo-1600298881974-6be191ceeda1?w=600&h=800&fit=crop' },
-    { title: 'Blogs', image: 'https://plus.unsplash.com/premium_photo-1750681051145-45991d0693ee?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?w=600&h=800&fit=crop' },
-    { title: 'Contact', image: 'https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=600&h=800&fit=crop' }
+    { title: 'Home', path: '/', image: 'https://images.unsplash.com/photo-1545389336-cf090694435e?w=600&h=800&fit=crop' },
+    { title: 'About Us', path: '/about', image: 'https://images.unsplash.com/photo-1600298881974-6be191ceeda1?w=600&h=800&fit=crop' },
+    { title: 'Blogs', path: '/blog', image: 'https://plus.unsplash.com/premium_photo-1750681051145-45991d0693ee?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?w=600&h=800&fit=crop' },
+    { title: 'Contact', path: '/contact-us', image: 'https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=600&h=800&fit=crop' }
   ];
 
   const handleMenuItemHover = (index) => {
@@ -94,7 +97,8 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
                 {menuItems.map((item, index) => (
                   <a
                     key={item.title}
-                    href="#"
+                    href={item.path}
+                    onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); navigate(item.path); }}
                     className="group relative block text-white hover:text-red-400 transition-all duration-300"
                     onMouseEnter={() => handleMenuItemHover(index)}
                   >
@@ -119,7 +123,8 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
                   {[Facebook, Instagram, Linkedin].map((Icon, i) => (
                     <a
                       key={i}
-                      href="#"
+                      href="https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx"
+                      target='blank'
                       className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1"
                     >
                       <Icon size={18} />

@@ -72,10 +72,10 @@ export default function PlaylistView() {
   }
 
  
-  const locked = user.subscriptionTier === 'free' && !playlist.isFree;
-  if (locked) {
-    return <div className="p-6 text-center text-white">This playlist is locked. Subscribe to access.</div>;
-  }
+  // const locked = user.subscriptionTier === 'free' && !playlist.isFree;
+  // if (locked) {
+  //   return <div className="p-6 text-center text-white">This playlist is locked. Subscribe to access.</div>;
+  // }
 
 
   const categoryObj = categories.find(c => c.id === playlist.categoryId);

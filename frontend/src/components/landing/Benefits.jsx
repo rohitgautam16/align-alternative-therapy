@@ -7,6 +7,7 @@ import Focus from "../../assets/images/focus.jpg";
 import OverallBeing from "../../assets/images/overall-being.jpg";
 import Meditation from "../../assets/images/meditation.jpg";
 import Creative from "../../assets/images/creativeness.jpg";
+import { useNavigate } from 'react-router-dom';
 
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -136,6 +137,8 @@ const Benefits = () => {
   const mainImageRef = useRef(null);
   const joinButtonRef = useRef(null);
 
+  const navigate = useNavigate();
+
   const cards = useMemo(() => [
     { title: "Reduce Stress", description: "Find inner peace...", image: Stress, height: 400 },
     { title: "Improve Sleep Quality", description: "Experience deeper...", image: SleepQuality, height: 350 },
@@ -150,7 +153,7 @@ const Benefits = () => {
   }, []);
 
   const handleJoinNow = useCallback(() => {
-    console.log("Join now clicked");
+    navigate("/pricing"); 
   }, []);
 
   useEffect(() => {
@@ -217,7 +220,7 @@ const Benefits = () => {
                 </h2>
                 <button
                   ref={joinButtonRef}
-                  className="px-8 py-3 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 text-black transition-all duration-300 font-medium"
+                  className="px-8 py-3 bg-white bg-opacity-90 rounded-full hover:bg-secondary cursor-pointer text-black transition-all duration-300 font-medium"
                   onClick={handleJoinNow}
                 >
                   Join Now
