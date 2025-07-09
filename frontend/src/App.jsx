@@ -31,7 +31,7 @@ import AdminCategoryDetail from './pages/Admin/AdminCategoryDetail'
 import AdminPlaylistsOverview from './pages/Admin/AdminPlaylistOverview'
 import AdminPlaylistDetail from './pages/Admin/AdminPlaylistDetail'
 import AdminSongsOverview from './pages/Admin/AdminSongsOverview'
-import AdminSongDetail from './pages/Admin/AdminSongDeTail'
+import AdminSongDetail from './pages/Admin/AdminSongDetail'
 import AdminUpload from './pages/Admin/AdminR2FileManager'
 import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
 
