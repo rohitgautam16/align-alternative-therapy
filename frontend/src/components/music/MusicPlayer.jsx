@@ -186,7 +186,8 @@ export default function MusicPlayer() {
             <motion.div
               key={currentTrack.id}
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${currentTrack.image})` }}
+              style={{ backgroundImage: `url(${currentTrack.image})`,
+              filter: 'blur(8px)' }}
               initial={{ opacity: 0.7 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0.7 }}

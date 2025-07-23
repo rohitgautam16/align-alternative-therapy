@@ -195,7 +195,7 @@ export const api = createApi({
       invalidatesTags: [{ type: 'Playlist', id: 'LIST' }],
     }),
 
-    // ─── Update playlist ──────────────────────────────────
+
     updatePlaylist: build.mutation({
       query: ({ id, ...patch }) => ({
         url: `/admin/playlists/${id}`,
@@ -208,7 +208,6 @@ export const api = createApi({
       ],
     }),
 
-    // ─── Delete playlist ──────────────────────────────────
     deletePlaylist: build.mutation({
       query: (id) => ({
         url: `/admin/playlists/${id}`,
@@ -426,27 +425,178 @@ export const api = createApi({
         arg ? [{ type: 'Playlists', id: arg }] : ['Playlists'],
     }),
 
+    getDashboardFreePlaylists: build.query({
+      query: () => 'dashboard/playlists/free',
+      providesTags: ['Playlists'],
+    }),
+
+    getDashboardAllPlaylists: build.query({
+      query: () => `dashboard/playlists`,          
+      providesTags: ['Playlists'],
+    }),
+
+    getDashboardPlaylistById: build.query({
+      query: (id) => `dashboard/playlists/${id}`,
+      providesTags: (result) =>
+        result ? [{ type: 'Playlists', id: result.id }] : [],
+    }),
+
     getSongs: build.query({
       query: (playlistId) => `playlists/${playlistId}/songs`,
       providesTags: (result, error, arg) => [{ type: 'Songs', id: arg }],
     }),
 
     getSearchResults: build.query({
-  query: (term) => ({
-    url: '/search',
-    params: { query: term },    
-  }),
-}),
+      query: (term) => ({
+        url: '/search',
+        params: { query: term },    
+      }),
+    }),
+
+    getSongById: build.query({
+      query: (songId) => `songs/${songId}`,
+      providesTags: (result, error, id) => [{ type: 'Songs', id }],
+    }),
+
+    getDashboardNewReleases: build.query({
+      /**
+       * @arg {{ playlistLimit?: number, songLimit?: number }}
+       */
+      query: ({ playlistLimit = 12, songLimit = 8 } = {}) => ({
+        url: `dashboard/playlists/new-releases`,
+        params: { playlistLimit, songLimit }
+      }),
+      // no tags needed unless you invalidate
+    }),
+
+    getAllSongs: build.query({
+      query: () => `dashboard/songs`,
+      providesTags: (result) =>
+        result
+          ? [...result.map(({ id }) => ({ type: 'Songs', id })), { type: 'Songs', id: 'LIST' }]
+          : [{ type: 'Songs', id: 'LIST' }],
+    }),
+
+    getUserPlaylists: build.query({
+      query: () => 'user-playlists',
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.playlists.map((p) => ({
+                type: 'UserPlaylists',
+                id: p.id
+              })),
+              { type: 'UserPlaylists', id: 'LIST' }
+            ]
+          : [{ type: 'UserPlaylists', id: 'LIST' }]
+    }),
+
+    createUserPlaylist: build.mutation({
+      query: ({ title, artwork_filename }) => ({
+        url: 'user-playlists',
+        method: 'POST',
+        body: { title, artwork_filename }
+      }),
+      invalidatesTags: [{ type: 'UserPlaylists', id: 'LIST' }]
+    }),
+
+    updateUserPlaylist: build.mutation({
+      query: ({ id, ...body }) => ({
+        url: `user-playlists/${id}`,
+        method: 'PUT',
+        body
+      }),
+      // transform so hook returns `payload.playlist` directly
+      transformResponse: (response) => response.playlist,
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'UserPlaylists', id },
+        { type: 'UserPlaylists', id: 'LIST' },
+      ],
+    }),
+
+    deleteUserPlaylist: build.mutation({
+      query: (id) => ({
+        url: `user-playlists/${id}`,
+        method: 'DELETE'
+      }),
+      invalidatesTags: [{ type: 'UserPlaylists', id: 'LIST' }]
+    }),
+
+    addSongToUserPlaylist: build.mutation({
+      query: ({ playlistId, songId }) => ({
+        url: `user-playlists/${playlistId}/songs`,
+        method: 'POST',
+        body: { songId }
+      }),
+      // you may want to re-fetch playlist details here
+    }),
+
+    removeSongFromUserPlaylist: build.mutation({
+      query: ({ playlistId, songId }) => ({
+        url: `user-playlists/${playlistId}/songs/${songId}`,
+        method: 'DELETE'
+      })
+    }),
+
+    getUserPlaylistDetails: build.query({
+      query: (id) => `user-playlists/${id}`,
+      providesTags: (result, error, id) => [{ type: 'UserPlaylists', id }]
+    }),
+
+    getUserPlaylistBySlug: build.query({
+      query: (slug) => `user-playlists/slug/${slug}`,
+      transformResponse: (response) => response.playlist,    // pull out the payload
+      providesTags: (playlist) =>
+        playlist ? [{ type: 'UserPlaylist', id: playlist.id }] : []
+    }),
+
+    recordPlay: build.mutation({
+      query: (songId) => ({
+        url: 'user/plays',
+        method: 'POST',
+        body: { songId },
+      }),
+      invalidatesTags: ['RecentPlays'],
+    }),
+    // get recent plays
+    getRecentPlays: build.query({
+      query: (limit = 20) => `user/recent-plays?limit=${limit}`,
+      providesTags: ['RecentPlays'],
+    }),
+
+    toggleFavoriteSong: build.mutation({
+      query: (songId) => ({
+        url: 'user/favorites/songs',
+        method: 'POST',
+        body: { songId },
+      }),
+      invalidatesTags: ['FavSongs'],
+    }),
+    getFavoriteSongs: build.query({
+      query: () => 'user/favorites/songs',
+      providesTags: ['FavSongs'],
+    }),
+
+    toggleFavoritePlaylist: build.mutation({
+      query: (playlistId) => ({
+        url: 'user/favorites/playlists',
+        method: 'POST',
+        body: { playlistId },
+      }),
+      invalidatesTags: ['FavPlaylists'],
+    }),
+    getFavoritePlaylists: build.query({
+      query: () => 'user/favorites/playlists',
+      providesTags: ['FavPlaylists'],
+    }),
+
+
     getRecentlyPlayed: build.query({
       query: () => 'playlists/recently-played',
       providesTags: ['Playlists'],
     }),
     getMostListened: build.query({
       query: () => 'playlists/most-listened',
-      providesTags: ['Playlists'],
-    }),
-    getNewReleases: build.query({
-      query: () => 'albums/new-releases',
       providesTags: ['Playlists'],
     }),
     getBlogs: build.query(
@@ -502,11 +652,30 @@ export const {
   useGetUserQuery,
   useGetCategoriesQuery,
   useGetPlaylistByIdQuery,
+  useGetDashboardFreePlaylistsQuery,
+  useGetDashboardAllPlaylistsQuery,
+  useGetDashboardPlaylistByIdQuery,
   useGetSongsQuery,
+  useGetSongByIdQuery,
+  useGetDashboardNewReleasesQuery,
+  useGetAllSongsQuery,
+  useCreateUserPlaylistMutation,
+  useGetUserPlaylistsQuery,
+  useGetUserPlaylistBySlugQuery,
+  useGetUserPlaylistDetailsQuery,
+  useUpdateUserPlaylistMutation,
+  useDeleteUserPlaylistMutation,
+  useAddSongToUserPlaylistMutation,
+  useRemoveSongFromUserPlaylistMutation,
   useGetSearchResultsQuery,
+  useRecordPlayMutation,
+  useGetRecentPlaysQuery,
+  useToggleFavoriteSongMutation,
+  useGetFavoriteSongsQuery,
+  useToggleFavoritePlaylistMutation,
+  useGetFavoritePlaylistsQuery,
   useGetRecentlyPlayedQuery,
   useGetMostListenedQuery,
-  useGetNewReleasesQuery,
   useGetBlogsQuery,
   useGetBlogBySlugQuery
 } = api;

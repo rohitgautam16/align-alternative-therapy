@@ -12,7 +12,7 @@ function AdminDashboardLayout() {
 
         <div className="flex flex-1 overflow-hidden pt-[4.375rem] gap-1.5 m-1.5 transition-all duration-300 ease-in-out scroll-smooth">
           <AdminSidebar />
-          <main className="flex-1 bg-black rounded-lg overflow-auto scroll-smooth p-4">
+          <main className="flex-1 bg-black rounded-lg overflow-x-hidden scroll-smooth p-4">
             <Outlet />
           </main>
         </div>

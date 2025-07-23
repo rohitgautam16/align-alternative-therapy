@@ -3,7 +3,8 @@
 
 
 @theme {
-  --color-primary: #161616;
+  /* --color-primary: #161616; */
+  --color-primary: #000000;
   --color-secondary: #E49B0F;
   /* --font-family-sans: "Bosch", ui-sans-serif, system-ui, sans-serif; */
   --font-family-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
@@ -11,7 +12,8 @@
 }
 @layer base {
   :root {
-    --font-heading: "Billiers", ui-serif, serif;
+    --font-heading: "Roboto", ui-serif, serif;
+    /* --font-heading: "Billiers", ui-serif, serif; */
     /* --font-body: "Bosch", ui-sans-serif, system-ui, sans-serif; */
     --font-body: "Roboto", ui-sans-serif, system-ui, sans-serif;
   }

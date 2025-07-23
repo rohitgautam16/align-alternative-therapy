@@ -24,9 +24,10 @@ async function listPlaylists({ page = 1, pageSize = 20 } = {}) {
        title,
        slug,
        tags,
-       artwork_filename AS artwork_filename,
-       category_id    AS category_id,
-       created         AS createdAt
+       artwork_filename    AS artwork_filename,
+       category_id         AS category_id,
+       paid                AS paid,
+       created             AS createdAt
      FROM playlists
      ORDER BY created DESC
      LIMIT ? OFFSET ?`,
@@ -45,6 +46,7 @@ async function getPlaylistById(id) {
        tags,
        artwork_filename AS image,
        category_id AS categoryId,
+       paid             AS paid,
        created AS createdAt
      FROM playlists
      WHERE id = ?`,
@@ -62,9 +64,9 @@ async function createPlaylistAdmin({
 }) {
   const [result] = await db.query(
     `INSERT INTO playlists
-       (title, slug, tags, artwork_filename, category_id)
-     VALUES (?, ?, ?, ?, ?)`,
-    [title, slug, tags || null, artwork_filename || null, category_id || null]
+       (title, slug, tags, artwork_filename, category_id, paid)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [title, slug, tags || null, artwork_filename || null, category_id || null, 0]
   );
   return getPlaylistById(result.insertId);
 }
@@ -79,9 +81,10 @@ async function updatePlaylistAdmin(
             slug             = ?,
             tags             = ?,
             artwork_filename = ?,
-            category_id      = ?
+            category_id      = ?,
+            paid             = ?
       WHERE id = ?`,
-    [title, slug, tags || null, artwork_filename || null, category_id || null, id]
+    [title, slug, tags || null, artwork_filename || null, category_id || null, 1, id]
   );
   return getPlaylistById(id);
 }

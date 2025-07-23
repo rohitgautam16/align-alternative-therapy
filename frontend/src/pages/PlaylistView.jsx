@@ -10,9 +10,10 @@ import {
 import { useDispatch } from 'react-redux';
 import {
   useGetCategoriesQuery,
-  useGetPlaylistByIdQuery,
+  useGetDashboardAllPlaylistsQuery,
   useGetSongsQuery,
   useGetUserQuery,
+  useRecordPlayMutation
 } from '../utils/api';
 import { setQueue, setTrack, setIsPlaying } from '../store/playerSlice';
 
@@ -33,8 +34,10 @@ export default function PlaylistView() {
   const dispatch = useDispatch();
 
 
-  const { data: allPlaylists = [], isLoading: plLoading, isError: plError } = useGetPlaylistByIdQuery();
+  const { data: allPlaylists = [], isLoading: plLoading, isError: plError } = useGetDashboardAllPlaylistsQuery();
   const playlist = allPlaylists.find(p => p.slug === slug);
+
+  const [recordPlay] = useRecordPlayMutation();
 
 
   const { data: songs = [], isLoading: songsLoading, isError: songsError } = useGetSongsQuery(playlist?.id);
@@ -105,6 +108,7 @@ export default function PlaylistView() {
 
   
   dispatch(setIsPlaying(true));
+  recordPlay(song.id);
 };
 
 
@@ -202,43 +206,60 @@ export default function PlaylistView() {
 
       {/* Song table */}
       <div className="px-8 pb-12">
-        <div className="grid grid-cols-[50px_1fr_1fr_50px] items-center text-gray-400 text-sm border-b border-gray-700 pb-2 mb-4">
+        <div className="grid grid-cols-[50px_1fr_1fr_80px_100px] items-center text-gray-400 text-sm border-b border-gray-700 pb-2 mb-4">
           <span>#</span>
           <span>Title</span>
           <span>Category</span>
           <Clock />
+          <span>Details</span>
         </div>
 
-        {songs.map((song, idx) => (
-          <div
-            key={song.id}
-            className="grid grid-cols-[50px_1fr_1fr_50px] items-center text-white py-2 hover:bg-red-700/30 rounded-lg px-2 cursor-pointer transition"
-            onClick={() => handlePlaySong(song, idx)}
-          >
-            <span className="text-gray-400">{idx + 1}</span>
+      {songs.map((song, idx) => (
+        <div
+          key={song.id}
+          className="group grid grid-cols-[50px_1fr_1fr_80px_100px] items-center text-white py-2 px-2 rounded-lg transition hover:bg-red-700/30 cursor-pointer"
+          onClick={() => handlePlaySong(song, idx)}
+        >
+          {/* 1: Track # */}
+          <span className="text-gray-400">{idx + 1}</span>
 
-            
-            <div className="flex items-center gap-4">
-              <img
-                src={song.image || FALLBACK_SONG_IMG}
-                alt={song.name || song.title}
-                className="w-12 h-12 rounded-md object-cover"
-              />
-              <div>
-                <p className="font-semibold">{song.name || song.title}</p>
-                <p className="text-gray-400 text-sm">{song.artistName}</p>
-              </div>
+          {/* 2: Title + artwork */}
+          <div className="flex items-center gap-4">
+            <img
+              src={song.image || FALLBACK_SONG_IMG}
+              alt={song.name || song.title}
+              className="w-12 h-12 rounded-md object-cover"
+            />
+            <div>
+              <p className="font-semibold">{song.name || song.title}</p>
+              <p className="text-gray-400 text-sm">{song.artistName}</p>
             </div>
-
-            
-            <span className="text-gray-400">{categoryName}</span>
-
-            
-            <span className="text-gray-400">
-              {durations[song.id] != null ? fmt(durations[song.id]) : '––:––'}
-            </span>
           </div>
-        ))}
+
+          {/* 3: Category */}
+          <span className="text-gray-400">{categoryName}</span>
+
+          {/* 4: Duration */}
+          <span className="text-gray-400">
+            {durations[song.id] != null ? fmt(durations[song.id]) : '––:––'}
+          </span>
+
+          {/* 5: View Details button in its own column */}
+          <div className="flex justify-end">
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); 
+                navigate(`/dashboard/song/${song.id}`)  // make sure this matches your route
+              }}
+              className="opacity-0 group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
+            >
+              View Details
+            </button>
+          </div>
+        </div>
+      ))}
+
+
       </div>
 
       

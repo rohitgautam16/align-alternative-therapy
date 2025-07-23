@@ -8,6 +8,7 @@ import {
   Home,
   Settings,
   LogOut,
+  User
 } from 'lucide-react';
 import { MdLibraryMusic, MdFavorite, MdQueueMusic } from 'react-icons/md';
 import { useGetCategoriesQuery } from '../../utils/api';
@@ -152,23 +153,23 @@ export default function Sidebar({ className = '' }) {
             className="overflow-hidden ml-6 mt-2"
           >
             <NavLink
-              to="/dashboard/recently-played"
+              to="/dashboard/user-activity/recent-plays"
               onClick={() => handleExpand(() => {})}
               className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-red-700 hover:text-white"
             >
               <MdQueueMusic className="inline-block mr-2" />{' '}
               {!collapsed && 'Recently Played'}
             </NavLink>
-            <NavLink
+            {/* <NavLink
               to="/dashboard/favorite-songs"
               onClick={() => handleExpand(() => {})}
               className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-red-700 hover:text-white"
             >
               <MdFavorite className="inline-block mr-2" />{' '}
               {!collapsed && 'Favorite Songs'}
-            </NavLink>
+            </NavLink> */}
             <NavLink
-              to="/dashboard/my-playlists"
+              to="/dashboard/user-playlists"
               onClick={() => handleExpand(() => {})}
               className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-red-700 hover:text-white"
             >
@@ -182,14 +183,14 @@ export default function Sidebar({ className = '' }) {
      
       <div className="shrink-0 border-t border-gray-700 p-2 space-y-2">
         <button
-         onClick={() => handleExpand(() => navigate('/dashboard/settings'))}
+         onClick={() => handleExpand(() => navigate('/dashboard/profile'))}
          className={`
            flex items-center gap-2 py-2 rounded-lg hover:bg-red-700 transition w-full text-lg
            ${collapsed ? 'justify-center px-0' : 'px-4'}
          `}
        >
-         <Settings size={20} />
-         {!collapsed && 'Settings'}
+         <User size={20} />
+         {!collapsed && 'Profile'}
        </button>
        
       </div>

@@ -32,7 +32,7 @@ async function getPlaylistController(req, res, next) {
 
 async function createPlaylistController(req, res, next) {
   try {
-    const { title, slug, tags, artwork_filename, category_id } = req.body;
+    const { title, slug, tags, artwork_filename, category_id, paid } = req.body;
     if (!title || !slug) {
       return res.status(400).json({ error: 'title and slug are required' });
     }
@@ -41,7 +41,8 @@ async function createPlaylistController(req, res, next) {
       slug,
       tags,
       artwork_filename,
-      category_id
+      category_id,
+      paid: paid ? 1 : 0
     });
     res.status(201).json(newPlaylist);
   } catch (err) {
@@ -51,13 +52,14 @@ async function createPlaylistController(req, res, next) {
 
 async function updatePlaylistController(req, res, next) {
   try {
-    const { title, slug, tags, artwork_filename, category_id } = req.body;
+    const { title, slug, tags, artwork_filename, category_id, paid } = req.body;
     const updated = await updatePlaylistAdmin(req.params.id, {
       title,
       slug,
       tags,
       artwork_filename,
-      category_id
+      category_id,
+      paid: paid ? 1 : 0
     });
     res.json(updated);
   } catch (err) {

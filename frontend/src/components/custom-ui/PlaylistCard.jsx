@@ -5,67 +5,44 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setQueue, setTrack, setIsPlaying, togglePlay } from '../../store/playerSlice';
 import { Play, Lock } from 'lucide-react';
-import { X } from 'lucide-react';
-import {
-  useGetCategoriesQuery,
-  useGetPlaylistByIdQuery,
-  useGetSongsQuery,
-  useGetUserQuery,
-} from '../../utils/api';
-
+import { useGetSongsQuery } from '../../utils/api';
 import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 
 export default function PlaylistCard({ playlist }) {
-
   const user = useAuthUser();
+  const isSubscriber = Number(user?.is_subscribed) === 1;
+  const locked = playlist.paid === 1 && !isSubscriber;
 
-
-// lock if they are not subscribed AND this playlist isn’t free
-   const isSubscriber = Number(user?.is_subscribed) === 1;
-  const locked = !isSubscriber;
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { data: songs = [] } = useGetSongsQuery(playlist.id);
 
-  const { data: songs = [], isLoading: songsLoading, isError: songsError } = useGetSongsQuery(playlist?.id);
-
-  const handlePlay = (e) => {
+  const handlePlaySong = (e, song) => {
     e.stopPropagation();
     if (locked) return;
-    dispatch(setTrack({
-      id: playlist.id,
-      title: playlist.name,
-      artist: playlist.ownerName,
-      image: playlist.image || FALLBACK_IMAGE,
-      audioUrl: playlist.previewUrl,
-    }));
-    dispatch(togglePlay());
-  };
-
-    const handlePlaySong = (song) => {
-    
     dispatch(setQueue(songs));
-  
-    
     dispatch(setTrack({
       id:       song.id,
       title:    song.name || song.title,
       artist:   song.artistName,
-      image:    song.image || FALLBACK_BG,
+      image:    song.image || FALLBACK_IMAGE,
       audioUrl: song.audioUrl,
-      audio_src: song.audio_src
     }));
-  
-    
     dispatch(setIsPlaying(true));
   };
 
   const handleCardClick = () => {
-    if (!locked) navigate(`/dashboard/playlist/${playlist.slug}`);
+    if (locked) return;
+    if (playlist.slug) {
+      navigate(`/dashboard/playlist/${playlist.slug}`);
+    } else {
+      navigate(`/dashboard/user-playlist/${playlist.id}`);
+    }
   };
 
-  return (
+    return (
   <div className="flex flex-col items-start">
     <div
       className="relative group/item w-65 h-65 flex-shrink-0 overflow-hidden rounded-lg
@@ -109,7 +86,7 @@ export default function PlaylistCard({ playlist }) {
       {/* Playlist title inside the card */}
       <h3 className="absolute bottom-4 left-4 text-white font-semibold text-base 
                      truncate max-w-[calc(100%-4rem)]">
-        {playlist.name}
+        {playlist.name || playlist.title}
       </h3>
     </div>
   </div>

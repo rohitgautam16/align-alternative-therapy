@@ -1,7 +1,7 @@
 // src/pages/CategoryView.jsx
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGetCategoriesQuery, useGetPlaylistByIdQuery } from '../utils/api';
+import { useGetCategoriesQuery, useGetDashboardAllPlaylistsQuery } from '../utils/api';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
 
 const FALLBACK_BG =
@@ -21,7 +21,7 @@ export default function CategoryView() {
     data: playlists = [],
     isLoading: plLoading,
     isError: plError,
-  } = useGetPlaylistByIdQuery();
+  } = useGetDashboardAllPlaylistsQuery();
 
 
   const loading = catLoading || plLoading;

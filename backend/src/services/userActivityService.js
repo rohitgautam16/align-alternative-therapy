@@ -22,7 +22,8 @@ async function fetchRecentPlays(userId, limit = 20) {
        s.id,
        s.title,
        s.artist,
-       s.cdn_url   AS audioUrl,
+       s.artwork_filename   AS image,
+       s.cdn_url            AS audioUrl,
        sp.played_at
      FROM song_plays sp
      JOIN audio_metadata s ON s.id = sp.song_id

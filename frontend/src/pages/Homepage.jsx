@@ -11,6 +11,7 @@ import Introduction from '../components/landing/Introduction';
 import TwoImageReveal from '../components/landing/TwoImageReveal';
 import AnimatedTestimonialsDemo from '../components/landing/animated-testimonials-demo';
 import TransitionWrapper from '../components/custom-ui/transition';
+import HeroSlider from '../components/landing/HeroSlider';
 
 const Homepage = () => {
   return (
@@ -18,12 +19,15 @@ const Homepage = () => {
       <section className="header">
         <Header />
       </section>
-      <section className="hero-section">
-        <HeroSection />
+      <section className="hero-slider">
+        <HeroSlider />
       </section>
-      {/* <section className="introduction">
-        <Introduction />
+      {/* <section className="hero-section">
+        <HeroSection />
       </section> */}
+      <section className="introduction">
+        <Introduction />
+      </section>
       <section className="playlist-carousel">
         <PlaylistCarousel />
       </section>

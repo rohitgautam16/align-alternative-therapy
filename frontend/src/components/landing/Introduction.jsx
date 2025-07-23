@@ -8,7 +8,6 @@ const BottomIconsSection = () => {
   const bottomHeadingRef = useRef(null);
 
   useEffect(() => {
-
     const gsapScript = document.createElement('script');
     gsapScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
     
@@ -98,7 +97,6 @@ const BottomIconsSection = () => {
           }
         );
 
-
         bottomHeadingTl.fromTo(
           rightPart,
           {
@@ -147,7 +145,19 @@ const BottomIconsSection = () => {
   const createCircularText = (text) => {
     const chars = text.split('');
     const angleStep = 360 / chars.length;
-    const radius = 50;
+    
+    // Responsive radius
+    const getRadius = () => {
+      if (typeof window !== 'undefined') {
+        if (window.innerWidth < 640) return 35; // sm
+        if (window.innerWidth < 768) return 40; // md
+        if (window.innerWidth < 1024) return 45; // lg
+        return 50; // xl and above
+      }
+      return 50;
+    };
+    
+    const radius = getRadius();
     
     return chars.map((char, index) => {
       const angle = index * angleStep;
@@ -157,7 +167,7 @@ const BottomIconsSection = () => {
       return (
         <span
           key={index}
-          className="absolute text-white text-sm font-medium select-none"
+          className="absolute text-white text-xs sm:text-sm font-medium select-none"
           style={{
             left: '50%',
             top: '50%',
@@ -175,61 +185,62 @@ const BottomIconsSection = () => {
   };
 
   return (
-    <div ref={sectionRef} className="flex flex-col items-center h-full justify-between pt-28 py-25 bg-primary">
-      <div className="flex items-center justify-center gap-16 max-w-6xl mx-auto px-8">
-
+    <div ref={sectionRef} className="flex flex-col items-center h-full justify-between pt-16 sm:pt-20 md:pt-24 lg:pt-28 py-16 sm:py-20 md:py-25 bg-primary">
+      <div className="flex items-center justify-center w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
         
-        {/* Two column layout */}
-        <div className="flex gap-20 max-w-5xl">
-          {/* Left column - 40% width */}
-          <div className="w-2/5 space-y-8">
+        {/* Two column layout - responsive */}
+        <div className="flex flex-col lg:flex-row gap-8 sm:gap-12 md:gap-16 lg:gap-20 max-w-5xl w-full">
+          {/* Left column - responsive width */}
+          <div className="w-full lg:w-2/5 space-y-6 sm:space-y-8 text-center lg:text-left">
             <h3 
               ref={headingRef}
-              className="text-3xl font-bold text-white leading-tight overflow-hidden"
+              className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight overflow-hidden"
             >
               <div className="heading-line block">ABOUT ALIGN</div>
               <div className="heading-line block">ALTERNATIVE THERAPY</div>
             </h3>
             
-            {/* Egg-shaped outlined button with arrow */}
-            <button className="group bg-transparent border border-white hover:bg-white hover:border-white transition-all duration-300 flex items-center gap-3 px-8 py-4" 
-                    style={{
-                      borderRadius: '50% / 50%'
-                    }}>
-              <span className="text-white group-hover:text-black font-medium tracking-wide">
-                LEARN MORE
-              </span>
-              <svg 
-                className="w-5 h-5 text-white group-hover:text-black group-hover:translate-x-1 transition-all duration-300" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </button>
+            {/* Egg-shaped outlined button with arrow - responsive */}
+            <div className="flex justify-center lg:justify-start">
+              <button className="group bg-transparent border border-white hover:bg-white hover:border-white transition-all duration-300 flex items-center gap-2 sm:gap-3 px-4 sm:px-6 md:px-8 py-3 sm:py-4 text-sm sm:text-base" 
+                      style={{
+                        borderRadius: '50% / 50%'
+                      }}>
+                <span className="text-white group-hover:text-black font-medium tracking-wide">
+                  LEARN MORE
+                </span>
+                <svg 
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-black group-hover:translate-x-1 transition-all duration-300" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </button>
+            </div>
           </div>
           
-          {/* Right column - 60% width */}
-          <div className="w-3/5 space-y-12">
+          {/* Right column - responsive width */}
+          <div className="w-full lg:w-3/5 space-y-8 sm:space-y-10 md:space-y-12">
             <p 
               ref={paragraphRef}
-              className="text-2xl font-light text-white leading-relaxed"
+              className="text-lg sm:text-xl md:text-2xl font-light text-white leading-relaxed text-center lg:text-left"
             >
               {splitTextIntoWords("Our approach blends different audio therapies like affirmations, binaural beats and solfeggio frequencies. Each audio experience is thoughtfully curated to provide you with a significant advantage, aiding in aligning your mind, body and spirit for optimal harmony and growth")}
             </p>
             
-            {/* Circular scrolling text */}
-            <div className="flex justify-end">
-              <div className="relative w-2 h-2">
+            {/* Circular scrolling text - responsive positioning */}
+            <div className="flex justify-end lg:justify-end -z-10">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32">
                 <div 
                   ref={scrollingTextRef}
                   className="absolute inset-0 flex items-center justify-center w-full h-full"
                 >
                   {createCircularText("EXPLORE THE INNER PEACE • ")}
                 </div>
-                {/* Center dot - stays stationary */}
-                <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                {/* Center dot - stays stationary - responsive size */}
+                <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
               </div>
             </div>
           </div>
@@ -239,7 +250,7 @@ const BottomIconsSection = () => {
       
       <h2 
         ref={bottomHeadingRef}
-        className="text-[3.5rem] tracking-wide text-white text-center uppercase mt-40 mx-auto leading-tight"
+        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.5rem] tracking-wide text-white text-center uppercase mt-10 sm:mt-14 md:mt-22 lg:mt-30 mx-auto leading-tight px-4 sm:px-6 md:px-8"
       >
         <span className="left-part inline-block">We tap into the transformative power</span>
         <br />

@@ -1,8 +1,19 @@
 // src/components/admin/AdminTopbar.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, createSearchParams, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, LogOut, Settings, Bell, User } from 'lucide-react';
+import { 
+  Menu, 
+  LogOut, 
+  Settings, 
+  Bell, 
+  User, 
+  X,
+  Home,
+  Shield,
+  ChevronDown,
+  Clock
+} from 'lucide-react';
 import useSignOut from 'react-auth-kit/hooks/useSignOut';
 import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
 import { useLogoutUserMutation } from '../../utils/api';
@@ -14,9 +25,29 @@ export default function AdminTopbar() {
   const location = useLocation();
   const { collapsed, toggleSidebar } = useSidebar();
   const signOut = useSignOut();
-  const auth = useAuthUser();              // <-- get user info
-  const user = auth;                     // e.g. { id, email, full_name, user_roles }
+  const auth = useAuthUser();
+  const user = auth;
   const [logoutUser] = useLogoutUserMutation();
+  const menuRef = useRef(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Get current time
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -29,105 +60,163 @@ export default function AdminTopbar() {
     }
   };
 
-  const handleSearchChange = (e) => {
-    const q = e.target.value;
-    const base = '/admin/search';
-    const params = createSearchParams({ q }).toString();
-    const target = { pathname: base, search: params };
-
-    if (!location.pathname.startsWith(base)) {
-      navigate(target);
-    } else {
-      navigate(target, { replace: true });
-    }
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-black m-2 rounded-lg text-white flex items-center justify-between px-6 z-20 shadow-md">
-      {/* LEFT: Sidebar toggle & Home & Greeting */}
-      <div className="flex items-center space-x-4">
-        <button
+    <header className="fixed top-0 left-0 right-0 h-16 bg-black backdrop-blur-xl border-b border-gray-700/50 m-2 rounded-xl text-white flex items-center justify-between px-4 sm:px-6 z-20 shadow-lg">
+      {/* LEFT: Navigation & Branding */}
+      <div className="flex items-center space-x-3">
+        {/* Sidebar Toggle with animated hamburger */}
+        <motion.button
           onClick={toggleSidebar}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           aria-label="Toggle sidebar"
-          className="p-2 hover:bg-gray-700 rounded-full transition"
+          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200"
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={collapsed ? 'open' : 'close'}
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 10, opacity: 0 }}
+              key={collapsed ? 'collapsed' : 'expanded'}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {collapsed ? <Menu size={20} /> : <Menu size={20} />}
+              {collapsed ? <Menu size={20} /> : <X size={20} />}
             </motion.div>
           </AnimatePresence>
-        </button>
+        </motion.button>
 
-        <button
+        {/* Home Button */}
+        <motion.button
           onClick={() => navigate('/admin')}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           aria-label="Admin Dashboard Home"
-          className="p-2 hover:bg-gray-700 rounded-full transition"
+          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200"
         >
-          <User size={20} />
-        </button>
+          <Home size={20} />
+        </motion.button>
 
-        {/* Modern welcome note */}
+        {/* Brand/Title */}
+        <div className="hidden sm:flex items-center gap-1">
+          <Shield className="text-blue-400" size={20} />
+          <span className="font-semibold text-md">Align Admin Panel</span>
+        </div>
+
+        {/* Welcome Message */}
         <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="ml-4 text-lg font-medium text-gray-200"
+          className="hidden lg:block ml-6"
         >
-          Hi, {user?.full_name || 'Admin'} 👋
-          {/* <p className='text-[0.8rem] font-extralight text-gray-200'>Welcome to Align Alternative Therapy Admin Panel</p> */}
+          <p className="text-sm text-gray-300">
+            {getGreeting()}, <span className="font-medium text-white">{user?.full_name?.split(' ')[0] || 'Admin'}</span> 👋
+          </p>
         </motion.div>
       </div>
 
-      {/* RIGHT: Notifications & User Menu */}
-      <div className="flex items-center space-x-4 relative">
-        <button
+      {/* RIGHT: Actions & User */}
+      <div className="flex items-center space-x-2">
+        {/* Time Display (Hidden on mobile) */}
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-700/30 rounded-lg">
+          <Clock size={16} className="text-gray-400" />
+          <span className="text-sm text-gray-300">
+            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+
+        {/* Notifications */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           aria-label="Notifications"
-          className="p-2 hover:bg-gray-700 rounded-full transition"
+          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200 relative"
         >
-          <Bell size={20} />
-        </button>
+          {/* <Bell size={20} /> */}
+          {/* Notification dot */}
+          {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
+        </motion.button>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu((v) => !v)}
-            aria-label="Admin menu"
-            className="p-2 hover:bg-gray-700 rounded-full transition"
+        {/* User Menu */}
+        <div className="relative" ref={menuRef}>
+          <motion.button
+            onClick={() => setShowMenu(!showMenu)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            aria-label="User menu"
+            className="flex items-center gap-2 p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200"
           >
-            <User size={20} />
-          </button>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <span className="text-sm font-semibold">
+                {(user?.full_name || user?.email || 'A').charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="hidden sm:block text-left">
+              <p className="text-sm font-medium">{user?.full_name || 'Admin'}</p>
+              <p className="text-xs text-gray-400">
+                {user?.user_roles === 1 ? 'Super Admin' : 'Admin'}
+              </p>
+            </div>
+            <ChevronDown 
+              size={16} 
+              className={`transition-transform duration-200 ${showMenu ? 'rotate-180' : ''}`} 
+            />
+          </motion.button>
 
-          <div
-            className={`
-              absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-lg
-              transform transition-all duration-150 origin-top-right
-              ${showMenu ? 'scale-100 opacity-100' : 'scale-75 opacity-0 pointer-events-none'}
-            `}
-          >
-            <Link
-              to="/admin/settings"
-              onClick={() => setShowMenu(false)}
-              className="w-full px-4 py-2 flex items-center gap-3 text-white rounded-lg hover:bg-gray-700 transition"
-            >
-              <Settings className="w-5 h-5" />
-              <span className="text-sm">Settings</span>
-            </Link>
-            <button
-              onClick={() => {
-                setShowMenu(false);
-                handleLogout();
-              }}
-              className="w-full px-4 py-2 flex items-center gap-3 text-white rounded-lg hover:bg-red-700 transition"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm">Log Out</span>
-            </button>
-          </div>
+          {/* User Dropdown */}
+          <AnimatePresence>
+            {showMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-0 mt-2 w-56 bg-black/70 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden"
+              >
+                {/* User Info Header */}
+                <div className="px-4 py-3 border-b border-gray-700/50">
+                  <p className="font-medium text-white">{user?.full_name || 'Admin User'}</p>
+                  <p className="text-sm text-gray-400">{user?.email}</p>
+                  <p className="text-xs text-blue-400 mt-1">
+                    {getGreeting()}, {user?.full_name?.split(' ')[0] || 'Admin'}!
+                  </p>
+                </div>
+
+                {/* Menu Items */}
+                <div className="py-2">
+                  {/* Settings - Commented out for now */}
+                  {/* 
+                  <Link
+                    to="/admin/settings"
+                    onClick={() => setShowMenu(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all duration-200"
+                  >
+                    <Settings size={18} />
+                    <span>Settings</span>
+                  </Link>
+                  */}
+                  
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-red-600/20 hover:text-red-400 transition-all duration-200"
+                  >
+                    <LogOut size={18} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

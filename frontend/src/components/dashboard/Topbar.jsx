@@ -55,10 +55,10 @@ export default function Topbar() {
   }
 
   const userMenuItems = [
-    { label: 'Account', Icon: UserCog },
+    // { label: 'Account', Icon: UserCog },
     { label: 'Profile', Icon: User },
     { label: 'Try Premium', Icon: Star },
-    { label: 'Settings', Icon: Settings },
+    // { label: 'Settings', Icon: Settings },
     { label: 'Log Out', Icon: LogOut },
   ]
 
@@ -120,12 +120,12 @@ export default function Topbar() {
           <div className="w-8 h-8 bg-gray-600 rounded-full animate-pulse" />
         ) : (
           <>
-            <button
+            {/* <button
               aria-label="Notifications"
               className="p-2 hover:bg-red-800 rounded-full transition"
             >
               <Bell size={20} />
-            </button>
+            </button> */}
 
             {/* User menu */}
             <div className="relative">

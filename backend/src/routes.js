@@ -201,12 +201,15 @@ const {
   deletePlaylist,
   addSong,
   removeSong,
+  getUserPlaylistBySlugController
 } = require('./controllers/playlistController');
 
-router.get   ('/user-playlists',               requireAuth, pc.listPlaylists);
+
 
 // Get one playlist with its songs
+router.get('/user-playlists/slug/:slug', requireAuth, pc.getUserPlaylistBySlugController);
 router.get   ('/user-playlists/:id',           requireAuth, pc.getPlaylistDetails);
+
 
 // Playlist CRUD
 router.post   ('/user-playlists',                    requireAuth, pc.createPlaylist);
@@ -382,7 +385,6 @@ router.get('/users', async (_req, res) => {
     const [rows] = await db.query(`
       SELECT
         id,
-        username,
         status,
         status_message   AS status_message,
         active,
@@ -401,160 +403,181 @@ router.get('/users', async (_req, res) => {
 });
 
 
-router.get('/categories', async (_req, res) => {
-  try {
-    const [rows] = await db.query(
-      `SELECT
-         id,
-         title,
-         slug,
-         artwork_filename AS image,
-         tags,
-         created_at
-       FROM categories`
-    );
-    return res.json(rows);
-  } catch (err) {
-    console.error(' GET /categories error:', err.code, err.message);
-    return res.status(500).json({ error: 'Could not fetch categories' });
-  }
-});
+const {
+  getDashboardCategoriesController,
+  getDashboardPlaylistsByCategoryController,
+  getDashboardAllPlaylistsController,
+  getDashboardFreePlaylistsController,
+  getDashboardSongsByPlaylistController,
+  getDashboardSongByIdController,
+  searchDashboardController,
+  getDashboardNewReleasesController,
+  getDashboardAllSongsController
+} = require('./controllers/dashboardMusicController');
+
+router.get('/categories',    getDashboardCategoriesController);
+router.get('/categories/:categoryId/playlists', getDashboardPlaylistsByCategoryController);
+router.get('/dashboard/playlists',     getDashboardAllPlaylistsController);
+router.get('/dashboard/playlists/free', getDashboardFreePlaylistsController);
+router.get('/playlists/:playlistId/songs', getDashboardSongsByPlaylistController);
+router.get('/songs/:id',     getDashboardSongByIdController);
+router.get('/search',        searchDashboardController);
+router.get('/dashboard/playlists/new-releases', getDashboardNewReleasesController);
+router.get('/dashboard/songs', requireAuth, getDashboardAllSongsController);
 
 
+// router.get('/categories', async (_req, res) => {
+//   try {
+//     const [rows] = await db.query(
+//       `SELECT
+//          id,
+//          title,
+//          slug,
+//          artwork_filename AS image,
+//          tags,
+//          created_at
+//        FROM categories`
+//     );
+//     return res.json(rows);
+//   } catch (err) {
+//     console.error(' GET /categories error:', err.code, err.message);
+//     return res.status(500).json({ error: 'Could not fetch categories' });
+//   }
+// });
 
-router.get('/categories/:categoryId/playlists', async (req, res) => {
-  const { categoryId } = req.params;
-  try {
+
+// router.get('/categories/:categoryId/playlists', async (req, res) => {
+//   const { categoryId } = req.params;
+//   try {
     
-    const [rows] = await db.query(
-      `SELECT
-         id,
-         title,
-         category_id AS categoryId,
-         created AS createdAt
-       FROM playlists
-       WHERE category_id = ?`,
-      [categoryId]
-    );
-    return res.json(rows);
-  } catch (err) {
+//     const [rows] = await db.query(
+//       `SELECT
+//          id,
+//          title,
+//          category_id AS categoryId,
+//          created AS createdAt
+//        FROM playlists
+//        WHERE category_id = ?`,
+//       [categoryId]
+//     );
+//     return res.json(rows);
+//   } catch (err) {
    
-    console.error(' Error fetching playlists for category', categoryId);
-    console.error(err);
-    return res.status(500).json({ error: 'Could not fetch playlists' });
-  }
-});
+//     console.error(' Error fetching playlists for category', categoryId);
+//     console.error(err);
+//     return res.status(500).json({ error: 'Could not fetch playlists' });
+//   }
+// });
 
 
 
-
-router.get('/playlists', async (_req, res) => {
-  try {
-    const [rows] = await db.query(
-      `SELECT
-         id,
-         title   AS name,
-         slug,
-         tags,
-         artwork_filename AS image,
-         category_id AS categoryId,
-         created     AS createdAt
-       FROM playlists`
-    );
-    return res.json(rows);
-  } catch (err) {
-    console.error(' GET /playlists error:', err.code, err.message);
-    return res.status(500).json({ error: 'Could not fetch playlists' });
-  }
-});
-
-
-router.get('/playlists/:playlistId/songs', async (req, res) => {
-  const { playlistId } = req.params;
-  try {
-    const [rows] = await db.query(
-      `SELECT
-         id,
-         name,
-         title,
-         slug,
-         artist,
-         tags,
-         category,
-         playlist    AS playlistId,
-         artwork_filename AS image,
-         cdn_url AS audioUrl,
-         created     AS createdAt
-       FROM audio_metadata
-       WHERE playlist = ?`,
-      [playlistId]
-    );
-    return res.json(rows);
-  } catch (err) {
-    console.error(` Error fetching songs for playlist ${playlistId}:`, err);
-    return res.status(500).json({ error: 'Could not fetch songs' });
-  }
-});
+// router.get('/playlists', async (_req, res) => {
+//   try {
+//     const [rows] = await db.query(
+//       `SELECT
+//          id,
+//          title   AS name,
+//          slug,
+//          tags,
+//          artwork_filename AS image,
+//          category_id AS categoryId,
+//          created     AS createdAt
+//        FROM playlists`
+//     );
+//     return res.json(rows);
+//   } catch (err) {
+//     console.error(' GET /playlists error:', err.code, err.message);
+//     return res.status(500).json({ error: 'Could not fetch playlists' });
+//   }
+// });
 
 
-router.get('/search', async (req, res) => {
-  const term = (req.query.query || '').trim().toLowerCase();
-  const likeTerm = `%${term}%`;
+// router.get('/playlists/:playlistId/songs', async (req, res) => {
+//   const { playlistId } = req.params;
+//   try {
+//     const [rows] = await db.query(
+//       `SELECT
+//          id,
+//          name,
+//          title,
+//          slug,
+//          artist,
+//          tags,
+//          category,
+//          playlist    AS playlistId,
+//          artwork_filename AS image,
+//          cdn_url AS audioUrl,
+//          created     AS createdAt
+//        FROM audio_metadata
+//        WHERE playlist = ?`,
+//       [playlistId]
+//     );
+//     return res.json(rows);
+//   } catch (err) {
+//     console.error(` Error fetching songs for playlist ${playlistId}:`, err);
+//     return res.status(500).json({ error: 'Could not fetch songs' });
+//   }
+// });
 
-  try {
+
+// router.get('/search', async (req, res) => {
+//   const term = (req.query.query || '').trim().toLowerCase();
+//   const likeTerm = `%${term}%`;
+
+//   try {
     
-    const [categories] = await db.query(
-      `SELECT id, title 
-       FROM categories 
-       WHERE LOWER(title) LIKE ? 
-       LIMIT 10`,
-      [likeTerm]
-    );
+//     const [categories] = await db.query(
+//       `SELECT id, title 
+//        FROM categories 
+//        WHERE LOWER(title) LIKE ? 
+//        LIMIT 10`,
+//       [likeTerm]
+//     );
 
    
-    const [playlists] = await db.query(
-      `SELECT
-         id,
-         title AS name,
-         slug,
-         tags,
-         category_id AS categoryId,
-         created   AS createdAt
-       FROM playlists
-       WHERE
-         LOWER(title) LIKE ? OR
-         LOWER(tags) LIKE ?
-       LIMIT 10`,
-      [likeTerm, likeTerm]     
-    );
+//     const [playlists] = await db.query(
+//       `SELECT
+//          id,
+//          title AS name,
+//          slug,
+//          tags,
+//          category_id AS categoryId,
+//          created   AS createdAt
+//        FROM playlists
+//        WHERE
+//          LOWER(title) LIKE ? OR
+//          LOWER(tags) LIKE ?
+//        LIMIT 10`,
+//       [likeTerm, likeTerm]     
+//     );
 
     
-    const [songs] = await db.query(
-      `SELECT
-         id,
-         title,
-         slug,
-         artist,
-         tags,
-         category,
-         playlist           AS playlistId,
-         artwork_filename   AS artworkFilename,
-         created            AS createdAt
-       FROM audio_metadata
-       WHERE
-         LOWER(title) LIKE ? OR
-         LOWER(artist) LIKE ? OR
-         LOWER(tags) LIKE ?
-       LIMIT 10`,
-      [likeTerm, likeTerm, likeTerm]  
-    );
+//     const [songs] = await db.query(
+//       `SELECT
+//          id,
+//          title,
+//          slug,
+//          artist,
+//          tags,
+//          category,
+//          playlist           AS playlistId,
+//          artwork_filename   AS artworkFilename,
+//          created            AS createdAt
+//        FROM audio_metadata
+//        WHERE
+//          LOWER(title) LIKE ? OR
+//          LOWER(artist) LIKE ? OR
+//          LOWER(tags) LIKE ?
+//        LIMIT 10`,
+//       [likeTerm, likeTerm, likeTerm]  
+//     );
 
-    return res.json({ categories, playlists, songs });
-  } catch (err) {
-    console.error(' /search error:', err);
-    return res.status(500).json({ error: 'Search failed' });
-  }
-});
+//     return res.json({ categories, playlists, songs });
+//   } catch (err) {
+//     console.error(' /search error:', err);
+//     return res.status(500).json({ error: 'Search failed' });
+//   }
+// });
 
 
 
