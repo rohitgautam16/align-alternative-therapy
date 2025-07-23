@@ -1,84 +1,82 @@
-name: CI/CD Pipeline
+name: Monorepo CI/CD
 
 on:
   push:
     branches: [ main ]
+    # Optional: only trigger when files under frontend/ or backend/ change
+    # paths:
+    #   - 'frontend/**'
+    #   - 'backend/**'
+    #   - '.github/workflows/**'
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy
     runs-on: ubuntu-latest
-
     steps:
-      # 1) Checkout
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 2) Setup Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@v3
         with:
-          node-version: '22'
+          fetch-depth: 0
 
-      # 3) Build Frontend
+      # --- Frontend build ---
+      - name: Setup Node for Frontend
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
       - name: Install & Build Frontend
         working-directory: frontend
         run: |
-          npm install
-          npm run build
+          npm ci
+          npm run build   # outputs to dist/
 
-      # 4) Install Backend Dependencies
+      # --- Backend install/test ---
+      - name: Setup Node for Backend
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
       - name: Install Backend Dependencies
         working-directory: backend
-        run: npm install
+        run: npm ci
 
-      # 5) Debug: surface a snippet of your SSH_PRIVATE_KEY
-      - name: Show SSH_PRIVATE_KEY snippet
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | head -n 2
-          echo …
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tail -n 2
+      # (Optional) run your backend tests here
+      # - name: Run Backend Tests
+      #   working-directory: backend
+      #   run: npm test
 
-      # 6) Prepare the key file and test SSH
-      - name: Debug SSH with explicit key
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/deploy_key
-          chmod 600 /tmp/deploy_key
-          ls -l /tmp/deploy_key
+      # --- Deploy to remote server ---
+      - name: Copy Frontend to Droplet
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "frontend/dist/*"
+          target: "/home/deploy/align-alternative-therapy/frontend/dist/"
 
-          ssh -i /tmp/deploy_key \
-              -o IdentitiesOnly=yes \
-              -o StrictHostKeyChecking=no \
-              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-              "echo SSH OK" || { echo "SSH FAILED"; exit 1; }
+      - name: Copy Backend to Droplet
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "backend/"
+          target: "/home/deploy/align-alternative-therapy/backend/"
 
-      # 7) Add your droplet’s host key to known_hosts
-      - name: Add droplet to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+      - name: Restart Services on Droplet
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Backend: install any new deps & restart via PM2
+            cd /home/deploy/align-alternative-therapy/backend
+            npm ci
+            pm2 reload align-api || pm2 start npm --name align-api -- start
 
-      # 8) Sync Frontend Build
-      - name: Sync Frontend Build
-        run: |
-          rsync -avz --delete \
-            ./frontend/dist/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/align-alternative-therapy/frontend/build/
-
-      # 9) Sync Backend Code
-      - name: Sync Backend Code
-        run: |
-          rsync -avz --delete \
-            ./backend/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/align-alternative-therapy/backend/
-
-      # 10) Restart Backend
-      - name: Restart Backend
-        run: |
-          ssh -i /tmp/deploy_key \
-              -o IdentitiesOnly=yes \
-              -o StrictHostKeyChecking=no \
-              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-              "cd ~/align-alternative-therapy/backend && npm install && pm2 restart align-api"
-
+            # Frontend: nothing to restart, but reload Nginx to pick up new files
+            sudo nginx -s reload
