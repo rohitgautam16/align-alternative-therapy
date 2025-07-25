@@ -6,6 +6,14 @@ const multer = require('multer');
 // const upload = multer({ storage: multer.memoryStorage() });
 const AWS = require('aws-sdk');
 const mime       = require('mime-types');
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectCommand
+} = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 require('dotenv').config();
 
 console.log("→ R2 endpoint:", process.env.R2_ENDPOINT);
@@ -19,16 +27,53 @@ const storage = multer.memoryStorage();
 //const upload = multer({ storage });
 const { requireAuth, requireAdmin } = require('./middleware/auth');
 const { listUsers } = require('./controllers/admin Controllers/adminUserController');
-const s3 = new AWS.S3({
-  endpoint:    process.env.R2_ENDPOINT,
-  accessKeyId: process.env.R2_ACCESS_KEY_ID,
-  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  region:      'auto',
-  signatureVersion: 'v4',
+
+const s3 = new S3Client({
+  endpoint: process.env.R2_ENDPOINT,
+  region: 'auto',
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
 });
 
 
 const router = express.Router();
+
+
+router.get("/admin/r2/presign", async (req, res, next) => {
+  try {
+    const { filename, contentType, folder = "uploads" } = req.query;
+    const key = `${folder}/${Date.now()}-${filename}`;
+
+    console.log('🔑 Generating presigned URL:', {
+      filename,
+      contentType,
+      folder,
+      key,
+      bucket: process.env.R2_BUCKET_NAME,
+      endpoint: process.env.R2_ENDPOINT
+    });
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    // ✅ Now this will work correctly with v3 client
+    const url = await getSignedUrl(s3, command, { expiresIn: 300 });
+
+    console.log('✅ Presigned URL generated successfully');
+    console.log('Key:', key);
+    console.log('CDN URL will be:', `${process.env.R2_CDN_URL}/${key}`);
+
+    res.json({ url, key });
+  } catch (err) {
+    console.error('❌ Presign error:', err);
+    next(err);
+  }
+});
 
 
 async function runQuery(sql, params, stub) {

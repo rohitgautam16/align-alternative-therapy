@@ -6,19 +6,28 @@ import {
   useDeleteAdminSongMutation,
   useListCategoriesQuery,
   useListPlaylistsQuery,
-  useUploadR2FilesMutation
+  useUploadR2FilesMutation,
+  useGetR2PresignUrlQuery, // Added for presigned URL uploads
 } from '../../utils/api';
-import { ArrowLeft, Save, Trash2, Edit3 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-// Custom Image Dropdown Component
+// Enhanced placeholder image for better UX
+const DEFAULT_PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjMzc0MTUxIi8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIyNCIgZmlsbD0iIzZCNzI4MCIvPjxwYXRoIGQ9Ik0xNDQgNzZIMTc2VjEwNEgxNDRWNzZaTTE1MiA4NEgxNjhWOTZIMTUyVjg0WiIgZmlsbD0iIzlDQTNBRiIvPjx0ZXh0IHg9IjE2MCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPg==';
+
+// Custom Image Dropdown Component (Updated with improved placeholders)
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
 
+  const getPlaceholderForType = (type) => {
+    return type === 'playlist' 
+      ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBNEFGIiBmb250LXNpemU9IjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5QPC90ZXh0Pgo8L3N2Zz4='
+      : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgZmlsbD0iIzlDQTRBRiIvPgo8L3N2Zz4=';
+  };
+
   return (
     <div className="relative">
-      {/* Selected item display */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -28,13 +37,11 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
           {selectedOption ? (
             <>
               <img
-                src={selectedOption.image || selectedOption.artwork_filename}
+                src={selectedOption.image || selectedOption.artwork_filename || getPlaceholderForType(type)}
                 alt={selectedOption.title}
                 className="w-6 h-6 rounded object-cover flex-shrink-0"
                 onError={(e) => {
-                  e.target.src = type === 'category' 
-                    ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+'
-                    : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
+                  e.target.src = getPlaceholderForType(type);
                 }}
               />
               <span className="truncate">{selectedOption.title} (#{selectedOption.id})</span>
@@ -53,18 +60,14 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
         </svg>
       </button>
 
-      {/* Dropdown menu */}
       {isOpen && (
         <>
-          {/* Backdrop to close dropdown */}
           <div 
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)}
           />
           
-          {/* Dropdown options */}
           <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-y-auto border border-gray-600">
-            {/* Empty option */}
             <div
               className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
               onClick={() => {
@@ -78,7 +81,6 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
               <span className="text-gray-400 truncate">{placeholder}</span>
             </div>
             
-            {/* Options with images */}
             {options.map((option) => (
               <div
                 key={option.id}
@@ -89,13 +91,11 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
                 }}
               >
                 <img
-                  src={option.image || option.artwork_filename}
+                  src={option.image || option.artwork_filename || getPlaceholderForType(type)}
                   alt={option.title}
                   className="w-6 h-6 rounded object-cover flex-shrink-0"
                   onError={(e) => {
-                    e.target.src = type === 'category' 
-                      ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+'
-                      : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
+                    e.target.src = getPlaceholderForType(type);
                   }}
                 />
                 <span className="truncate">{option.title} (#{option.id})</span>
@@ -112,10 +112,20 @@ export default function AdminSongDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // File upload
+  // File upload - Updated for presigned URLs
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
   const [selectedAudioFile, setSelectedAudioFile] = useState(null);
+  
+  // New state for presigned upload tracking
+  const [artworkKey, setArtworkKey] = useState(null);
+  const [audioKey, setAudioKey] = useState(null);
+  const [artworkUploading, setArtworkUploading] = useState(false);
+  const [audioUploading, setAudioUploading] = useState(false);
+
+  // Presign request state for manual triggering
+  const [artworkPresignParams, setArtworkPresignParams] = useState(null);
+  const [audioPresignParams, setAudioPresignParams] = useState(null);
 
   // Fetch song data
   const { 
@@ -125,7 +135,7 @@ export default function AdminSongDetail() {
     refetch: refetchSong 
   } = useGetAdminSongQuery(id);
 
-  // Fetch categories and playlists for dropdowns
+  // Fetch categories and playlists for dropdowns (keeping categories for existing data display)
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({ page: 1, pageSize: 100 });
   const { data: plRaw = { data: [] } } = useListPlaylistsQuery({ page: 1, pageSize: 100 });
 
@@ -142,6 +152,25 @@ export default function AdminSongDetail() {
   const [editMode, setEditMode] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [flash, setFlash] = useState({ txt: '', ok: true });
+
+  // ✅ Use existing hook with conditional skip for presigned URLs
+  const { data: artworkPresign } = useGetR2PresignUrlQuery(
+    artworkPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "align-images/songs",
+    },
+    { skip: !artworkPresignParams }
+  );
+
+  const { data: audioPresign } = useGetR2PresignUrlQuery(
+    audioPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "align-audio/songs",
+    },
+    { skip: !audioPresignParams }
+  );
 
   // Initialize form
   useEffect(() => {
@@ -168,65 +197,139 @@ export default function AdminSongDetail() {
     }
   }, [flash]);
 
+  // ✅ Manual artwork upload handler using presigned URL
+  const handleArtworkUpload = async () => {
+    if (!selectedArtFile) return;
+    
+    setArtworkUploading(true);
+    setFlash({ txt: "Getting upload URL...", ok: true });
+    
+    try {
+      // Trigger the presign query by setting params
+      setArtworkPresignParams({
+        filename: selectedArtFile.name,
+        contentType: selectedArtFile.type,
+        folder: "align-images/songs",
+      });
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
+      setArtworkUploading(false);
+    }
+  };
+
+  // ✅ Manual audio upload handler using presigned URL
+  const handleAudioUpload = async () => {
+    if (!selectedAudioFile) return;
+    
+    setAudioUploading(true);
+    setFlash({ txt: "Getting upload URL...", ok: true });
+    
+    try {
+      // Trigger the presign query by setting params
+      setAudioPresignParams({
+        filename: selectedAudioFile.name,
+        contentType: selectedAudioFile.type,
+        folder: "align-audio/songs",
+      });
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setFlash({ txt: `Audio upload failed: ${err.message}`, ok: false });
+      setAudioUploading(false);
+    }
+  };
+
+  // Handle artwork presign response
+  useEffect(() => {
+    if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
+
+    const uploadArtwork = async () => {
+      try {
+        console.log('🚀 Starting artwork upload:', {
+          presignUrl: artworkPresign.url,
+          key: artworkPresign.key,
+          fileName: selectedArtFile.name,
+        });
+
+        setFlash({ txt: "Uploading artwork...", ok: true });
+        
+        const response = await fetch(artworkPresign.url, {
+          method: "PUT",
+          headers: { "Content-Type": selectedArtFile.type },
+          body: selectedArtFile,
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
+        console.log('✅ Artwork upload successful:', publicUrl);
+        
+        setArtworkKey(artworkPresign.key);
+        setForm(f => ({ ...f, artwork_filename: publicUrl }));
+        setFlash({ txt: "Artwork uploaded successfully!", ok: true });
+        
+        // Clear file selection after successful upload
+        setSelectedArtFile(null);
+        setArtworkPresignParams(null);
+        const artInput = document.getElementById('song-artwork-upload');
+        if (artInput) artInput.value = '';
+        
+      } catch (err) {
+        console.error('Artwork upload error:', err);
+        setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
+      } finally {
+        setArtworkUploading(false);
+      }
+    };
+
+    uploadArtwork();
+  }, [artworkPresign, selectedArtFile, artworkPresignParams]);
+
+  // Handle audio presign response
+  useEffect(() => {
+    if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
+
+    const uploadAudio = async () => {
+      try {
+        setFlash({ txt: "Uploading audio file...", ok: true });
+        
+        const response = await fetch(audioPresign.url, {
+          method: "PUT",
+          headers: { "Content-Type": selectedAudioFile.type },
+          body: selectedAudioFile,
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
+        setAudioKey(audioPresign.key);
+        setForm(f => ({ ...f, cdn_url: publicUrl }));
+        setFlash({ txt: "Audio file uploaded successfully!", ok: true });
+        
+        // Clear file selection after successful upload
+        setSelectedAudioFile(null);
+        setAudioPresignParams(null);
+        const audioInput = document.getElementById('song-audio-upload');
+        if (audioInput) audioInput.value = '';
+        
+      } catch (err) {
+        console.error('Audio upload error:', err);
+        setFlash({ txt: "Audio upload failed.", ok: false });
+      } finally {
+        setAudioUploading(false);
+      }
+    };
+
+    uploadAudio();
+  }, [audioPresign, selectedAudioFile, audioPresignParams]);
+
   if (isLoading) return <div className="p-6 text-white">Loading…</div>;
   if (isError || !song) return <div className="p-6 text-red-500">Error loading song</div>;
   if (!form) return null;
 
-  // Image upload handler
-  const handleArtworkUpload = async () => {
-    if (!selectedArtFile) return;
-    setFlash({ txt: 'Uploading image…', ok: true });
-    
-    try {
-      const res = await uploadFiles({
-        prefix: 'align-images/songs',
-        files: [selectedArtFile],
-      }).unwrap();
-
-      const uploadedArray = res.uploaded || res;
-      const key = uploadedArray?.[0]?.key;
-      if (!key) throw new Error('No key returned from upload');
-
-      const publicUrl = `https://cdn.align-alternativetherapy.com/${key}`;
-      setForm(f => ({ ...f, artwork_filename: publicUrl }));
-      setFlash({ txt: 'Image uploaded!', ok: true });
-
-      setSelectedArtFile(null);
-      document.getElementById('song-artwork-upload').value = '';
-    } catch (err) {
-      console.error('Upload failed:', err);
-      setFlash({ txt: 'Upload failed.', ok: false });
-    }
-  };
-
-  // Audio upload handler
-  const handleAudioUpload = async () => {
-    if (!selectedAudioFile) return;
-    setFlash({ txt: 'Uploading audio…', ok: true });
-    
-    try {
-      const res = await uploadFiles({
-        prefix: 'align-audio',
-        files: [selectedAudioFile],
-      }).unwrap();
-
-      const uploadedArray = res.uploaded || res;
-      const key = uploadedArray?.[0]?.key;
-      if (!key) throw new Error('No key returned from upload');
-
-      const publicUrl = `https://cdn.align-alternativetherapy.com/${key}`;
-      setForm(f => ({ ...f, cdn_url: publicUrl }));
-      setFlash({ txt: 'Audio uploaded!', ok: true });
-
-      setSelectedAudioFile(null);
-      document.getElementById('song-audio-upload').value = '';
-    } catch (err) {
-      console.error('Audio upload failed:', err);
-      setFlash({ txt: 'Audio upload failed.', ok: false });
-    }
-  };
-
-  // Handlers
+  // Handlers (kept exactly the same)
   const handleSave = async () => {
     try {
       await updateSong({ id, ...form }).unwrap();
@@ -377,31 +480,23 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* Category Dropdown with Images */}
-            <div>
-              <label className="block text-gray-400 mb-1">Category</label>
-              {editMode ? (
-                <ImageDropdown
-                  options={categories}
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  placeholder="Select Category"
-                  type="category"
-                />
-              ) : (
+            {/* ✅ REMOVED: Category dropdown - only show in read-only mode for existing data */}
+            {!editMode && form.category && (
+              <div>
+                <label className="block text-gray-400 mb-1">Category (Legacy)</label>
                 <div className="flex items-center gap-2">
                   <img
-                    src={categories.find(c => c.id === Number(form.category))?.image || ''}
+                    src={categories.find(c => c.id === Number(form.category))?.image || categories.find(c => c.id === Number(form.category))?.artwork_filename}
                     alt="Category"
                     className="w-6 h-6 rounded object-cover bg-gray-600"
                     onError={(e) => {
-                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+';
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgZmlsbD0iIzlDQTRBRiIvPgo8L3N2Zz4=';
                     }}
                   />
                   <p>{categories.find(c => c.id === Number(form.category))?.title || '—'}</p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Playlist Dropdown with Images */}
             <div>
@@ -417,11 +512,11 @@ export default function AdminSongDetail() {
               ) : (
                 <div className="flex items-center gap-2">
                   <img
-                    src={playlists.find(p => p.id === Number(form.playlist))?.image || ''}
+                    src={playlists.find(p => p.id === Number(form.playlist))?.image || playlists.find(p => p.id === Number(form.playlist))?.artwork_filename}
                     alt="Playlist"
                     className="w-6 h-6 rounded object-cover bg-gray-600"
                     onError={(e) => {
-                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBNEFGIiBmb250LXNpemU9IjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5QPC90ZXh0Pgo8L3N2Zz4=';
                     }}
                   />
                   <p>{playlists.find(p => p.id === Number(form.playlist))?.title || '—'}</p>
@@ -429,89 +524,117 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* Artwork URL */}
+            {/* Enhanced Artwork Upload */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Artwork URL</label>
 
               {editMode ? (
-                <>
+                <div className="space-y-2">
                   <input
                     type="text"
                     value={form.artwork_filename}
                     onChange={e => setForm(f => ({ ...f, artwork_filename: e.target.value }))}
                     placeholder="https://cdn.example.com/img.jpg"
-                    className="w-full p-2 bg-gray-700 rounded text-white mb-2"
+                    className="w-full p-2 bg-gray-700 rounded text-white"
                   />
 
-                  <input
-                    id="song-artwork-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setSelectedArtFile(e.target.files?.[0] || null)}
-                  />
-                  <label
-                    htmlFor="song-artwork-upload"
-                    className="inline-block px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm mr-2"
-                  >
-                    Choose Image:
-                    {selectedArtFile && (
-                      <span className="text-sm text-gray-300"> {selectedArtFile.name}</span>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      id="song-artwork-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setSelectedArtFile(e.target.files?.[0] || null)}
+                    />
+                    <label
+                      htmlFor="song-artwork-upload"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                    >
+                      <Upload size={14} />
+                      <span className="truncate">
+                        {selectedArtFile ? selectedArtFile.name : 'Choose Image'}
+                      </span>
+                    </label>
+                    
+                    {/* Status indicator */}
+                    {artworkKey && (
+                      <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                        <CheckCircle size={14} />
+                        <span>Uploaded</span>
+                      </div>
                     )}
-                  </label>
+                  </div>
 
-                  <button
-                    onClick={handleArtworkUpload}
-                    disabled={uploading}
-                    className="px-3 py-1 bg-blue-600 rounded text-sm disabled:opacity-50 hover:bg-blue-500"
-                  >
-                    {uploading ? 'Uploading…' : 'Upload Image'}
-                  </button>
-                </>
+                  {/* Upload button */}
+                  {selectedArtFile && !artworkKey && (
+                    <button
+                      type="button"
+                      onClick={handleArtworkUpload}
+                      disabled={artworkUploading}
+                      className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
+                    >
+                      {artworkUploading ? 'Uploading...' : 'Upload Artwork'}
+                    </button>
+                  )}
+                </div>
               ) : (
-                <p>{song.image || song.artwork_filename || '—'}</p>
+                <p className="break-all">{song.image || song.artwork_filename || '—'}</p>
               )}
             </div>
 
-            {/* Audio URL */}
+            {/* Enhanced Audio Upload */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Audio URL</label>
               
               {editMode ? (
-                <>
+                <div className="space-y-2">
                   <input
                     type="text"
                     value={form.cdn_url}
                     onChange={e => setForm(f => ({ ...f, cdn_url: e.target.value }))}
                     placeholder="https://cdn.example.com/audio.mp3"
-                    className="w-full p-2 bg-gray-700 rounded text-white mb-2"
+                    className="w-full p-2 bg-gray-700 rounded text-white"
                   />
 
-                  <input
-                    id="song-audio-upload"
-                    type="file"
-                    accept="audio/*"
-                    className="hidden"
-                    onChange={(e) => setSelectedAudioFile(e.target.files?.[0] || null)}
-                  />
-                  <label
-                    htmlFor="song-audio-upload"
-                    className="inline-block px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm mr-2"
-                  >
-                    Choose Audio:
-                    {selectedAudioFile && (
-                      <span className="text-sm text-gray-300"> {selectedAudioFile.name}</span>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      id="song-audio-upload"
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => setSelectedAudioFile(e.target.files?.[0] || null)}
+                    />
+                    <label
+                      htmlFor="song-audio-upload"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                    >
+                      <Upload size={14} />
+                      <span className="truncate">
+                        {selectedAudioFile ? selectedAudioFile.name : 'Choose Audio'}
+                      </span>
+                    </label>
+                    
+                    {/* Status indicator */}
+                    {audioKey && (
+                      <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                        <CheckCircle size={14} />
+                        <span>Uploaded</span>
+                      </div>
                     )}
-                  </label>
+                  </div>
 
-                  <button
-                    onClick={handleAudioUpload}
-                    disabled={uploading}
-                    className="px-3 py-1 bg-blue-600 rounded text-sm disabled:opacity-50 hover:bg-blue-500"
-                  >
-                    {uploading ? 'Uploading…' : 'Upload Audio'}
-                  </button>
-                </>
+                  {/* Upload button */}
+                  {selectedAudioFile && !audioKey && (
+                    <button
+                      type="button"
+                      onClick={handleAudioUpload}
+                      disabled={audioUploading}
+                      className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded text-sm transition-colors"
+                    >
+                      {audioUploading ? 'Uploading...' : 'Upload Audio'}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <p>
                   {song.audioUrl || song.cdn_url ? (
@@ -532,20 +655,20 @@ export default function AdminSongDetail() {
           </div>
         </div>
 
-        {/* Artwork Preview */}
+        {/* ✅ Enhanced Artwork Preview with better placeholder handling */}
         <div className="w-full md:w-80 h-48 md:h-auto rounded overflow-hidden order-first md:order-last">
           <img
-            src={form?.artwork_filename || song.image || song.artwork_filename || ''}
-            alt={song.title}
-            className="w-full h-full object-cover"
+            src={form?.artwork_filename || song.image || song.artwork_filename || DEFAULT_PLACEHOLDER}
+            alt={song.title || 'Song artwork'}
+            className="w-full h-full object-cover bg-gray-700"
             onError={(e) => {
-              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjMzc0MTUxIi8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIyNCIgZmlsbD0iIzZCNzI4MCIvPjxwYXRoIGQ9Ik0xNjAgNjZMMTkyIDEyNEgxMjhMMTYwIDY2WiIgZmlsbD0iIzZCNzI4MCIvPgo8L3N2Zz4=';
+              e.target.src = DEFAULT_PLACEHOLDER;
             }}
           />
         </div>
       </div>
 
-      {/* Delete Modal */}
+      {/* Delete Modal (kept exactly the same) */}
       <AnimatePresence>
         {showDeleteModal && (
           <>

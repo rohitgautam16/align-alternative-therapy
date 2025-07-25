@@ -24,6 +24,13 @@ export const api = createApi({
   tagTypes: ['User', 'Categories', 'Playlists', 'Songs'],
   endpoints: (build) => ({
 
+    getR2PresignUrl: build.query({
+      query: ({ filename, contentType, folder }) => ({
+        url: "admin/r2/presign",
+        params: { filename, contentType, folder },
+      }),
+    }),
+
     adminLogin: build.mutation({
       query: (credentials) => ({
         url: 'auth/admin-login',
@@ -610,6 +617,7 @@ export const api = createApi({
 
 
 export const {
+  useGetR2PresignUrlQuery,
   useAdminLoginMutation,
   useListUsersQuery,
   useGetAdminsQuery,
