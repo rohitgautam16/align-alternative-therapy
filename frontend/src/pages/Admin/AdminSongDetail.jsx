@@ -7,7 +7,7 @@ import {
   useListCategoriesQuery,
   useListPlaylistsQuery,
   useUploadR2FilesMutation,
-  useGetR2PresignUrlQuery, // Added for presigned URL uploads
+  useGetR2PresignUrlQuery, 
 } from '../../utils/api';
 import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -123,6 +123,10 @@ export default function AdminSongDetail() {
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
+  // ✅ NEW: Progress tracking state
+  const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+
   // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
@@ -153,7 +157,7 @@ export default function AdminSongDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // ✅ Use existing hook with conditional skip for presigned URLs
+  // Use existing hook with conditional skip for presigned URLs
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
       filename: "",
@@ -197,11 +201,12 @@ export default function AdminSongDetail() {
     }
   }, [flash]);
 
-  // ✅ Manual artwork upload handler using presigned URL
+  // ✅ Enhanced: Manual artwork upload handler with progress
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
     setArtworkUploading(true);
+    setArtworkUploadProgress(5); // Set initial progress
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
@@ -216,14 +221,16 @@ export default function AdminSongDetail() {
       console.error('Upload error:', err);
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
       setArtworkUploading(false);
+      setArtworkUploadProgress(0);
     }
   };
 
-  // ✅ Manual audio upload handler using presigned URL
+  // ✅ Enhanced: Manual audio upload handler with progress
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
     
     setAudioUploading(true);
+    setAudioUploadProgress(5); // Set initial progress
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
@@ -238,10 +245,11 @@ export default function AdminSongDetail() {
       console.error('Upload error:', err);
       setFlash({ txt: `Audio upload failed: ${err.message}`, ok: false });
       setAudioUploading(false);
+      setAudioUploadProgress(0);
     }
   };
 
-  // Handle artwork presign response
+  // ✅ Enhanced: Handle artwork presign response with progress tracking
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
 
@@ -254,72 +262,132 @@ export default function AdminSongDetail() {
         });
 
         setFlash({ txt: "Uploading artwork...", ok: true });
+        setArtworkUploadProgress(10); // Initial progress
         
-        const response = await fetch(artworkPresign.url, {
-          method: "PUT",
-          headers: { "Content-Type": selectedArtFile.type },
-          body: selectedArtFile,
+        // ✅ Create XMLHttpRequest for progress tracking
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            setArtworkUploadProgress(percentComplete);
+          }
         });
 
-        if (!response.ok) throw new Error('Upload failed');
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
+            console.log('✅ Artwork upload successful:', publicUrl);
+            
+            setArtworkKey(artworkPresign.key);
+            setForm(f => ({ ...f, artwork_filename: publicUrl }));
+            setFlash({ txt: "Artwork uploaded successfully!", ok: true });
+            setArtworkUploadProgress(100);
+            
+            // Clear file selection after successful upload
+            setSelectedArtFile(null);
+            setArtworkPresignParams(null);
+            const artInput = document.getElementById('song-artwork-upload');
+            if (artInput) artInput.value = '';
+            
+            // ✅ Delay resetting upload state to keep progress bar visible
+            setTimeout(() => {
+              setArtworkUploading(false);
+              setArtworkUploadProgress(0);
+            }, 3000); // Keep visible for 3 seconds
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
 
-        const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
-        console.log('✅ Artwork upload successful:', publicUrl);
-        
-        setArtworkKey(artworkPresign.key);
-        setForm(f => ({ ...f, artwork_filename: publicUrl }));
-        setFlash({ txt: "Artwork uploaded successfully!", ok: true });
-        
-        // Clear file selection after successful upload
-        setSelectedArtFile(null);
-        setArtworkPresignParams(null);
-        const artInput = document.getElementById('song-artwork-upload');
-        if (artInput) artInput.value = '';
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        // Start the upload
+        xhr.open('PUT', artworkPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedArtFile.type);
+        xhr.send(selectedArtFile);
         
       } catch (err) {
         console.error('Artwork upload error:', err);
         setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
-      } finally {
-        setArtworkUploading(false);
+        setArtworkUploadProgress(0);
+        setArtworkUploading(false); // Reset immediately on error
       }
+      // ✅ No finally block to avoid immediate state reset
     };
 
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // Handle audio presign response
+  // ✅ Enhanced: Handle audio presign response with progress tracking
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
 
     const uploadAudio = async () => {
       try {
         setFlash({ txt: "Uploading audio file...", ok: true });
+        setAudioUploadProgress(10); // Initial progress
         
-        const response = await fetch(audioPresign.url, {
-          method: "PUT",
-          headers: { "Content-Type": selectedAudioFile.type },
-          body: selectedAudioFile,
+        // ✅ Create XMLHttpRequest for progress tracking
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            setAudioUploadProgress(percentComplete);
+          }
         });
 
-        if (!response.ok) throw new Error('Upload failed');
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
+            setAudioKey(audioPresign.key);
+            setForm(f => ({ ...f, cdn_url: publicUrl }));
+            setFlash({ txt: "Audio file uploaded successfully!", ok: true });
+            setAudioUploadProgress(100);
+            
+            // Clear file selection after successful upload
+            setSelectedAudioFile(null);
+            setAudioPresignParams(null);
+            const audioInput = document.getElementById('song-audio-upload');
+            if (audioInput) audioInput.value = '';
+            
+            // ✅ Delay resetting upload state to keep progress bar visible
+            setTimeout(() => {
+              setAudioUploading(false);
+              setAudioUploadProgress(0);
+            }, 3000); // Keep visible for 3 seconds
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
 
-        const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
-        setAudioKey(audioPresign.key);
-        setForm(f => ({ ...f, cdn_url: publicUrl }));
-        setFlash({ txt: "Audio file uploaded successfully!", ok: true });
-        
-        // Clear file selection after successful upload
-        setSelectedAudioFile(null);
-        setAudioPresignParams(null);
-        const audioInput = document.getElementById('song-audio-upload');
-        if (audioInput) audioInput.value = '';
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        // Start the upload
+        xhr.open('PUT', audioPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedAudioFile.type);
+        xhr.send(selectedAudioFile);
         
       } catch (err) {
         console.error('Audio upload error:', err);
         setFlash({ txt: "Audio upload failed.", ok: false });
-      } finally {
-        setAudioUploading(false);
+        setAudioUploadProgress(0);
+        setAudioUploading(false); // Reset immediately on error
       }
+      // ✅ No finally block to avoid immediate state reset
     };
 
     uploadAudio();
@@ -329,7 +397,7 @@ export default function AdminSongDetail() {
   if (isError || !song) return <div className="p-6 text-red-500">Error loading song</div>;
   if (!form) return null;
 
-  // Handlers (kept exactly the same)
+  // Handlers   
   const handleSave = async () => {
     try {
       await updateSong({ id, ...form }).unwrap();
@@ -480,7 +548,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* ✅ REMOVED: Category dropdown - only show in read-only mode for existing data */}
+            {/* Category - only show in read-only mode for existing data */}
             {!editMode && form.category && (
               <div>
                 <label className="block text-gray-400 mb-1">Category (Legacy)</label>
@@ -524,7 +592,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* Enhanced Artwork Upload */}
+            {/* ✅ Enhanced Artwork Upload with Progress Bar */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Artwork URL</label>
 
@@ -565,6 +633,27 @@ export default function AdminSongDetail() {
                     )}
                   </div>
 
+                  {/* ✅ Progress bar */}
+                  {artworkUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {artworkUploadProgress === 0 ? 'Preparing upload...' : 
+                           artworkUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{artworkUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            artworkUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                          }`}
+                          style={{ width: `${Math.max(artworkUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Upload button */}
                   {selectedArtFile && !artworkKey && (
                     <button
@@ -573,7 +662,7 @@ export default function AdminSongDetail() {
                       disabled={artworkUploading}
                       className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
                     >
-                      {artworkUploading ? 'Uploading...' : 'Upload Artwork'}
+                      {artworkUploading ? `Uploading... ${artworkUploadProgress}%` : 'Upload Artwork'}
                     </button>
                   )}
                 </div>
@@ -582,7 +671,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* Enhanced Audio Upload */}
+            {/* ✅ Enhanced Audio Upload with Progress Bar */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Audio URL</label>
               
@@ -623,6 +712,27 @@ export default function AdminSongDetail() {
                     )}
                   </div>
 
+                  {/* ✅ Progress bar */}
+                  {audioUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {audioUploadProgress === 0 ? 'Preparing upload...' : 
+                           audioUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{audioUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            audioUploadProgress === 100 ? 'bg-green-600' : 'bg-purple-600'
+                          }`}
+                          style={{ width: `${Math.max(audioUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Upload button */}
                   {selectedAudioFile && !audioKey && (
                     <button
@@ -631,7 +741,7 @@ export default function AdminSongDetail() {
                       disabled={audioUploading}
                       className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded text-sm transition-colors"
                     >
-                      {audioUploading ? 'Uploading...' : 'Upload Audio'}
+                      {audioUploading ? `Uploading... ${audioUploadProgress}%` : 'Upload Audio'}
                     </button>
                   )}
                 </div>
@@ -655,7 +765,7 @@ export default function AdminSongDetail() {
           </div>
         </div>
 
-        {/* ✅ Enhanced Artwork Preview with better placeholder handling */}
+        {/* Enhanced Artwork Preview with better placeholder handling */}
         <div className="w-full md:w-80 h-48 md:h-auto rounded overflow-hidden order-first md:order-last">
           <img
             src={form?.artwork_filename || song.image || song.artwork_filename || DEFAULT_PLACEHOLDER}
@@ -668,7 +778,7 @@ export default function AdminSongDetail() {
         </div>
       </div>
 
-      {/* Delete Modal (kept exactly the same) */}
+      {/* Delete Modal    */}
       <AnimatePresence>
         {showDeleteModal && (
           <>

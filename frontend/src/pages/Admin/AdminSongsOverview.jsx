@@ -3,7 +3,7 @@ import {
   useGetAdminSongsQuery,
   useCreateAdminSongMutation,
   useUploadR2FilesMutation,
-  useGetR2PresignUrlQuery, // ✅ Keep your existing import
+  useGetR2PresignUrlQuery,
 } from '../../utils/api';
 import {
   useListCategoriesQuery,
@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
 
-// Custom Image Dropdown Component (kept exactly the same)
+
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
@@ -99,7 +99,7 @@ export default function AdminSongsOverview() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const frontendPageSize = 12;
 
-  // Search and Filter (kept exactly the same)
+  // Search and Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlaylist, setFilterPlaylist] = useState('');
 
@@ -114,11 +114,15 @@ export default function AdminSongsOverview() {
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
+  // Progress tracking state
+  const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+
   // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
 
-  // Songs data (kept exactly the same)
+  // Songs data 
   const {
     data: songsData,
     isLoading,
@@ -127,7 +131,7 @@ export default function AdminSongsOverview() {
     refetch,
   } = useGetAdminSongsQuery({ page: 1, pageSize: 200 });
 
-  // Categories and Playlists (kept exactly the same)
+  // Categories and Playlists  
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
     page: 1,
     pageSize: 100,
@@ -137,10 +141,10 @@ export default function AdminSongsOverview() {
     pageSize: 100,
   });
 
-  // Create mutation (kept exactly the same)
+  // Create mutation 
   const [createSong, { isLoading: creating }] = useCreateAdminSongMutation();
 
-  // Form state (kept exactly the same)
+  // Form state  
   const [form, setForm] = useState({
     name: '',
     title: '',
@@ -155,7 +159,7 @@ export default function AdminSongsOverview() {
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // ✅ Use existing hook with conditional skip
+  // Use existing hook with conditional skip
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
       filename: "",
@@ -169,141 +173,195 @@ export default function AdminSongsOverview() {
     audioPresignParams || {
       filename: "",
       contentType: "",
-      folder: "align-audio/songs",
+      folder: "align-audio",
     },
     { skip: !audioPresignParams }
   );
 
-  // ✅ FIXED: Manual artwork upload handler
+  // Manual artwork upload handler
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
     setArtworkUploading(true);
+    setArtworkUploadProgress(5);
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      // Trigger the presign query by setting params
       setArtworkPresignParams({
         filename: selectedArtFile.name,
         contentType: selectedArtFile.type,
         folder: "align-images/songs",
       });
-      
     } catch (err) {
       console.error('Upload error:', err);
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
       setArtworkUploading(false);
+      setArtworkUploadProgress(0);
     }
   };
 
-  // ✅ FIXED: Manual audio upload handler
+  // Manual audio upload handler
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
     
     setAudioUploading(true);
+    setAudioUploadProgress(5);
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      // Trigger the presign query by setting params
       setAudioPresignParams({
         filename: selectedAudioFile.name,
         contentType: selectedAudioFile.type,
         folder: "align-audio/songs",
       });
-      
     } catch (err) {
       console.error('Upload error:', err);
       setFlash({ txt: `Audio upload failed: ${err.message}`, ok: false });
       setAudioUploading(false);
+      setAudioUploadProgress(0);
     }
   };
 
-  // Handle artwork presign response
+  // ✅ FIXED: Handle artwork presign response with delayed state reset
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
 
     const uploadArtwork = async () => {
       try {
-        console.log('🚀 Starting artwork upload:', {
-          presignUrl: artworkPresign.url,
-          key: artworkPresign.key,
-          fileName: selectedArtFile.name,
-        });
-
+        console.log('🚀 Starting artwork upload');
+        
         setFlash({ txt: "Uploading artwork...", ok: true });
+        setArtworkUploadProgress(10);
         
-        const response = await fetch(artworkPresign.url, {
-          method: "PUT",
-          headers: { "Content-Type": selectedArtFile.type },
-          body: selectedArtFile,
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
+            setArtworkUploadProgress(percentComplete);
+          }
         });
 
-        if (!response.ok) throw new Error('Upload failed');
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
+            console.log('✅ Artwork upload successful');
+            
+            setArtworkKey(artworkPresign.key);
+            setForm(f => ({ ...f, artwork_filename: publicUrl }));
+            setFlash({ txt: "Artwork uploaded successfully!", ok: true });
+            setArtworkUploadProgress(100);
+            
+            // Clear file selection
+            setSelectedArtFile(null);
+            setArtworkPresignParams(null);
+            const artInput = document.getElementById('create-artwork-upload');
+            if (artInput) artInput.value = '';
+            
+            // ✅ FIXED: Delay resetting upload state to keep progress bar visible
+            setTimeout(() => {
+              setArtworkUploading(false);
+              setArtworkUploadProgress(0);
+            }, 3000); // Keep visible for 3 seconds
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
 
-        const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
-        console.log('✅ Artwork upload successful:', publicUrl);
-        
-        setArtworkKey(artworkPresign.key);
-        setForm(f => ({ ...f, artwork_filename: publicUrl }));
-        setFlash({ txt: "Artwork uploaded successfully!", ok: true });
-        
-        // Clear file selection after successful upload
-        setSelectedArtFile(null);
-        setArtworkPresignParams(null); // Reset presign params
-        const artInput = document.getElementById('create-artwork-upload');
-        if (artInput) artInput.value = '';
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        // Start the upload
+        xhr.open('PUT', artworkPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedArtFile.type);
+        xhr.send(selectedArtFile);
         
       } catch (err) {
         console.error('Artwork upload error:', err);
         setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
-      } finally {
-        setArtworkUploading(false);
+        setArtworkUploadProgress(0);
+        setArtworkUploading(false); // Reset immediately on error
       }
+      // ✅ REMOVED: No finally block to avoid immediate state reset
     };
 
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // Handle audio presign response
+  // ✅ FIXED: Handle audio presign response with delayed state reset
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
 
     const uploadAudio = async () => {
       try {
         setFlash({ txt: "Uploading audio file...", ok: true });
+        setAudioUploadProgress(10);
         
-        const response = await fetch(audioPresign.url, {
-          method: "PUT",
-          headers: { "Content-Type": selectedAudioFile.type },
-          body: selectedAudioFile,
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
+            setAudioUploadProgress(percentComplete);
+          }
         });
 
-        if (!response.ok) throw new Error('Upload failed');
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
+            setAudioKey(audioPresign.key);
+            setForm(f => ({ ...f, cdn_url: publicUrl }));
+            setFlash({ txt: "Audio file uploaded successfully!", ok: true });
+            setAudioUploadProgress(100);
+            
+            // Clear file selection
+            setSelectedAudioFile(null);
+            setAudioPresignParams(null);
+            const audioInput = document.getElementById('create-audio-upload');
+            if (audioInput) audioInput.value = '';
+            
+            // ✅ FIXED: Delay resetting upload state to keep progress bar visible
+            setTimeout(() => {
+              setAudioUploading(false);
+              setAudioUploadProgress(0);
+            }, 3000); // Keep visible for 3 seconds
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
 
-        const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
-        setAudioKey(audioPresign.key);
-        setForm(f => ({ ...f, cdn_url: publicUrl }));
-        setFlash({ txt: "Audio file uploaded successfully!", ok: true });
-        
-        // Clear file selection after successful upload
-        setSelectedAudioFile(null);
-        setAudioPresignParams(null); // Reset presign params
-        const audioInput = document.getElementById('create-audio-upload');
-        if (audioInput) audioInput.value = '';
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        // Start the upload
+        xhr.open('PUT', audioPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedAudioFile.type);
+        xhr.send(selectedAudioFile);
         
       } catch (err) {
         console.error('Audio upload error:', err);
         setFlash({ txt: "Audio upload failed.", ok: false });
-      } finally {
-        setAudioUploading(false);
+        setAudioUploadProgress(0);
+        setAudioUploading(false); // Reset immediately on error
       }
+      // ✅ REMOVED: No finally block to avoid immediate state reset
     };
 
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
 
   // All other existing logic remains exactly the same...
-  // Process data safely based on backend response structure (kept exactly the same)
+  // Process data safely based on backend response structure  
   const allSongs = React.useMemo(() => {
     if (!songsData) return [];
     
@@ -328,7 +386,7 @@ export default function AdminSongsOverview() {
     return Array.isArray(plRaw.data) ? plRaw.data : (Array.isArray(plRaw) ? plRaw : []);
   }, [plRaw]);
 
-  // Filter songs based on search and playlist filter only (kept exactly the same)
+  // Filter songs based on search and playlist filter only  
   const filteredSongs = React.useMemo(() => {
     return allSongs.filter(song => {
       const matchesSearch = !searchTerm || 
@@ -351,13 +409,13 @@ export default function AdminSongsOverview() {
     });
   }, [allSongs, searchTerm, filterPlaylist]);
 
-  // Get total from backend or use filtered length (kept exactly the same)
+  // Get total from backend or use filtered length  
   const totalItems = songsData?.total || filteredSongs.length;
   const totalPages = Math.ceil(filteredSongs.length / frontendPageSize);
   const startIndex = (page - 1) * frontendPageSize;
   const paginatedSongs = filteredSongs.slice(startIndex, startIndex + frontendPageSize);
 
-  // Auto-clear flash messages (kept exactly the same)
+  // Auto-clear flash messages  
   useEffect(() => {
     if (flash.txt) {
       const t = setTimeout(() => setFlash({ txt: '', ok: true }), 3000);
@@ -365,12 +423,12 @@ export default function AdminSongsOverview() {
     }
   }, [flash]);
 
-  // Reset page when filters change (kept exactly the same)
+  // Reset page when filters change  
   useEffect(() => {
     setPage(1);
   }, [searchTerm, filterPlaylist]);
 
-  // Fixed auto-generate slug from title (kept exactly the same)
+  // Fixed auto-generate slug from title  
   const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -410,9 +468,13 @@ export default function AdminSongsOverview() {
       setSelectedArtFile(null);
       setSelectedAudioFile(null);
       
-      // Reset upload keys
+      // Reset upload keys and states
       setArtworkKey(null);
       setAudioKey(null);
+      setArtworkUploading(false);
+      setAudioUploading(false);
+      setArtworkUploadProgress(0);
+      setAudioUploadProgress(0);
       
       // Clear file inputs
       const artInput = document.getElementById('create-artwork-upload');
@@ -433,7 +495,6 @@ export default function AdminSongsOverview() {
     setFilterPlaylist('');
   };
 
-  // JSX remains exactly the same as before...
   return (
     <div className="p-4 sm:p-6 text-white space-y-6">
       {/* Flash Messages */}
@@ -605,7 +666,7 @@ export default function AdminSongsOverview() {
               </div>
             </div>
 
-            {/* File Uploads */}
+            {/* File Uploads with Progress Bars */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Artwork Upload */}
               <div>
@@ -619,6 +680,7 @@ export default function AdminSongsOverview() {
                 />
                 
                 <div className="space-y-2">
+                  {/* File selection */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       id="create-artwork-upload"
@@ -637,6 +699,7 @@ export default function AdminSongsOverview() {
                       </span>
                     </label>
                     
+                    {/* Status indicator */}
                     {artworkKey && (
                       <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                         <CheckCircle size={14} />
@@ -645,6 +708,28 @@ export default function AdminSongsOverview() {
                     )}
                   </div>
                   
+                  {/* ✅ FIXED: Progress bar shows when uploading */}
+                  {artworkUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {artworkUploadProgress === 0 ? 'Preparing upload...' : 
+                           artworkUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{artworkUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            artworkUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                          }`}
+                          style={{ width: `${Math.max(artworkUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload button */}
                   {selectedArtFile && !artworkKey && (
                     <button
                       type="button"
@@ -652,7 +737,7 @@ export default function AdminSongsOverview() {
                       disabled={artworkUploading}
                       className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
                     >
-                      {artworkUploading ? 'Uploading...' : 'Upload Artwork'}
+                      {artworkUploading ? `Uploading... ${artworkUploadProgress}%` : 'Upload Artwork'}
                     </button>
                   )}
                 </div>
@@ -670,6 +755,7 @@ export default function AdminSongsOverview() {
                 />
                 
                 <div className="space-y-2">
+                  {/* File selection */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       id="create-audio-upload"
@@ -688,6 +774,7 @@ export default function AdminSongsOverview() {
                       </span>
                     </label>
                     
+                    {/* Status indicator */}
                     {audioKey && (
                       <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                         <CheckCircle size={14} />
@@ -696,6 +783,28 @@ export default function AdminSongsOverview() {
                     )}
                   </div>
                   
+                  {/* ✅ FIXED: Progress bar shows when uploading */}
+                  {audioUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {audioUploadProgress === 0 ? 'Preparing upload...' : 
+                           audioUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{audioUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            audioUploadProgress === 100 ? 'bg-green-600' : 'bg-purple-600'
+                          }`}
+                          style={{ width: `${Math.max(audioUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload button */}
                   {selectedAudioFile && !audioKey && (
                     <button
                       type="button"
@@ -703,7 +812,7 @@ export default function AdminSongsOverview() {
                       disabled={audioUploading}
                       className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded text-sm transition-colors"
                     >
-                      {audioUploading ? 'Uploading...' : 'Upload Audio'}
+                      {audioUploading ? `Uploading... ${audioUploadProgress}%` : 'Upload Audio'}
                     </button>
                   )}
                 </div>
@@ -756,7 +865,7 @@ export default function AdminSongsOverview() {
             <div
               className={`grid gap-3 sm:gap-4 ${
                 viewType === 'grid'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3'
                   : 'grid-cols-1'
               }`}
             >

@@ -4,14 +4,15 @@ import {
   useListPlaylistsQuery,
   useCreatePlaylistMutation,
   useListCategoriesQuery,
-  useUploadR2FilesMutation
+  useUploadR2FilesMutation,
+  useGetR2PresignUrlQuery, // ✅ Added for presigned URL uploads
 } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
-import { Grid3X3, List, Eye, Plus, Search, X, Upload } from 'lucide-react';
+import { Grid3X3, List, Eye, Plus, Search, X, Upload, CheckCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminPlaylistCard from '../../components/custom-ui/AdminPlaylistCard';
 
-// Custom Image Dropdown Component
+// Custom Image Dropdown Component (kept exactly the same)
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
@@ -96,16 +97,24 @@ export default function AdminPlaylistsOverview() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const frontendPageSize = 12;
 
-  // Search and Filter
+  // Search and Filter (kept exactly the same)
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPaid, setFilterPaid] = useState('');
 
-  // File uploads
+  // File uploads - Updated for presigned URLs
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
 
-  // Fetch playlists - get more for client-side filtering
+  // ✅ NEW: Presigned upload tracking state
+  const [artworkKey, setArtworkKey] = useState(null);
+  const [artworkUploading, setArtworkUploading] = useState(false);
+  const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
+
+  // ✅ NEW: Presign request state for manual triggering
+  const [artworkPresignParams, setArtworkPresignParams] = useState(null);
+
+  // Fetch playlists - get more for client-side filtering (kept exactly the same)
   const {
     data: plRaw,
     isLoading: plLoading,
@@ -114,16 +123,16 @@ export default function AdminPlaylistsOverview() {
     refetch: refetchPlaylists,
   } = useListPlaylistsQuery({ page: 1, pageSize: 200 });
 
-  // Fetch categories for dropdown
+  // Fetch categories for dropdown (kept exactly the same)
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
     page: 1,
     pageSize: 100,
   });
 
-  // Create new playlist
+  // Create new playlist (kept exactly the same)
   const [createPlaylist, { isLoading: creating }] = useCreatePlaylistMutation();
 
-  // Form state
+  // Form state (kept exactly the same)
   const [form, setForm] = useState({
     title: '',
     slug: '',
@@ -135,7 +144,17 @@ export default function AdminPlaylistsOverview() {
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // Process data
+  // ✅ NEW: Use presigned URL hook with conditional skip
+  const { data: artworkPresign } = useGetR2PresignUrlQuery(
+    artworkPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "align-images/playlist",
+    },
+    { skip: !artworkPresignParams }
+  );
+
+  // Process data (kept exactly the same)
   const allPlaylists = React.useMemo(() => {
     if (!plRaw) return [];
     
@@ -155,7 +174,7 @@ export default function AdminPlaylistsOverview() {
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
 
-  // Filter playlists
+  // Filter playlists (kept exactly the same)
   const filteredPlaylists = React.useMemo(() => {
     return allPlaylists.filter(playlist => {
       // Search filter
@@ -179,13 +198,13 @@ export default function AdminPlaylistsOverview() {
     });
   }, [allPlaylists, searchTerm, filterCategory, filterPaid]);
 
-  // Pagination for filtered results
+  // Pagination for filtered results (kept exactly the same)
   const totalItems = plRaw?.total || filteredPlaylists.length;
   const totalPages = Math.ceil(filteredPlaylists.length / frontendPageSize);
   const startIndex = (page - 1) * frontendPageSize;
   const paginatedPlaylists = filteredPlaylists.slice(startIndex, startIndex + frontendPageSize);
 
-  // Auto-clear flash messages
+  // Auto-clear flash messages (kept exactly the same)
   useEffect(() => {
     if (flash.txt) {
       const t = setTimeout(() => setFlash({ txt: '', ok: true }), 3000);
@@ -193,12 +212,12 @@ export default function AdminPlaylistsOverview() {
     }
   }, [flash]);
 
-  // Reset page when filters change
+  // Reset page when filters change (kept exactly the same)
   useEffect(() => {
     setPage(1);
   }, [searchTerm, filterCategory, filterPaid]);
 
-  // Fixed auto-generate slug from title
+  // Fixed auto-generate slug from title (kept exactly the same)
   const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -210,32 +229,105 @@ export default function AdminPlaylistsOverview() {
       .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
   };
 
-  // Image upload handler
+  // ✅ ENHANCED: Manual artwork upload handler with presigned URL
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
-    setFlash({ txt: 'Uploading image…', ok: true });
+    
+    setArtworkUploading(true);
+    setArtworkUploadProgress(5); // Set initial progress
+    setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      const res = await uploadFiles({
-        prefix: 'align-images/playlist',
-        files: [selectedArtFile],
-      }).unwrap();
-
-      const uploadedArray = res.uploaded || res;
-      const key = uploadedArray?.[0]?.key;
-      if (!key) throw new Error('No key returned from upload');
-
-      const publicUrl = `https://cdn.align-alternativetherapy.com/${key}`;
-      setForm(f => ({ ...f, artwork_filename: publicUrl }));
-      setFlash({ txt: 'Image uploaded!', ok: true });
-
-      setSelectedArtFile(null);
-      document.getElementById('create-artwork-upload').value = '';
+      // Trigger the presign query by setting params
+      setArtworkPresignParams({
+        filename: selectedArtFile.name,
+        contentType: selectedArtFile.type,
+        folder: "align-images/playlist",
+      });
+      
     } catch (err) {
-      console.error('Upload failed:', err);
-      setFlash({ txt: 'Upload failed.', ok: false });
+      console.error('Upload error:', err);
+      setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
+      setArtworkUploading(false);
+      setArtworkUploadProgress(0);
     }
   };
+
+  // ✅ NEW: Handle artwork presign response with progress tracking
+  useEffect(() => {
+    if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
+
+    const uploadArtwork = async () => {
+      try {
+        console.log('🚀 Starting artwork upload:', {
+          presignUrl: artworkPresign.url,
+          key: artworkPresign.key,
+          fileName: selectedArtFile.name,
+        });
+
+        setFlash({ txt: "Uploading artwork...", ok: true });
+        setArtworkUploadProgress(10); // Initial progress
+        
+        // Create XMLHttpRequest for progress tracking
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            setArtworkUploadProgress(percentComplete);
+          }
+        });
+
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
+            console.log('✅ Artwork upload successful:', publicUrl);
+            
+            setArtworkKey(artworkPresign.key);
+            setForm(f => ({ ...f, artwork_filename: publicUrl }));
+            setFlash({ txt: "Artwork uploaded successfully!", ok: true });
+            setArtworkUploadProgress(100);
+            
+            // Clear file selection after successful upload
+            setSelectedArtFile(null);
+            setArtworkPresignParams(null);
+            const artInput = document.getElementById('create-artwork-upload');
+            if (artInput) artInput.value = '';
+            
+            // Delay resetting upload state to keep progress bar visible
+            setTimeout(() => {
+              setArtworkUploading(false);
+              setArtworkUploadProgress(0);
+            }, 3000); // Keep visible for 3 seconds
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
+
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        // Start the upload
+        xhr.open('PUT', artworkPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedArtFile.type);
+        xhr.send(selectedArtFile);
+        
+      } catch (err) {
+        console.error('Artwork upload error:', err);
+        setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
+        setArtworkUploadProgress(0);
+        setArtworkUploading(false); // Reset immediately on error
+      }
+      // No finally block to avoid immediate state reset
+    };
+
+    uploadArtwork();
+  }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
   const toggleView = () => {
     setViewType((prev) => (prev === 'grid' ? 'list' : 'grid'));
@@ -258,6 +350,11 @@ export default function AdminPlaylistsOverview() {
         paid: 0,
       });
       setSelectedArtFile(null);
+      
+      // ✅ ADDED: Reset upload states
+      setArtworkKey(null);
+      setArtworkUploading(false);
+      setArtworkUploadProgress(0);
       
       // Clear file input
       const artInput = document.getElementById('create-artwork-upload');
@@ -451,7 +548,7 @@ export default function AdminPlaylistsOverview() {
               </div>
             </div>
 
-            {/* Artwork Upload */}
+            {/* ✅ Enhanced Artwork Upload with Progress Bar */}
             <div>
               <label className="block text-gray-400 text-sm mb-1">Artwork</label>
               <input
@@ -462,32 +559,67 @@ export default function AdminPlaylistsOverview() {
                 className="w-full p-2 bg-gray-700 rounded text-white mb-2 text-sm sm:text-base"
               />
               
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <input
-                  id="create-artwork-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setSelectedArtFile(e.target.files?.[0] || null)}
-                />
-                <label
-                  htmlFor="create-artwork-upload"
-                  className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
-                >
-                  <Upload size={14} />
-                  <span className="truncate">
-                    {selectedArtFile ? selectedArtFile.name : 'Choose Image'}
-                  </span>
-                </label>
+              <div className="space-y-2">
+                {/* File selection */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    id="create-artwork-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setSelectedArtFile(e.target.files?.[0] || null)}
+                  />
+                  <label
+                    htmlFor="create-artwork-upload"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                  >
+                    <Upload size={14} />
+                    <span className="truncate">
+                      {selectedArtFile ? selectedArtFile.name : 'Choose Image'}
+                    </span>
+                  </label>
+                  
+                  {/* Status indicator */}
+                  {artworkKey && (
+                    <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                      <CheckCircle size={14} />
+                      <span>Uploaded</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ✅ Progress bar */}
+                {artworkUploading && (
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-400">
+                        {artworkUploadProgress === 0 ? 'Preparing upload...' : 
+                         artworkUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                      </span>
+                      <span className="text-xs text-gray-400">{artworkUploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                          artworkUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                        }`}
+                        style={{ width: `${Math.max(artworkUploadProgress, 5)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 
-                <button
-                  type="button"
-                  onClick={handleArtworkUpload}
-                  disabled={uploading || !selectedArtFile}
-                  className="px-3 py-2 bg-blue-600 rounded text-sm disabled:opacity-50 hover:bg-blue-500 whitespace-nowrap"
-                >
-                  {uploading ? 'Uploading…' : 'Upload'}
-                </button>
+                {/* Upload button */}
+                {selectedArtFile && !artworkKey && (
+                  <button
+                    type="button"
+                    onClick={handleArtworkUpload}
+                    disabled={artworkUploading}
+                    className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
+                  >
+                    {artworkUploading ? `Uploading... ${artworkUploadProgress}%` : 'Upload Artwork'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -537,7 +669,7 @@ export default function AdminPlaylistsOverview() {
             <div
               className={`grid gap-3 sm:gap-4 ${
                 viewType === 'grid'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3'
                   : 'grid-cols-1'
               }`}
             >

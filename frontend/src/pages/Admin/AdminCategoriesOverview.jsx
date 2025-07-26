@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import {
   useListCategoriesQuery,
   useCreateCategoryMutation,
-  useUploadR2FilesMutation
+  useUploadR2FilesMutation,
+  useGetR2PresignUrlQuery, 
 } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
-import { Grid3X3, List, Eye, Plus, Search, X, Upload } from 'lucide-react';
+import { Grid3X3, List, Eye, Plus, Search, X, Upload, CheckCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function AdminCategoriesOverview() {
@@ -19,9 +20,17 @@ export default function AdminCategoriesOverview() {
   // Search and Filter
   const [searchTerm, setSearchTerm] = useState('');
 
-  // File uploads
+  // File uploads - Updated for presigned URLs
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
+
+
+  const [artworkKey, setArtworkKey] = useState(null);
+  const [artworkUploading, setArtworkUploading] = useState(false);
+  const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
+
+
+  const [artworkPresignParams, setArtworkPresignParams] = useState(null);
 
   // Fetch categories - get more for client-side filtering
   const { 
@@ -44,6 +53,16 @@ export default function AdminCategoriesOverview() {
   });
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
+
+
+  const { data: artworkPresign } = useGetR2PresignUrlQuery(
+    artworkPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "align-images/categories",
+    },
+    { skip: !artworkPresignParams }
+  );
 
   // Process data
   const allCategories = React.useMemo(() => {
@@ -91,6 +110,106 @@ export default function AdminCategoriesOverview() {
     setPage(1);
   }, [searchTerm]);
 
+ 
+  const handleArtworkUpload = async () => {
+    if (!selectedArtFile) return;
+    
+    setArtworkUploading(true);
+    setArtworkUploadProgress(5); // Set initial progress
+    setFlash({ txt: "Getting upload URL...", ok: true });
+    
+    try {
+      // Trigger the presign query by setting params
+      setArtworkPresignParams({
+        filename: selectedArtFile.name,
+        contentType: selectedArtFile.type,
+        folder: "align-images/categories",
+      });
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
+      setArtworkUploading(false);
+      setArtworkUploadProgress(0);
+    }
+  };
+
+
+  useEffect(() => {
+    if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
+
+    const uploadArtwork = async () => {
+      try {
+        console.log('🚀 Starting artwork upload:', {
+          presignUrl: artworkPresign.url,
+          key: artworkPresign.key,
+          fileName: selectedArtFile.name,
+        });
+
+        setFlash({ txt: "Uploading artwork...", ok: true });
+        setArtworkUploadProgress(10); // Initial progress
+        
+        // Create XMLHttpRequest for progress tracking
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            setArtworkUploadProgress(percentComplete);
+          }
+        });
+
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
+            console.log('✅ Artwork upload successful:', publicUrl);
+            
+            setArtworkKey(artworkPresign.key);
+            setForm(f => ({ ...f, artwork_filename: publicUrl }));
+            setFlash({ txt: "Artwork uploaded successfully!", ok: true });
+            setArtworkUploadProgress(100);
+            
+            // Clear file selection after successful upload
+            setSelectedArtFile(null);
+            setArtworkPresignParams(null);
+            const artInput = document.getElementById('create-artwork-upload');
+            if (artInput) artInput.value = '';
+            
+            // Delay resetting upload state to keep progress bar visible
+            setTimeout(() => {
+              setArtworkUploading(false);
+              setArtworkUploadProgress(0);
+            }, 3000); // Keep visible for 3 seconds
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
+
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        // Start the upload
+        xhr.open('PUT', artworkPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedArtFile.type);
+        xhr.send(selectedArtFile);
+        
+      } catch (err) {
+        console.error('Artwork upload error:', err);
+        setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
+        setArtworkUploadProgress(0);
+        setArtworkUploading(false); // Reset immediately on error
+      }
+      // No finally block to avoid immediate state reset
+    };
+
+    uploadArtwork();
+  }, [artworkPresign, selectedArtFile, artworkPresignParams]);
+
   // Fixed auto-generate slug from title
   const generateSlug = (title) => {
     if (!title) return '';
@@ -101,33 +220,6 @@ export default function AdminCategoriesOverview() {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
-  };
-
-  // Image upload handler
-  const handleArtworkUpload = async () => {
-    if (!selectedArtFile) return;
-    setFlash({ txt: 'Uploading image…', ok: true });
-    
-    try {
-      const res = await uploadFiles({
-        prefix: 'align-images/categories',
-        files: [selectedArtFile],
-      }).unwrap();
-
-      const uploadedArray = res.uploaded || res;
-      const key = uploadedArray?.[0]?.key;
-      if (!key) throw new Error('No key returned from upload');
-
-      const publicUrl = `https://cdn.align-alternativetherapy.com/${key}`;
-      setForm(f => ({ ...f, artwork_filename: publicUrl }));
-      setFlash({ txt: 'Image uploaded!', ok: true });
-
-      setSelectedArtFile(null);
-      document.getElementById('create-artwork-upload').value = '';
-    } catch (err) {
-      console.error('Upload failed:', err);
-      setFlash({ txt: 'Upload failed.', ok: false });
-    }
   };
 
   const toggleView = () => {
@@ -148,6 +240,11 @@ export default function AdminCategoriesOverview() {
         artwork_filename: '',
       });
       setSelectedArtFile(null);
+      
+      
+      setArtworkKey(null);
+      setArtworkUploading(false);
+      setArtworkUploadProgress(0);
       
       const artInput = document.getElementById('create-artwork-upload');
       if (artInput) artInput.value = '';
@@ -289,7 +386,7 @@ export default function AdminCategoriesOverview() {
               </div>
             </div>
 
-            {/* Artwork Upload */}
+            {/* Enhanced Artwork Upload with Progress Bar */}
             <div>
               <label className="block text-gray-400 text-sm mb-1">Artwork</label>
               <input
@@ -300,32 +397,67 @@ export default function AdminCategoriesOverview() {
                 className="w-full p-2 bg-gray-700 rounded text-white mb-2 text-sm sm:text-base"
               />
               
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <input
-                  id="create-artwork-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setSelectedArtFile(e.target.files?.[0] || null)}
-                />
-                <label
-                  htmlFor="create-artwork-upload"
-                  className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
-                >
-                  <Upload size={14} />
-                  <span className="truncate">
-                    {selectedArtFile ? selectedArtFile.name : 'Choose Image'}
-                  </span>
-                </label>
+              <div className="space-y-2">
+                {/* File selection */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    id="create-artwork-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setSelectedArtFile(e.target.files?.[0] || null)}
+                  />
+                  <label
+                    htmlFor="create-artwork-upload"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                  >
+                    <Upload size={14} />
+                    <span className="truncate">
+                      {selectedArtFile ? selectedArtFile.name : 'Choose Image'}
+                    </span>
+                  </label>
+                  
+                  {/* Status indicator */}
+                  {artworkKey && (
+                    <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                      <CheckCircle size={14} />
+                      <span>Uploaded</span>
+                    </div>
+                  )}
+                </div>
+
+                {/*  Progress bar */}
+                {artworkUploading && (
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-400">
+                        {artworkUploadProgress === 0 ? 'Preparing upload...' : 
+                         artworkUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                      </span>
+                      <span className="text-xs text-gray-400">{artworkUploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                          artworkUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                        }`}
+                        style={{ width: `${Math.max(artworkUploadProgress, 5)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 
-                <button
-                  type="button"
-                  onClick={handleArtworkUpload}
-                  disabled={uploading || !selectedArtFile}
-                  className="px-3 py-2 bg-blue-600 rounded text-sm disabled:opacity-50 hover:bg-blue-500 whitespace-nowrap"
-                >
-                  {uploading ? 'Uploading…' : 'Upload'}
-                </button>
+                {/* Upload button */}
+                {selectedArtFile && !artworkKey && (
+                  <button
+                    type="button"
+                    onClick={handleArtworkUpload}
+                    disabled={artworkUploading}
+                    className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
+                  >
+                    {artworkUploading ? `Uploading... ${artworkUploadProgress}%` : 'Upload Artwork'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -375,7 +507,7 @@ export default function AdminCategoriesOverview() {
             <div
               className={`grid gap-3 sm:gap-4 ${
                 viewType === 'grid'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3'
                   : 'grid-cols-1'
               }`}
             >
