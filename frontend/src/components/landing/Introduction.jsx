@@ -46,7 +46,7 @@ const BottomIconsSection = () => {
           }
         );
 
-        // Paragraph text reveal animation with blur - starts at same time as heading
+        // Paragraph text reveal animation
         const paragraphWords = paragraphRef.current.querySelectorAll('.word');
         tl.fromTo(
           paragraphWords,
@@ -112,7 +112,7 @@ const BottomIconsSection = () => {
           0.2
         );
 
-        // Continuous scrolling text animation - revolve the entire container
+        // Continuous scrolling text animation
         window.gsap.to(scrollingTextRef.current, {
           rotation: 360,
           duration: 20,
@@ -149,10 +149,10 @@ const BottomIconsSection = () => {
     // Responsive radius
     const getRadius = () => {
       if (typeof window !== 'undefined') {
-        if (window.innerWidth < 640) return 35; // sm
-        if (window.innerWidth < 768) return 40; // md
-        if (window.innerWidth < 1024) return 45; // lg
-        return 50; // xl and above
+        if (window.innerWidth < 640) return 35;
+        if (window.innerWidth < 768) return 40;
+        if (window.innerWidth < 1024) return 45;
+        return 50;
       }
       return 50;
     };
@@ -185,43 +185,33 @@ const BottomIconsSection = () => {
   };
 
   return (
-    <div ref={sectionRef} className="flex flex-col items-center h-full justify-between pt-16 sm:pt-20 md:pt-24 lg:pt-28 py-16 sm:py-20 md:py-25 bg-primary">
+    <div ref={sectionRef} className="flex flex-col items-center h-auto space-y-15 justify-around pt-16 sm:pt-20 md:pt-24 lg:pt-28 py-20 sm:py-20 md:py-30 lg:py-35 bg-primary">
       <div className="flex items-center justify-center w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
-        
-        {/* Two column layout - responsive */}
         <div className="flex flex-col lg:flex-row gap-8 sm:gap-12 md:gap-16 lg:gap-20 max-w-5xl w-full">
-          {/* Left column - responsive width */}
-          <div className="w-full lg:w-2/5 space-y-6 sm:space-y-8 text-center lg:text-left">
+          {/* Left column */}
+          <div className="w-full lg:w-2/5 flex flex-col items-center lg:items-start space-y-6 sm:space-y-8">
             <h3 
               ref={headingRef}
-              className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight overflow-hidden"
+              className="text-xl sm:text-2xl md:text-3xl md:text-center font-bold text-white leading-tight overflow-hidden"
             >
               <div className="heading-line block">ABOUT ALIGN</div>
               <div className="heading-line block">ALTERNATIVE THERAPY</div>
             </h3>
             
-            {/* Egg-shaped outlined button with arrow - responsive */}
-            <div className="flex justify-center lg:justify-start">
-              <button className="group bg-transparent border border-white hover:bg-white hover:border-white transition-all duration-300 flex items-center gap-2 sm:gap-3 px-4 sm:px-6 md:px-8 py-3 sm:py-4 text-sm sm:text-base" 
-                      style={{
-                        borderRadius: '50% / 50%'
-                      }}>
-                <span className="text-white group-hover:text-black font-medium tracking-wide">
-                  LEARN MORE
-                </span>
-                <svg 
-                  className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-black group-hover:translate-x-1 transition-all duration-300" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </button>
+            {/* Circular scrolling text positioned where the button was */}
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center">
+              <div 
+                ref={scrollingTextRef}
+                className="absolute w-full h-full flex items-center justify-center"
+              >
+                {createCircularText("EXPLORE THE INNER PEACE • ")}
+              </div>
+              {/* Center dot */}
+              <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
             </div>
           </div>
           
-          {/* Right column - responsive width */}
+          {/* Right column */}
           <div className="w-full lg:w-3/5 space-y-8 sm:space-y-10 md:space-y-12">
             <p 
               ref={paragraphRef}
@@ -229,23 +219,8 @@ const BottomIconsSection = () => {
             >
               {splitTextIntoWords("Our approach blends different audio therapies like affirmations, binaural beats and solfeggio frequencies. Each audio experience is thoughtfully curated to provide you with a significant advantage, aiding in aligning your mind, body and spirit for optimal harmony and growth")}
             </p>
-            
-            {/* Circular scrolling text - responsive positioning */}
-            <div className="flex justify-end lg:justify-end -z-10">
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32">
-                <div 
-                  ref={scrollingTextRef}
-                  className="absolute inset-0 flex items-center justify-center w-full h-full"
-                >
-                  {createCircularText("EXPLORE THE INNER PEACE • ")}
-                </div>
-                {/* Center dot - stays stationary - responsive size */}
-                <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
           </div>
         </div>
-        
       </div>
       
       <h2 

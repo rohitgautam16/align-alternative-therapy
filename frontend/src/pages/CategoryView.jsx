@@ -16,6 +16,7 @@ export default function CategoryView() {
     isLoading: catLoading,
     isError: catError,
   } = useGetCategoriesQuery();
+  console.log(categories)
 
   const {
     data: playlists = [],
@@ -50,7 +51,7 @@ export default function CategoryView() {
         background: loading
           ? 'black'
           : `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${
-              category?.image || FALLBACK_BG
+              category?.image || category.artwork_filename
             })`,
         backgroundSize: 'cover',
       }}
