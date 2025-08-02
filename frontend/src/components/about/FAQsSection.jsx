@@ -301,7 +301,7 @@ const FAQ = () => {
               style={{ minHeight: '400px' }}
             >
               <motion.img
-                src="https://images.unsplash.com/photo-1553877522-43269d4ea984?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+                src="https://cdn.align-alternativetherapy.com/static-pages-media/photo-1553877522-43269d4ea984.avif"
                 alt="FAQ Support"
                 className="w-full h-full object-cover cursor-pointer"
                 whileHover={{ scale: 1.1 }}
@@ -328,11 +328,11 @@ const FAQ = () => {
                 </p>
                 
                 <div className="flex items-center gap-3 lg:gap-4">
-                  <div className="text-center">
+                  {/* <div className="text-center">
                     <div className="text-white font-bold text-lg">{faqData.length}</div>
                     <div className="text-gray-300 text-xs">Questions</div>
-                  </div>
-                  <div className="w-px h-6 lg:h-8 bg-gray-400"></div>
+                  </div> */}
+                  {/* <div className="w-px h-6 lg:h-8 bg-gray-400"></div> */}
                   <div className="text-center">
                     <div className="text-white font-bold text-lg">24/7</div>
                     <div className="text-gray-300 text-xs">Support</div>

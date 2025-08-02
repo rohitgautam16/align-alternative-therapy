@@ -13,14 +13,14 @@ const Footer = () => {
 
   const companyLinks = [
     { label: 'About', path: '/about' },
-    { label: 'Careers', path: '/blog' },
+    { label: 'Blogs', path: '/blog' },
     { label: 'Contact', path: '/contact-us' },
   ];
 
   const socialLinks = [
-    { label: 'Twitter', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
+    // { label: 'Twitter', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
     { label: 'Instagram', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
-    { label: 'Facebook', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
+    // { label: 'Facebook', url: 'https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx' },
   ];
 
   useEffect(() => {

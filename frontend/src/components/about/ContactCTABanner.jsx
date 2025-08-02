@@ -8,10 +8,10 @@ const ContactCTABanner = () => {
   const navigate = useNavigate();
 
   // Unsplash images for interior design
-  const interior1 = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&h=400&fit=crop&auto=format';
-  const interior2 = 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&h=400&fit=crop&auto=format';
-  const interior3 = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format';
-  const interior4 = 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=600&h=400&fit=crop&auto=format';
+  const interior1 = 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-elly-fairytale-3822623.jpg';
+  const interior2 = 'https://cdn.align-alternativetherapy.com/static-pages-media/aaron-blanco-tejedor-nQtbM_cG7Pk-unsplash.jpg';
+  const interior3 = 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-fotios-photos-3972467.jpg';
+  const interior4 = 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-fotios-photos-1036372.jpg';
 
   useEffect(() => {
     const handleMouseMove = (e) => {

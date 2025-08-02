@@ -9,14 +9,14 @@ export default function Header() {
   const { toggleMenu } = useMenu();
 
   return (
-    <header className="absolute top-0 left-0 w-full z-80">
+    <header className="absolute top-0 pt-2 left-0 w-full z-80">
       <div className="relative flex items-center justify-center h-16">
        
         <div
-          className="absolute left-6 transform text-white cursor-pointer"
+          className="absolute left-6 top-1 transform text-white cursor-pointer"
           onClick={() => navigate('/')}
         > 
-          <img src={Logo} alt="Align Logo" className="h-15 w-auto" />
+          <img src={Logo} alt="Align Logo" className="h-25 w-auto" />
         </div>
 
         <div className="absolute right-6 flex items-center space-x-4">

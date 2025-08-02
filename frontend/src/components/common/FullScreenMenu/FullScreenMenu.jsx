@@ -7,35 +7,43 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
   const [currentImage, setCurrentImage] = useState(0);
   const [nextImageIndex, setNextImageIndex] = useState(null);
 
-  // Overlay & menu visibility states
+  // Animation states
   const [showOverlay, setShowOverlay] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
-  // Run the overlay animation when isMenuOpen toggles
   useEffect(() => {
     if (isMenuOpen) {
-      // Start overlay
+      // Start overlay animation immediately
       setShowOverlay(true);
-      setMenuVisible(false);
-      // After 2s animation, hide overlay and show menu
-      const timer = setTimeout(() => {
+      
+      // Show menu during the middle of overlay animation (when screen is fully covered)
+      // This happens at 30% of the animation (around 0.6s when overlay is stationary and covering screen)
+      const menuTimer = setTimeout(() => {
+        setShowMenu(true);
+      }, 600); // Menu appears when overlay is fully covering the screen
+      
+      // Remove overlay after animation completes
+      const overlayTimer = setTimeout(() => {
         setShowOverlay(false);
-        setMenuVisible(true);
       }, 2000);
-      return () => clearTimeout(timer);
+      
+      return () => {
+        clearTimeout(menuTimer);
+        clearTimeout(overlayTimer);
+      };
     } else {
-      // Immediately hide both
+      // Hide everything immediately
       setShowOverlay(false);
-      setMenuVisible(false);
+      setShowMenu(false);
     }
   }, [isMenuOpen]);
 
   // Define menu items with paths
   const menuItems = [
-    { title: 'Home', path: '/', image: 'https://images.unsplash.com/photo-1545389336-cf090694435e?w=600&h=800&fit=crop' },
-    { title: 'About Us', path: '/about', image: 'https://images.unsplash.com/photo-1600298881974-6be191ceeda1?w=600&h=800&fit=crop' },
-    { title: 'Blogs', path: '/blog', image: 'https://plus.unsplash.com/premium_photo-1750681051145-45991d0693ee?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?w=600&h=800&fit=crop' },
-    { title: 'Contact', path: '/contact-us', image: 'https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=600&h=800&fit=crop' }
+    { title: 'Home', path: '/', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/anh-tuan-thomas-w5m0E6SogmM-unsplash.jpg' },
+    { title: 'About Us', path: '/about', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-egoagency-7745134.jpg' },
+    { title: 'Blogs', path: '/blog', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-pavel-danilyuk-7802305.jpg' },
+    { title: 'Contact', path: '/contact-us', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/photo-1423666639041-f56000c27a9a.jpeg' }
   ];
 
   const handleMenuItemHover = (index) => {
@@ -48,16 +56,15 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
     }
   };
 
+  const handleClose = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
     <>
-      {/* Sliding overlay animation */}
-      {showOverlay && (
-        <div className="fixed inset-0 z-150 bg-black animate-overlay" />
-      )}
-
-      {/* Main menu, shown after overlay */}
-      {menuVisible && (
-        <div className="fixed inset-0 z-140 h-screen flex transition-transform duration-500 ease-in-out translate-x-0">
+      {/* Main menu - renders only when overlay is covering screen */}
+      {showMenu && (
+        <div className="fixed inset-0 z-140 h-screen flex">
           {/* Left Section - Image (40%) */}
           <div className="w-2/5 relative overflow-hidden">
             <img
@@ -83,7 +90,7 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Close Button */}
             <div className="absolute top-8 right-8 z-30">
               <button
-                onClick={() => setIsMenuOpen(false)}
+                onClick={handleClose}
                 className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 hover:rotate-90"
                 aria-label="Close menu"
               >
@@ -98,7 +105,11 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
                   <a
                     key={item.title}
                     href={item.path}
-                    onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); navigate(item.path); }}
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      setIsMenuOpen(false);
+                      navigate(item.path);
+                    }}
                     className="group relative block text-white hover:text-red-400 transition-all duration-300"
                     onMouseEnter={() => handleMenuItemHover(index)}
                   >
@@ -120,7 +131,7 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
                   <p className="text-xs text-white/50 mt-3">Vancouver, BC, Canada</p>
                 </div>
                 <div className="flex gap-4">
-                  {[Facebook, Instagram, Linkedin].map((Icon, i) => (
+                  {[Instagram].map((Icon, i) => (
                     <a
                       key={i}
                       href="https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx"
@@ -135,6 +146,11 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sliding overlay animation - highest z-index */}
+      {showOverlay && (
+        <div className="fixed inset-0 z-150 bg-black animate-overlay" />
       )}
 
       {/* Global styles for animations */}

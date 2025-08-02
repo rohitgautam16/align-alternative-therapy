@@ -200,9 +200,9 @@ const ContactBanner = () => {
                 <div className="flex items-center gap-6">
                   <div 
                     ref={eyeRef}
-                    className="w-16 h-16 lg:w-20 lg:h-20 border-2 border-white rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:bg-white hover:text-black group"
+                    className="w-16 h-16 lg:w-20 lg:h-20 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:bg-white hover:text-black group"
                   >
-                    <div className="w-3 h-3 bg-white rounded-full group-hover:bg-black transition-colors duration-300"></div>
+                    {/* <div className="w-3 h-3 bg-white rounded-full group-hover:bg-black transition-colors duration-300"></div> */}
                   </div>
                   <h1 className="text-5xl lg:text-6xl font-light text-white leading-none touch-text">
                     TOUCH

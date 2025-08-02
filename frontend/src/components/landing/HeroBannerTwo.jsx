@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdArrowOutward } from "react-icons/md";
 
-const videoUrl = "https://videos.pexels.com/video-files/6509628/6509628-uhd_2560_1440_30fps.mp4";
+const videoUrl = "https://cdn.align-alternativetherapy.com/static-pages-media/13115940_3840_2160_60fps.mp4";
 
 const HeroBannerTwo = () => {
   const videoRef = useRef(null);
@@ -92,7 +92,7 @@ const HeroBannerTwo = () => {
           transform: "scale(1)",
         }}
       >
-        CLICK TO<br />LOGIN
+        LOGIN TO<br />LISTEN
       </div>
 
       <section 
@@ -193,48 +193,33 @@ const HeroBannerTwo = () => {
             </div>
           </div>
 
-          {/* Responsive HR Line */}
-          <hr
-            style={{
-              border: "none",
-              height: "1px",
-              background: "rgba(255,255,255,0.2)",
-              margin: "clamp(1rem, 3vw, 2rem) auto",
-              width: "90%",
-            }}
-          />
+          {/* Container for HR and Columns */}
+          <div className="content-container">
+            {/* Responsive HR Line */}
+            <hr className="responsive-hr" />
 
-          {/* Responsive Three Columns */}
-          <div
-            className="responsive-columns"
-            style={{
-              maxWidth: "1200px",
-              margin: "0 auto",
-              padding: "0 clamp(1rem, 4vw, 2rem)",
-              display: "grid",
-              gap: "clamp(1rem, 3vw, 2rem)",
-            }}
-          >
-            {/* Column 1 - Hidden on mobile  */}
-            <div className="column-1">
-              {/* <p className="column-text">
-                Discover personalized audio journeys that quickly balance your mind, body, and spirit.
-              </p> */}
-              <MdArrowOutward className="text-white h-10 w-10"/>
-            </div>
+            {/* Responsive Three Columns */}
+            <div className="responsive-columns">
+              {/* Column 1 - Hidden on mobile */}
+              <div className="column column-1">
+                <div className="arrow-container">
+                  <MdArrowOutward className="arrow-icon" />
+                </div>
+              </div>
 
-            {/* Column 2 - Always visible */}
-            <div className="column-2">
-              <p className="column-text">
-                Experience a unique therapy designed to bring you rapid alignment and incredible personal growth.
-              </p>
-            </div>
+              {/* Column 2 - Always visible */}
+              <div className="column column-2">
+                <p className="column-text">
+                  Experience a unique therapy designed to bring you rapid alignment and incredible personal growth.
+                </p>
+              </div>
 
-            {/* Column 3 - Hidden on mobile */}
-            <div className="column-3">
-              <p className="column-text">
-                Login to explore personalized sound therapy for mind-body harmony.
-              </p>
+              {/* Column 3 - Hidden on mobile */}
+              <div className="column column-3">
+                <p className="column-text">
+                  Login to explore personalized sound therapy for mind-body harmony.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -265,58 +250,156 @@ const HeroBannerTwo = () => {
               border: 2px solid yellow !important;
             }
 
-            /* Default: Desktop - 3 columns */
+            /* Content Container */
+            .content-container {
+              width: 100%;
+              max-width: 1200px;
+              margin: 0 auto;
+              padding: 0 clamp(1rem, 4vw, 2rem);
+            }
+
+            /* Responsive HR */
+            .responsive-hr {
+              border: none;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.2);
+              margin: clamp(1rem, 3vw, 2rem) 0;
+              width: 100%;
+            }
+
+            /* Column Grid */
             .responsive-columns {
+              display: grid;
+              gap: clamp(1rem, 3vw, 2rem);
               grid-template-columns: repeat(3, 1fr);
+              align-items: start;
+            }
+
+            .column {
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-start;
+              height: 100%;
             }
 
             .column-text {
-              fontSize: clamp(0.8rem, 2vw, 0.9rem);
+              font-size: clamp(0.8rem, 1.8vw, 0.9rem);
               color: #ccc;
-              lineHeight: 1.6;
+              line-height: 1.6;
               margin: 0;
-              overflow: hidden;
-              display: -webkit-box;
-              -webkit-line-clamp: 3;
-              -webkit-box-orient: vertical;
-              text-overflow: ellipsis;
+              text-align: left;
             }
 
-            /* Tablet: 768px - 1024px - Keep 3 columns with text truncation */
-            @media (min-width: 481px) and (max-width: 1024px) {
-              .responsive-columns {
-                grid-template-columns: repeat(3, 1fr);
-                gap: clamp(0.8rem, 2vw, 1.5rem);
+            .arrow-container {
+              display: flex;
+              justify-content: flex-start;
+              align-items: flex-start;
+            }
+
+            .arrow-icon {
+              color: white;
+              width: clamp(32px, 4vw, 40px);
+              height: clamp(32px, 4vw, 40px);
+              opacity: 0.8;
+              transition: opacity 0.3s ease;
+            }
+
+            .arrow-icon:hover {
+              opacity: 1;
+            }
+
+            /* Large Desktop: 1200px+ */
+            @media (min-width: 1200px) {
+              .content-container {
+                padding: 0 3rem;
               }
               
               .column-text {
-                font-size: clamp(0.7rem, 1.8vw, 0.85rem);
-                -webkit-line-clamp: 2; /* Truncate to 2 lines on tablet */
-                line-height: 1.4;
+                font-size: 0.95rem;
+                line-height: 1.7;
               }
             }
 
-            /* Mobile: Below 480px - Show only 1 column, hide others */
+            /* Desktop/Laptop: 769px - 1199px */
+            @media (min-width: 769px) and (max-width: 1199px) {
+              .responsive-columns {
+                gap: clamp(1.5rem, 2.5vw, 2rem);
+              }
+              
+              .column-text {
+                font-size: clamp(0.8rem, 1.6vw, 0.9rem);
+                line-height: 1.5;
+              }
+            }
+
+            /* Tablet: 481px - 768px */
+            @media (min-width: 481px) and (max-width: 768px) {
+              .responsive-columns {
+                grid-template-columns: repeat(3, 1fr);
+                gap: clamp(1rem, 2vw, 1.5rem);
+              }
+              
+              .column-text {
+                font-size: clamp(0.7rem, 1.8vw, 0.8rem);
+                line-height: 1.4;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              .arrow-icon {
+                width: clamp(28px, 3.5vw, 36px);
+                height: clamp(28px, 3.5vw, 36px);
+              }
+            }
+
+            /* Mobile: 320px - 480px */
             @media (max-width: 480px) {
+              .content-container {
+                padding: 0 1rem;
+              }
+
               .responsive-columns {
                 grid-template-columns: 1fr;
+                gap: 0;
+                text-align: center;
               }
               
               .column-1, .column-3 {
                 display: none !important;
               }
               
+              .column-2 {
+                width: 100%;
+              }
+
               .column-text {
-                font-size: clamp(0.85rem, 3vw, 1rem);
-                -webkit-line-clamp: unset; /* No truncation on mobile, show full text */
-                line-height: 1.5;
+                font-size: clamp(0.9rem, 3vw, 1rem);
+                line-height: 1.6;
                 text-align: center;
+                display: block;
+                -webkit-line-clamp: unset;
+                overflow: visible;
               }
 
               .cursor {
                 width: 50px !important;
                 height: 50px !important;
                 font-size: 8px !important;
+              }
+
+              .responsive-hr {
+                margin: clamp(0.8rem, 2vw, 1.2rem) 0;
+              }
+            }
+
+            /* Extra Small Mobile: Below 320px */
+            @media (max-width: 319px) {
+              .column-text {
+                font-size: 0.85rem;
+                line-height: 1.5;
               }
             }
           `}

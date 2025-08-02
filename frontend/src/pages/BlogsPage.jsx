@@ -124,18 +124,18 @@ export default function BlogsPage() {
                   className="w-16 h-12 relative cursor-pointer transition-all duration-300 hover:scale-110 group"
                 >
                   {/* Book Pages */}
-                  <div className="absolute inset-0 bg-white rounded-r-md shadow-lg transform rotate-1 group-hover:rotate-2 transition-transform duration-300"></div>
-                  <div className="absolute inset-0 bg-gray-100 rounded-r-md shadow-lg transform -rotate-1 group-hover:-rotate-2 transition-transform duration-300"></div>
+                  {/* <div className="absolute inset-0 bg-white rounded-r-md shadow-lg transform rotate-1 group-hover:rotate-2 transition-transform duration-300"></div>
+                  <div className="absolute inset-0 bg-gray-100 rounded-r-md shadow-lg transform -rotate-1 group-hover:-rotate-2 transition-transform duration-300"></div> */}
                   
                   {/* Book Cover */}
-                  <div className="relative w-full h-full bg-gradient-to-br from-blue-600 to-purple-700 rounded-r-md shadow-xl flex items-center justify-center group-hover:from-blue-500 group-hover:to-purple-600 transition-all duration-300">
+                  {/* <div className="relative w-full h-full bg-gradient-to-br from-blue-600 to-purple-700 rounded-r-md shadow-xl flex items-center justify-center group-hover:from-blue-500 group-hover:to-purple-600 transition-all duration-300">
                     <div className="w-1 h-8 bg-white/30 rounded-full"></div>
                     <div className="w-6 h-1 bg-white/40 rounded-full absolute top-3"></div>
                     <div className="w-4 h-1 bg-white/30 rounded-full absolute bottom-3"></div>
-                  </div>
+                  </div> */}
                   
                   {/* Book Spine */}
-                  <div className="absolute left-0 top-0 w-2 h-full bg-gradient-to-b from-blue-800 to-purple-900 rounded-l-sm group-hover:from-blue-700 group-hover:to-purple-800 transition-all duration-300"></div>
+                  {/* <div className="absolute left-0 top-0 w-2 h-full bg-gradient-to-b from-blue-800 to-purple-900 rounded-l-sm group-hover:from-blue-700 group-hover:to-purple-800 transition-all duration-300"></div> */}
                 </div>
                 <h1 className="text-5xl lg:text-6xl font-light text-white leading-none">
                   OUR
@@ -156,7 +156,7 @@ export default function BlogsPage() {
                 ref={subtitleRef}
                 className="text-lg text-white/70 font-medium leading-relaxed max-w-md mx-auto"
               >
-                Discover articles on ASMR therapy, healing sounds, and holistic well-being.
+                Discover information on therapy, healing sounds, and holistic well-being.
               </p>
             </div>
           </div>

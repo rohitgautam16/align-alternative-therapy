@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLoginUserMutation, useRegisterUserMutation } from '../../utils/api';
 import useSignIn from 'react-auth-kit/hooks/useSignIn';
-import Logo from '../../assets/icons/Logo.png';
+import Logo from '../../assets/images/logo-with-text-removebg-preview.png';
 import { useAuthActions } from '../../hooks/useAuthActions';
 
 const containerVariants = {
@@ -95,14 +95,13 @@ export default function Login() {
         <div className="p-5 px-10 flex flex-col justify-center">
           <motion.div variants={itemVariants} className="mb-5 flex items-center gap-3">
             <img src={Logo} alt="Logo" className="h-20" />
-            <span className="text-white/80 text-2xl">Align</span>
           </motion.div>
 
           <motion.div variants={itemVariants} className="mb-5">
             <h2 className="text-2xl font-bold text-white mb-1">
               {isSignup ? 'Create Account' : 'Welcome back'}
             </h2>
-            <p className="text-white/70">
+            <p className="text-white/70 text-sm">
               {isSignup
                 ? 'Fill in your info to sign up'
                 : 'Enter your credentials to continue'}
@@ -237,14 +236,13 @@ export default function Login() {
           className="hidden lg:block relative bg-cover bg-center"
           style={{
             backgroundImage:
-              'url(https://images.unsplash.com/photo-1581372526706-30d69c143996?... )'
+              'url(https://cdn.align-alternativetherapy.com/static-pages-media/pexels-shvetsa-4557398.jpg)'
           }}
         >
-          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <div className="text-center px-8">
-              <h3 className="text-4xl font-bold text-white mb-6">
-                What’s your<br />Music Taste?
-              </h3>
+              <div className="text-5xl font-medium text-white tracking-wider">ALIGN</div>
+              <div className="text-white/80 text-xl mt-2">Mind • Body • Soul</div>
               <blockquote className="text-white/90 text-base mb-4">
                 “Sometimes the most productive thing you can do is relax”
               </blockquote>
