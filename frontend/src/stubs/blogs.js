@@ -4,7 +4,7 @@ const stubBlogs = [
     slug: 'the-fascinating-case-of-cattle-fooled-by-fake-grids-a-dr-rupert-sheldrake-experiment',
     title: 'The Fascinating Case of Cattle Fooled by Fake Grids: A Dr. Rupert Sheldrake Experiment',
     excerpt: 'Painted faux cattle grids deter cows as effectively as real ones, hinting at an innate pattern‑recognition ability linked to morphic resonance',
-    coverImage: 'https://align-alternativetherapy.com/wp-content/uploads/2024/02/joshua-oluwagbemiga-Z6HQ0EhoD6g-unsplash-scaled.jpg',
+    coverImage: 'https://cdn.align-alternativetherapy.com/align-images/playlist/Memory playlist-img.avif',
     content: `
     <body>
   <article>
@@ -27,7 +27,7 @@ const stubBlogs = [
     slug: 'exploring-the-intersection-of-science-and-spirituality-the-case-for-experiential-understanding',
     title: 'Exploring the Intersection of Science and Spirituality: The Case for Experiential Understanding',
     excerpt: 'Science maps the physical but overlooks consciousness; through experiential practices, we glimpse an interconnected reality—Align offers insights into the metaphysical forces animating us all',
-    coverImage: 'https://align-alternativetherapy.com/wp-content/uploads/2024/02/exploring-the-i-5ab5b941-8074-4897-b924-79794c838b24.png',
+    coverImage: 'https://cdn.align-alternativetherapy.com/align-images/playlist/Acne playlist-img.avif',
     content: `
 <body>
   <article>
@@ -52,7 +52,7 @@ const stubBlogs = [
     slug: 'binaural-beats',
     title: 'Binaural Beats',
     excerpt: 'Binaural beats—created by playing slightly different tones to each ear—can entrain brainwaves (delta to gamma), offering a simple, science‑backed way to boost relaxation, focus, and cognition',
-    coverImage: 'https://align-alternativetherapy.com/wp-content/uploads/2024/02/compressed_1706712208767-scaled.webp',
+    coverImage: 'https://cdn.align-alternativetherapy.com/align-images/playlist/Binaural - Organ Massage playlist-img.avif',
     content: `
 <body>
   <article>
