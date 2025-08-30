@@ -1,36 +1,60 @@
-// src/services/subscriptionSyncService.js
+'use strict';
 const db = require('../db');
 
 /**
- * Check if the user has any active or trialing subscription,
- * and update users.is_subscribed accordingly.
+ * Determine whether a user should be treated as subscribed.
+ * Rules:
+ * - Counts active, trialing, past_due, or cancel_at_period_end subscriptions
+ *   that are currently valid (not expired).
+ *
+ * Updates users.is_subscribed only when it actually changes.
+ *
+ * Returns: boolean (true = subscribed).
  */
 async function syncUserSubscriptionFlag(userId) {
-  // Count any non‑expired subscriptions
-  const [[{ count }]] = await db.query(
-    `SELECT COUNT(*) AS count
+  if (!userId) throw new Error('syncUserSubscriptionFlag requires userId');
+
+  try {
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS cnt
        FROM subscriptions
-      WHERE user_id = ?
-        AND status IN ('active','trialing')`,
-    [userId]
-  );
+       WHERE user_id = ?
+         AND (
+           (status IN ('active','trialing','past_due') AND (expires_at IS NULL OR expires_at > NOW()))
+           OR (cancel_at_period_end = 1 AND (expires_at IS NULL OR expires_at > NOW()))
+         )`,
+      [userId]
+    );
 
-  const isSubscribed = count > 0 ? 1 : 0;
+    const count = Number(countRows?.[0]?.cnt || 0);
+    const computedFlag = count > 0 ? 1 : 0;
 
-  await db.query(
-    `UPDATE users
-        SET is_subscribed = ?
-      WHERE id = ?`,
-    [isSubscribed, userId]
-  );
+    const [userRows] = await db.query(
+      `SELECT is_subscribed FROM users WHERE id = ? LIMIT 1`,
+      [userId]
+    );
 
-  return Boolean(isSubscribed);
+    const currentFlag = userRows?.[0]?.is_subscribed ? 1 : 0;
+
+    if (currentFlag !== computedFlag) {
+      await db.query(
+        `UPDATE users SET is_subscribed = ? WHERE id = ?`,
+        [computedFlag, userId]
+      );
+    }
+
+    return Boolean(computedFlag);
+  } catch (err) {
+    err.message = `syncUserSubscriptionFlag failed for user ${userId}: ${err.message}`;
+    throw err;
+  }
 }
 
 /**
- * Fetch the full user record by ID.
+ * Fetch full user record by ID.
  */
 async function fetchUserById(userId) {
+  if (!userId) return null;
   const [rows] = await db.query(
     `SELECT
        id,
@@ -42,7 +66,8 @@ async function fetchUserById(userId) {
        updated_at,
        deleted_at,
        is_subscribed,
-       user_roles
+       user_roles,
+       has_addon
      FROM users
      WHERE id = ?
        AND deleted_at IS NULL`,

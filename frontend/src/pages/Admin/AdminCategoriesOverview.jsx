@@ -4,7 +4,8 @@ import {
   useListCategoriesQuery,
   useCreateCategoryMutation,
   useUploadR2FilesMutation,
-  useGetR2PresignUrlQuery, 
+  useGetR2PresignUrlQuery,
+  useGetDashboardAllPlaylistsQuery, // ✅ Added to get playlists data
 } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { Grid3X3, List, Eye, Plus, Search, X, Upload, CheckCircle } from 'lucide-react';
@@ -24,11 +25,9 @@ export default function AdminCategoriesOverview() {
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
 
-
   const [artworkKey, setArtworkKey] = useState(null);
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
-
 
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
 
@@ -40,6 +39,9 @@ export default function AdminCategoriesOverview() {
     error, 
     refetch 
   } = useListCategoriesQuery({ page: 1, pageSize: 200 });
+
+  // ✅ NEW: Fetch all playlists to count them per category
+  const { data: allPlaylistsData = [] } = useGetDashboardAllPlaylistsQuery();
 
   // Create mutation
   const [createCategory, { isLoading: creating }] = useCreateCategoryMutation();
@@ -53,7 +55,6 @@ export default function AdminCategoriesOverview() {
   });
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
-
 
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
@@ -78,6 +79,28 @@ export default function AdminCategoriesOverview() {
     
     return [];
   }, [data]);
+
+  // ✅ NEW: Create playlist count mapping per category
+  const playlistCounts = React.useMemo(() => {
+    const counts = {};
+    
+    // Initialize all categories with 0 count
+    allCategories.forEach(category => {
+      counts[category.id] = 0;
+    });
+    
+    // Count playlists per category
+    if (Array.isArray(allPlaylistsData)) {
+      allPlaylistsData.forEach(playlist => {
+        const categoryId = playlist.categoryId || playlist.category_id;
+        if (categoryId && counts.hasOwnProperty(categoryId)) {
+          counts[categoryId]++;
+        }
+      });
+    }
+    
+    return counts;
+  }, [allCategories, allPlaylistsData]);
 
   // Filter categories
   const filteredCategories = React.useMemo(() => {
@@ -110,22 +133,19 @@ export default function AdminCategoriesOverview() {
     setPage(1);
   }, [searchTerm]);
 
- 
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
     setArtworkUploading(true);
-    setArtworkUploadProgress(5); // Set initial progress
+    setArtworkUploadProgress(5);
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      // Trigger the presign query by setting params
       setArtworkPresignParams({
         filename: selectedArtFile.name,
         contentType: selectedArtFile.type,
         folder: "align-images/categories",
       });
-      
     } catch (err) {
       console.error('Upload error:', err);
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
@@ -133,7 +153,6 @@ export default function AdminCategoriesOverview() {
       setArtworkUploadProgress(0);
     }
   };
-
 
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
@@ -147,20 +166,17 @@ export default function AdminCategoriesOverview() {
         });
 
         setFlash({ txt: "Uploading artwork...", ok: true });
-        setArtworkUploadProgress(10); // Initial progress
+        setArtworkUploadProgress(10);
         
-        // Create XMLHttpRequest for progress tracking
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
             setArtworkUploadProgress(percentComplete);
           }
         });
 
-        // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
@@ -171,29 +187,24 @@ export default function AdminCategoriesOverview() {
             setFlash({ txt: "Artwork uploaded successfully!", ok: true });
             setArtworkUploadProgress(100);
             
-            // Clear file selection after successful upload
             setSelectedArtFile(null);
             setArtworkPresignParams(null);
             const artInput = document.getElementById('create-artwork-upload');
             if (artInput) artInput.value = '';
             
-            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setArtworkUploading(false);
               setArtworkUploadProgress(0);
-            }, 3000); // Keep visible for 3 seconds
-            
+            }, 3000);
           } else {
             throw new Error('Upload failed');
           }
         });
 
-        // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
 
-        // Start the upload
         xhr.open('PUT', artworkPresign.url);
         xhr.setRequestHeader('Content-Type', selectedArtFile.type);
         xhr.send(selectedArtFile);
@@ -202,9 +213,8 @@ export default function AdminCategoriesOverview() {
         console.error('Artwork upload error:', err);
         setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
         setArtworkUploadProgress(0);
-        setArtworkUploading(false); // Reset immediately on error
+        setArtworkUploading(false);
       }
-      // No finally block to avoid immediate state reset
     };
 
     uploadArtwork();
@@ -240,7 +250,6 @@ export default function AdminCategoriesOverview() {
         artwork_filename: '',
       });
       setSelectedArtFile(null);
-      
       
       setArtworkKey(null);
       setArtworkUploading(false);
@@ -398,7 +407,6 @@ export default function AdminCategoriesOverview() {
               />
               
               <div className="space-y-2">
-                {/* File selection */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     id="create-artwork-upload"
@@ -417,7 +425,6 @@ export default function AdminCategoriesOverview() {
                     </span>
                   </label>
                   
-                  {/* Status indicator */}
                   {artworkKey && (
                     <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                       <CheckCircle size={14} />
@@ -426,7 +433,6 @@ export default function AdminCategoriesOverview() {
                   )}
                 </div>
 
-                {/*  Progress bar */}
                 {artworkUploading && (
                   <div className="w-full">
                     <div className="flex justify-between items-center mb-1">
@@ -447,7 +453,6 @@ export default function AdminCategoriesOverview() {
                   </div>
                 )}
                 
-                {/* Upload button */}
                 {selectedArtFile && !artworkKey && (
                   <button
                     type="button"
@@ -511,50 +516,59 @@ export default function AdminCategoriesOverview() {
                   : 'grid-cols-1'
               }`}
             >
-              {paginatedCategories.map((category) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gray-800 rounded-lg flex flex-col-reverse md:flex-row h-auto md:h-48 overflow-hidden hover:bg-gray-750 transition-colors"
-                >
-                  {/* Left pane (text + buttons) - Same as playlist card */}
-                  <div className="flex-1 flex flex-col p-4 justify-between mt-4 md:mt-0 min-w-0">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-medium text-lg md:text-xl text-white truncate mb-1">
-                        {category.title}
-                      </h3>
-                      <p className="text-sm md:text-md text-gray-400 truncate mb-1">
-                        Slug: {category.slug}
-                      </p>
-                      <p className="text-xs md:text-sm text-gray-500 truncate">
-                        Category Id: {category.id}
-                      </p>
+              {paginatedCategories.map((category) => {
+                {/* ✅ NEW: Get playlist count for this category */}
+                const playlistCount = playlistCounts[category.id] || 0;
+                
+                return (
+                  <motion.div
+                    key={category.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gray-800 rounded-lg flex flex-col-reverse md:flex-row h-auto md:h-48 overflow-hidden hover:bg-gray-750 transition-colors"
+                  >
+                    {/* Left pane (text + buttons) - Enhanced with playlist count */}
+                    <div className="flex-1 flex flex-col p-4 justify-between mt-4 md:mt-0 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-lg md:text-xl text-white truncate mb-1">
+                          {category.title}
+                        </h3>
+                        <p className="text-sm md:text-md text-gray-400 truncate mb-1">
+                          Slug: {category.slug}
+                        </p>
+                        {/* ✅ NEW: Show playlist count */}
+                        <p className="text-xs md:text-sm text-gray-500 truncate mb-1">
+                          {playlistCount} playlist{playlistCount !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-500 truncate">
+                          Category Id: {category.id}
+                        </p>
+                      </div>
+                      
+                      <div className="mt-3 md:mt-4 flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => navigate(`/admin/categories/${category.id}`)}
+                          className="text-blue-400 hover:underline flex items-center gap-1 text-sm whitespace-nowrap"
+                        >
+                          <Eye size={14} /> Edit
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="mt-3 md:mt-4 flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => navigate(`/admin/categories/${category.id}`)}
-                        className="text-blue-400 hover:underline flex items-center gap-1 text-sm whitespace-nowrap"
-                      >
-                        <Eye size={14} /> Edit
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* Right pane (image) - Same as playlist card */}
-                  <div className="flex-shrink-0 w-full md:w-48 h-48 md:h-full">
-                    <img
-                      src={category.image || category.artwork_filename || ''}
-                      alt={category.title}
-                      className="w-full h-full rounded-t-lg md:rounded-t-none md:rounded-r-lg object-cover"
-                      onError={(e) => {
-                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjMzc0MTUxIi8+CjxwYXRoIGQ9Ik05NiA2NEwxMjggMTI4SDY0TDk2IDY0WiIgZmlsbD0iIzZCNzI4MCIvPgo8L3N2Zz4=';
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
+                    {/* Right pane (image) - Same as playlist card */}
+                    <div className="flex-shrink-0 w-full md:w-48 h-48 md:h-full">
+                      <img
+                        src={category.image || category.artwork_filename || ''}
+                        alt={category.title}
+                        className="w-full h-full rounded-t-lg md:rounded-t-none md:rounded-r-lg object-cover"
+                        onError={(e) => {
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjMzc0MTUxIi8+CjxwYXRoIGQ9Ik05NiA2NEwxMjggMTI4SDY0TDk2IDY0WiIgZmlsbD0iIzZCNzI4MCIvPgo8L3N2Zz4=';
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
 

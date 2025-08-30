@@ -10,7 +10,6 @@ export default function CategorySection() {
   const { collapsed } = useSidebar();
   const sliderRef = useRef(null);
 
-
   useEffect(() => {
     const slider = sliderRef.current;
     if (slider && slider.innerSlider && typeof slider.innerSlider.onWindowResized === 'function') {
@@ -30,6 +29,20 @@ export default function CategorySection() {
     autoplay: true,
     autoplaySpeed: 5000,
     adaptiveHeight: true,
+    responsive: [
+      {
+        breakpoint: 1024, 
+        settings: {
+          slidesToShow: 1,
+        },
+      },
+      {
+        breakpoint: 640,
+        settings: {
+          slidesToShow: 1,
+        },
+      },
+    ],
   };
 
   return (

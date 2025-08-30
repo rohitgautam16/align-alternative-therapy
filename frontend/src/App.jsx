@@ -23,6 +23,9 @@ import ProfilePage from './pages/ProfilePage'
 import TransitionWrapper from './components/custom-ui/transition'
 import SubscribePage from './pages/SubscribePage'
 import PaymentSuccesful from './components/landing/PaymentSuccesful'
+import ManageSubscription from './pages/ManageSubscription'
+
+import PersonalizeSection from './components/dashboard/Personalized Service/PersonalizeSection';
 
 import AdminRoute from './components/admin/AdminRoutes'
 import AdminDashboardLayout from './components/admin/AdminDashboardLayout'
@@ -37,11 +40,18 @@ import AdminSongsOverview from './pages/Admin/AdminSongsOverview'
 import AdminSongDetail from './pages/Admin/AdminSongDetail'
 import AdminUpload from './pages/Admin/AdminR2FileManager'
 import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
+import AdminPersonalize from './pages/Admin/AdminPersonalize';
+import BasicPersonalize from './pages/Admin/BasicPersonalize';
+
 import RecentlyPlayed from './pages/RecentlyPlayed'
+import useOneTimePreloader from './hooks/useOneTimePreloader'
+import Preloader from './components/custom-ui/Preloader'
+
+import { SubscriptionProvider } from './context/SubscriptionContext';
 
 
 // Wrap with your page‑transition HOC
-const WrappedHomepage = TransitionWrapper(Homepage)
+//const WrappedHomepage = TransitionWrapper(Homepage)
 const WrappedLoginPage = TransitionWrapper(LoginPage)
 
 // A real component (not an IIFE) to guard /login
@@ -60,14 +70,21 @@ function ProtectedRoute({ children, loginPath = '/login' }) {
 }
 
 export default function App() {
+  const { show, complete } = useOneTimePreloader({
+    storageKey: "preloader_seen",
+  });
+  //if (show === undefined) return null;
   const location = useLocation()
 
   return (
-    <AnimatePresence initial={false} mode="wait">
+    <>
+      <SubscriptionProvider>
+      {show && <Preloader isVisible onComplete={complete} />}
+      <AnimatePresence initial={false} mode="wait">
       <Routes location={location} >
         {/* Public routes under your global Layout */}
         <Route element={<Layout />}>
-          <Route path="/" element={<WrappedHomepage />} />
+          <Route path="/" element={<Homepage />} />
           <Route path="/login" element={<LoginRoute />} />
           <Route path="/restore" element={<RestoreAccountPage />} />
           <Route path="/about" element={<About />} />
@@ -89,6 +106,7 @@ export default function App() {
         >
           <Route index element={<DashboardHome />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="manage-subscription" element={<ManageSubscription />} />
           <Route path="category/:slug" element={<CategoryView />} />
           <Route path="playlist/:slug" element={<PlaylistView />} />
           <Route path="song/:id" element={<SongView />} />
@@ -96,6 +114,7 @@ export default function App() {
           <Route path="user-playlists" element={<MyPlaylists />} />
           <Route path="user-playlists/:slug" element={<UserPlaylistView />} />
           <Route path="user-activity/recent-plays" element={<RecentlyPlayed />} />
+          <Route path="personalize" element={<PersonalizeSection />} />
         </Route>
 
         {/* Admin login (unprotected) */}
@@ -124,11 +143,16 @@ export default function App() {
          <Route path="songs" element={<AdminSongsOverview />} /> 
          <Route path="songs/:id" element={<AdminSongDetail />} />
          <Route path="upload" element={<AdminUpload />} />
+         <Route path="personalize" element={<AdminPersonalize />} />
+         <Route path="personalize-basic" element={<BasicPersonalize />} />
        </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
+    </SubscriptionProvider>
+    </>
+    
   )
 }

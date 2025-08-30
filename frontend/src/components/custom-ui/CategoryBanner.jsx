@@ -64,7 +64,7 @@ export default function CategoryBanner({ category }) {
           onClick={(e) => { e.stopPropagation(); handleClick(); }}
           className="border border-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-lg 
                      text-white text-sm backdrop-blur-sm bg-white/10
-                     hover:bg-red-600 hover:border-red-600 transition-all duration-300
+                     hover:bg-secondary hover:border-secondary transition-all duration-300
                      flex-shrink-0 drop-shadow-lg cursor-pointer"
         >
           Explore Category

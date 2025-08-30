@@ -5,10 +5,7 @@ require('dotenv').config();
 const ACCESS_SECRET  = process.env.JWT_ACCESS_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
-/**
- * Signs the entire user object you pass in,
- * so claims like email, full_name, user_roles end up in the token.
- */
+
 function generateAccessToken(user) {
 
   return jwt.sign(user, ACCESS_SECRET, {

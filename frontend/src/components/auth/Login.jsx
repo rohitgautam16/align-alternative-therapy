@@ -84,9 +84,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen pt-16 bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen pt-26 bg-black flex items-center justify-center p-4">
       <motion.div
-        className="w-full max-w-[70vw] grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/10"
+        className="w-full max-w-[90vw] lg:w-[70vw] xl:w-[70vw] grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/10"
         initial="hidden"
         animate="visible"
         variants={containerVariants}

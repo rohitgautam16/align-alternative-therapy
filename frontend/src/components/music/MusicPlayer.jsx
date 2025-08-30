@@ -36,7 +36,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 export const PLAYER_HEIGHT = 72;
-export const HANDLE_HEIGHT = 24;
+export const HANDLE_HEIGHT = 4;
 const FALLBACK = '/rain.mp3';
 
 export default function MusicPlayer() {
@@ -110,7 +110,7 @@ export default function MusicPlayer() {
   const sliderSettings = {
     centerMode: true,
     infinite: queue.length > 1,
-    centerPadding: '20px',    // small padding so neighbors peek in
+    centerPadding: '20px',    
     slidesToShow: 3,
     speed: 600,
     cssEase: "ease-out",
@@ -201,7 +201,7 @@ export default function MusicPlayer() {
             <X
               size={32}
               onClick={toggleFullscreen}
-              className="cursor-pointer text-white hover:text-red-500 transition-colors"
+              className="cursor-pointer text-white hover:text-secondary transition-colors"
             />
           </div>
 
@@ -274,7 +274,7 @@ export default function MusicPlayer() {
                     seekTo(t);
                     dispatch(setProgress(t));
                   }}
-                  className="w-full h-1 mb-1 rounded-lg accent-red-500 cursor-pointer"
+                  className="w-full h-1 mb-1 rounded-lg accent-secondary cursor-pointer"
                 />
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>{fmt(progress)}</span>
@@ -308,37 +308,37 @@ export default function MusicPlayer() {
                     size={20}
                     onClick={() => dispatch(toggleShuffle())}
                     className={`cursor-pointer transition-colors ${
-                      shuffle ? 'text-red-500' : 'text-white hover:text-red-500'
+                      shuffle ? 'text-secondary' : 'text-white hover:text-secondary/70'
                     }`}
                   />
                   <SkipBack
                     size={24}
                     onClick={() => dispatch(prevTrack())}
-                    className="cursor-pointer text-white hover:text-red-500 transition-colors"
+                    className="cursor-pointer text-white hover:text-secondary/70 transition-colors"
                   />
                   {isPlaying ? (
                     <PauseCircle
                       size={40}
                       onClick={() => dispatch(togglePlay())}
-                      className="cursor-pointer text-red-500 hover:scale-105 transition-transform"
+                      className="cursor-pointer text-secondary hover:scale-105 transition-transform"
                     />
                   ) : (
                     <PlayCircle
                       size={40}
                       onClick={() => dispatch(togglePlay())}
-                      className="cursor-pointer text-red-500 hover:scale-105 transition-transform"
+                      className="cursor-pointer text-secondary hover:scale-105 transition-transform"
                     />
                   )}
                   <SkipForward
                     size={24}
                     onClick={() => dispatch(nextTrack())}
-                    className="cursor-pointer text-white hover:text-red-500 transition-colors"
+                    className="cursor-pointer text-white hover:text-secondary/70 transition-colors"
                   />
                   <Repeat
                     size={20}
                     onClick={() => dispatch(toggleRepeat())}
                     className={`cursor-pointer transition-colors ${
-                      repeatOne ? 'text-red-500' : 'text-white hover:text-red-500'
+                      repeatOne ? 'text-secondary' : 'text-white hover:text-secondary/70'
                     }`}
                   />
                 </div>
@@ -347,7 +347,7 @@ export default function MusicPlayer() {
                 <div className="flex items-center space-x-3 w-1/3 px-4 justify-end">
                   <Volume2
                     size={20}
-                    className="text-white cursor-pointer hover:text-red-500 transition-colors"
+                    className="text-white cursor-pointer hover:text-secondary/70 transition-colors"
                   />
                   <input
                     type="range"
@@ -360,7 +360,7 @@ export default function MusicPlayer() {
                       soundRef.current.volume(v);
                       dispatch(setVolume(v));
                     }}
-                    className="w-20 h-1 bg-gray-600 rounded-lg accent-red-500 cursor-pointer"
+                    className="w-20 h-1 bg-gray-600 rounded-lg accent-secondary cursor-pointer"
                   />
                 </div>
               </div>
@@ -403,32 +403,32 @@ export default function MusicPlayer() {
             <div className="flex items-center space-x-6 mb-1">
               <Shuffle
                 onClick={() => dispatch(toggleShuffle())}
-                className={`cursor-pointer ${shuffle ? 'text-red-500' : 'hover:text-red-500'}`}
+                className={`cursor-pointer ${shuffle ? 'text-secondary' : 'hover:text-secondary/70'}`}
               />
               <SkipBack
                 onClick={() => dispatch(prevTrack())}
-                className="cursor-pointer hover:text-red-500"
+                className="cursor-pointer hover:text-secondary/70"
               />
               {isPlaying ? (
                 <PauseCircle
                   size={36}
                   onClick={() => dispatch(togglePlay())}
-                  className="cursor-pointer text-red-500"
+                  className="cursor-pointer text-secondary"
                 />
               ) : (
                 <PlayCircle
                   size={36}
                   onClick={() => dispatch(togglePlay())}
-                  className="cursor-pointer text-red-500"
+                  className="cursor-pointer text-secondary"
                 />
               )}
               <SkipForward
                 onClick={() => dispatch(nextTrack())}
-                className="cursor-pointer hover:text-red-500"
+                className="cursor-pointer hover:text-secondary/70"
               />
               <Repeat
                 onClick={() => dispatch(toggleRepeat())}
-                className={`cursor-pointer ${repeatOne ? 'text-red-500' : 'hover:text-red-500'}`}
+                className={`cursor-pointer ${repeatOne ? 'text-secondary' : 'hover:text-secondary/70'}`}
               />
             </div>
             <div className="flex items-center space-x-2 w-full">
@@ -443,7 +443,7 @@ export default function MusicPlayer() {
                   seekTo(t);
                   dispatch(setProgress(t));
                 }}
-                className="flex-1 h-1 bg-gray-600 rounded-lg accent-red-500 cursor-pointer"
+                className="flex-1 h-1 bg-gray-600 rounded-lg accent-secondary cursor-pointer"
               />
               <span className="text-xs text-gray-400">{fmt(duration)}</span>
             </div>
@@ -451,7 +451,7 @@ export default function MusicPlayer() {
 
           {/* Right: volume & fullscreen toggle */}
           <div className="flex items-center space-x-4 w-1/4 justify-end">
-            <Volume2 className="cursor-pointer hover:text-red-500" />
+            <Volume2 className="cursor-pointer hover:text-secondary/70" />
             <input
               type="range"
               min={0}
@@ -463,11 +463,11 @@ export default function MusicPlayer() {
                 soundRef.current.volume(v);
                 dispatch(setVolume(v));
               }}
-              className="w-24 h-1 bg-gray-600 rounded-lg accent-red-500 cursor-pointer"
+              className="w-24 h-1 bg-gray-600 rounded-lg accent-secondary cursor-pointer"
             />
             <Maximize
               onClick={toggleFullscreen}
-              className="cursor-pointer hover:text-red-500 transition-colors"
+              className="cursor-pointer hover:text-secondary/70 transition-colors"
             />
           </div>
         </div>

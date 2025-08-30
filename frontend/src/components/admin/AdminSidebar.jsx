@@ -17,7 +17,8 @@ import {
   BarChart3,
   UserCheck,
   UserCog,
-  Layers
+  Layers,
+  Wand2
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
 
@@ -110,6 +111,40 @@ export default function AdminSidebar() {
           <BarChart3 size={20} className="flex-shrink-0" />
           {!collapsed && (
             <span className="font-medium">Dashboard</span>
+          )}
+        </NavLink>
+
+        {/* <NavLink
+          to="/admin/personalize"
+          onClick={() => handleExpand(() => {})}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+              isActive 
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' 
+                : 'hover:bg-gray-700/50 text-gray-300 hover:text-white'
+            } ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <BarChart3 size={20} className="flex-shrink-0" />
+          {!collapsed && (
+            <span className="font-medium">Personalized Plan</span>
+          )}
+        </NavLink> */}
+
+        <NavLink
+          to="/admin/personalize-basic"
+          onClick={() => handleExpand(() => {})}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+              isActive 
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' 
+                : 'hover:bg-gray-700/50 text-gray-300 hover:text-white'
+            } ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <Wand2 className="text-white" size={22} />
+          {!collapsed && (
+            <span className="font-medium">Personalized Plan Basic</span>
           )}
         </NavLink>
 

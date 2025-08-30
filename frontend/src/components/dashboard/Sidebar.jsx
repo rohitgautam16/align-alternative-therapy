@@ -48,7 +48,7 @@ export default function Sidebar({ className = '' }) {
   return (
     <aside
       className={`
-        flex flex-col rounded-lg overflow-y-auto bg-black text-white
+        flex flex-col rounded-lg overflow-y-auto bg-black text-white h-full
         transition-all duration-300
         ${collapsed ? 'w-16' : 'w-60'}
       `}
@@ -61,7 +61,7 @@ export default function Sidebar({ className = '' }) {
           onClick={() => handleExpand(() => {})}
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg text-lg ${
-              isActive ? 'bg-red-700' : 'hover:bg-red-700'
+              isActive ? 'bg-secondary' : 'hover:bg-secondary/70'
             }`
           }
         >
@@ -75,7 +75,7 @@ export default function Sidebar({ className = '' }) {
             onClick={() =>
               handleExpand(() => setIsExploreOpen((o) => !o))
             }
-            className="w-full flex items-center justify-between px-4 py-2 rounded-lg hover:bg-red-700 transition"
+            className="w-full flex items-center justify-between px-4 py-2 rounded-lg hover:bg-secondary transition"
           >
             <span className="flex items-center gap-2 text-lg">
               <MdLibraryMusic size={20} />
@@ -114,8 +114,8 @@ export default function Sidebar({ className = '' }) {
                   to={`/dashboard/category/${cat.slug}`}
                   onClick={() => handleExpand(() => {})}
                   className={({ isActive }) =>
-                    `block px-4 py-2 rounded-lg text-gray-300 hover:bg-red-700 hover:text-white ${
-                      isActive ? 'bg-red-700 text-white' : ''
+                    `block px-4 py-2 rounded-lg text-gray-300 hover:bg-secondary/70 hover:text-white ${
+                      isActive ? 'bg-secondary text-white' : ''
                     }`
                   }
                 >
@@ -131,7 +131,7 @@ export default function Sidebar({ className = '' }) {
             onClick={() =>
               handleExpand(() => setIsLibraryOpen((o) => !o))
             }
-            className="w-full flex items-center justify-between px-4 py-2 rounded-lg hover:bg-red-700 transition"
+            className="w-full flex items-center justify-between px-4 py-2 rounded-lg hover:bg-secondary/70 transition"
           >
             <span className="flex items-center gap-2 text-lg">
               <MdFavorite size={20} />
@@ -155,7 +155,7 @@ export default function Sidebar({ className = '' }) {
             <NavLink
               to="/dashboard/user-activity/recent-plays"
               onClick={() => handleExpand(() => {})}
-              className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-red-700 hover:text-white"
+              className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-secondary/70 hover:text-white"
             >
               <MdQueueMusic className="inline-block mr-2" />{' '}
               {!collapsed && 'Recently Played'}
@@ -171,7 +171,7 @@ export default function Sidebar({ className = '' }) {
             <NavLink
               to="/dashboard/user-playlists"
               onClick={() => handleExpand(() => {})}
-              className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-red-700 hover:text-white"
+              className="block px-4 py-2 text-gray-300 rounded-lg hover:bg-secondary/70 hover:text-white"
             >
               <MdLibraryMusic className="inline-block mr-2" />{' '}
               {!collapsed && 'My Playlists'}
@@ -185,7 +185,7 @@ export default function Sidebar({ className = '' }) {
         <button
          onClick={() => handleExpand(() => navigate('/dashboard/profile'))}
          className={`
-           flex items-center gap-2 py-2 rounded-lg hover:bg-red-700 transition w-full text-lg
+           flex items-center gap-2 py-2 rounded-lg hover:bg-secondary/70 transition w-full text-lg
            ${collapsed ? 'justify-center px-0' : 'px-4'}
          `}
        >

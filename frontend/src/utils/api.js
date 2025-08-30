@@ -21,7 +21,7 @@ export const api = createApi({
       return headers;
     }
   }),
-  tagTypes: ['User', 'Categories', 'Playlists', 'Songs'],
+  tagTypes: ['User', 'Categories', 'Playlists', 'Songs', 'PQ', 'REC', 'FU', 'PB', 'PB_REC', 'PB_ITEM'],
   endpoints: (build) => ({
 
     getR2PresignUrl: build.query({
@@ -401,10 +401,33 @@ export const api = createApi({
     // }),
 
     checkoutSubscription: build.mutation({
-      query: ({ plan, trial = false }) => ({
+      query: ({ plan, trial = false, includeAddon = false }) => ({
         url: '/subscribe/checkout',
         method: 'POST',
-        body: { plan, trial },
+        body: { plan, trial, includeAddon },
+      }),
+    }),
+
+    checkoutAddon: build.mutation({
+      query: (body = {}) => ({
+        url: 'subscribe/checkout-addon',
+        method: 'POST',
+        body, // optional: { plan: 'monthly' | 'annual' }
+      }),
+    }),
+
+    getSubscriptionSummary: build.query({
+      query: () => 'subscribe/summary',
+      providesTags: ['Subscription'],
+      keepUnusedDataFor: 0, // drop cache ASAP when unused
+      refetchOnMountOrArgChange: true, // always get fresh on mount/user change
+      transformResponse: (res) => res || { hasSubscription: false, status: 'none' },
+    }),
+
+    createBillingPortalSession: build.mutation({
+      query: () => ({
+        url: '/billing/portal',
+        method: 'POST',
       }),
     }),
 
@@ -612,6 +635,331 @@ export const api = createApi({
     getBlogBySlug: build.query(
       { query: (slug) => `/blogs/${slug}` }
     ),
+
+    // Personalized Plan
+
+    getMyQuestions: build.query({
+      query: ({ page = 1, pageSize = 20 } = {}) => ({
+        url: `personalize/questions`,
+        params: { page, pageSize },
+      }),
+      providesTags: (result) =>
+        result?.length
+          ? [{ type: 'PQ', id: 'LIST' }, ...result.map((q) => ({ type: 'PQ', id: q.id }))]
+          : [{ type: 'PQ', id: 'LIST' }],
+    }),
+
+    getMyQuestion: build.query({
+      query: (id) => `personalize/questions/${id}`,
+      providesTags: (_res, _err, id) => [{ type: 'PQ', id }],
+    }),
+
+    createQuestion: build.mutation({
+      query: (payload) => ({
+        url: `personalize/questions`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: [{ type: 'PQ', id: 'LIST' }],
+    }),
+
+    addMyMessage: build.mutation({
+      query: ({ questionId, body, attachment_url = null }) => ({
+        url: `personalize/questions/${questionId}/messages`,
+        method: 'POST',
+        body: { body, attachment_url },
+      }),
+      invalidatesTags: (_res, _err, { questionId }) => [{ type: 'PQ', id: questionId }],
+    }),
+
+    getMyRecommendation: build.query({
+      query: (recId) => `personalize/recommendations/${recId}`,
+      providesTags: (_res, _err, recId) => [{ type: 'REC', id: recId }],
+    }),
+
+    addItemFeedback: build.mutation({
+      query: ({ itemId, feedback, comment = null }) => ({
+        url: `personalize/items/${itemId}/feedback`,
+        method: 'POST',
+        body: { feedback, comment },
+      }),
+      // UI can update locally; no refetch strictly required
+    }),
+
+    listMyFollowups: build.query({
+      query: ({ status = 'pending', limit = 50 } = {}) => ({
+        url: `personalize/followups`,
+        params: { status, limit },
+      }),
+      providesTags: (result) =>
+        result?.length
+          ? [{ type: 'FU', id: 'LIST' }, ...result.map((f) => ({ type: 'FU', id: f.id }))]
+          : [{ type: 'FU', id: 'LIST' }],
+    }),
+
+    recordMyFollowupResponse: build.mutation({
+      query: ({ followupId, response, notes = null }) => ({
+        url: `personalize/followups/${followupId}/response`,
+        method: 'POST',
+        body: { response, notes },
+      }),
+      invalidatesTags: (_res, _err, { followupId }) => [{ type: 'FU', id: followupId }],
+    }),
+
+    // ---------- ADMIN: Personalized ----------
+    adminListQuestions: build.query({
+      query: (params = {}) => ({
+        url: `personalize/admin/questions`,
+        params, // { status, category, mood, urgency, assigned_admin_id, q, page, pageSize }
+      }),
+      providesTags: (result) =>
+        result?.length
+          ? [{ type: 'PQ', id: 'ADMIN_LIST' }, ...result.map((q) => ({ type: 'PQ', id: q.id }))]
+          : [{ type: 'PQ', id: 'ADMIN_LIST' }],
+    }),
+
+    adminGetQuestion: build.query({
+      query: (id) => `personalize/admin/questions/${id}`,
+      providesTags: (_res, _err, id) => [{ type: 'PQ', id }],
+    }),
+
+    adminAssignQuestion: build.mutation({
+      query: ({ questionId, adminId }) => ({
+        url: `personalize/admin/questions/${questionId}/assign`,
+        method: 'POST',
+        body: { adminId },
+      }),
+      invalidatesTags: (_res, _err, { questionId }) => [
+        { type: 'PQ', id: questionId },
+        { type: 'PQ', id: 'ADMIN_LIST' },
+      ],
+    }),
+
+    adminAddMessage: build.mutation({
+      query: ({ questionId, body, attachment_url = null }) => ({
+        url: `personalize/admin/questions/${questionId}/messages`,
+        method: 'POST',
+        body: { body, attachment_url },
+      }),
+      // We'll optimistic-update the adminGetQuestion cache in UI
+    }),
+
+    adminUpdateQuestionStatus: build.mutation({
+      query: ({ questionId, status }) => ({
+        url: `personalize/admin/questions/${questionId}/status`,
+        method: 'PATCH',
+        body: { status },
+      }),
+      invalidatesTags: (_res, _err, { questionId }) => [
+        { type: 'PQ', id: questionId },
+        { type: 'PQ', id: 'ADMIN_LIST' },
+      ],
+    }),
+
+    adminCreateRecommendation: build.mutation({
+      query: ({ questionId, summary_note, items = [] }) => ({
+        url: `personalize/admin/recommendations`,
+        method: 'POST',
+        body: { questionId, summary_note, items },
+      }),
+      // we'll refetch the question thread to pull new rec list
+      invalidatesTags: (_res, _err, { questionId }) => [{ type: 'PQ', id: questionId }],
+    }),
+
+    adminGetRecommendation: build.query({
+      query: (recId) => `personalize/admin/recommendations/${recId}`,
+      providesTags: (_res, _err, recId) => [{ type: 'REC', id: recId }],
+    }),
+
+    adminAddRecommendationItem: build.mutation({
+      query: ({ recId, item_type, track_id, playlist_id, prescription_note, display_order }) => ({
+        url: `personalize/admin/recommendations/${recId}/items`,
+        method: 'POST',
+        body: { item_type, track_id, playlist_id, prescription_note, display_order },
+      }),
+      invalidatesTags: (_r, _e, { recId }) => [{ type: 'REC', id: recId }],
+    }),
+
+    adminUpdateRecommendationItem: build.mutation({
+      query: ({ itemId, patch }) => ({
+        url: `personalize/admin/recommendations/items/${itemId}`,
+        method: 'PATCH',
+        body: patch,
+      }),
+      invalidatesTags: (_r, _e, { recId }) => [{ type: 'REC', id: recId }],
+    }),
+
+    adminDeleteRecommendationItem: build.mutation({
+      query: ({ itemId }) => ({
+        url: `personalize/admin/recommendations/items/${itemId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_r, _e, { recId }) => [{ type: 'REC', id: recId }],
+    }),
+
+    adminSendRecommendation: build.mutation({
+      query: ({ recId }) => ({
+        url: `personalize/admin/recommendations/${recId}/send`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_r, _e, { recId }) => [{ type: 'REC', id: recId }],
+    }),
+
+    adminUpdateRecommendationStatus: build.mutation({
+      query: ({ recId, status }) => ({
+        url: `personalize/admin/recommendations/${recId}/status`,
+        method: 'PATCH',
+        body: { status },
+      }),
+      invalidatesTags: (_r, _e, { recId }) => [{ type: 'REC', id: recId }],
+    }),
+
+    adminListTemplates: build.query({
+      query: (params = {}) => ({ url: `personalize/admin/templates`, params }),
+      // use local refetch in UI to avoid adding a new tag type
+    }),
+
+    adminCreateTemplate: build.mutation({
+      query: (payload) => ({ url: `personalize/admin/templates`, method: 'POST', body: payload }),
+    }),
+
+    adminUpdateTemplate: build.mutation({
+      query: ({ templateId, patch }) => ({
+        url: `personalize/admin/templates/${templateId}`,
+        method: 'PATCH',
+        body: patch,
+      }),
+    }),
+
+    adminDeleteTemplate: build.mutation({
+      query: ({ templateId }) => ({
+        url: `personalize/admin/templates/${templateId}`,
+        method: 'DELETE',
+      }),
+    }),
+
+    adminListFollowups: build.query({
+      query: (params = {}) => ({ url: `personalize/admin/followups`, params }),
+      providesTags: (result) =>
+        result?.length
+          ? [{ type: 'FU', id: 'ADMIN_LIST' }, ...result.map((f) => ({ type: 'FU', id: f.id }))]
+          : [{ type: 'FU', id: 'ADMIN_LIST' }],
+    }),
+
+    adminMarkFollowupSent: build.mutation({
+      query: ({ followupId }) => ({
+        url: `personalize/admin/followups/${followupId}/sent`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_r, _e, { followupId }) => [{ type: 'FU', id: followupId }, { type: 'FU', id: 'ADMIN_LIST' }],
+    }),
+    // ---------- END ADMIN: Personalized ----------
+
+     /* -------- PB Admin: list recs for a user -------- */
+      createPersonalizeBasicRequest: build.mutation({
+        query: (payload) => ({
+          url: 'personalize-basic/request',
+          method: 'POST',
+          body: payload, // { name, email, mobile?, notes? }
+        }),
+        invalidatesTags: [], // none for now
+      }),
+
+      // --- PB Admin searches (no default list; requires q) ---
+      adminPbSearchUsers: build.query({
+        query: ({ q }) => ({
+          url: '/admin/pb/search/users',
+          params: { q },   // now q is a string
+        }),
+      }),
+      adminPbSearchSongs: build.query({
+        query: ({ q }) => ({
+          url: '/admin/pb/search/songs',
+          params: { q },
+        }),
+      }),
+      adminPbSearchPlaylists: build.query({
+        query: ({ q }) => ({
+          url: '/admin/pb/search/playlists',
+          params: { q },
+        }),
+      }),
+
+
+      // --- PB Admin CRUD ---
+      adminPbListForUser: build.query({
+        query: ({ userId }) => ({ url: '/admin/pb/recommendations', params: { userId } }),
+        providesTags: (result) => [
+          { type: 'REC', id: 'LIST' },
+          ...(result?.map?.((r) => ({ type: 'REC', id: r.id })) ?? []),
+        ],
+      }),
+      adminPbCreate: build.mutation({
+        query: ({ userId, title, summary_note, items }) => ({
+          url: '/admin/pb/recommendations',
+          method: 'POST',
+          body: { userId, title, summary_note, items },
+        }),
+      }),
+      adminPbGetOne: build.query({
+        query: (recId) => `/admin/pb/recommendations/${recId}`,
+        providesTags: (_res, _err, recId) => [{ type: 'REC', id: recId }],
+      }),
+      adminPbAddItem: build.mutation({
+        query: ({ recId, item_type, track_id, playlist_id, prescription_note, display_order }) => ({
+          url: `/admin/pb/recommendations/${recId}/items`,
+          method: 'POST',
+          body: { item_type, track_id, playlist_id, prescription_note, display_order },
+        }),
+        invalidatesTags: (_res, _err, { recId }) => [{ type: 'REC', id: recId }],
+      }),
+      adminPbUpdateItem: build.mutation({
+        query: ({ itemId, patch }) => ({
+          url: `/admin/pb/recommendations/items/${itemId}`,
+          method: 'PUT',
+          body: patch,
+        }),
+      }),
+
+      adminPbDeleteItem: build.mutation({
+        query: (itemId) => ({
+          url: `/admin/pb/recommendations/items/${itemId}`,
+          method: 'DELETE',
+        }),
+      }),
+      adminPbUpdateStatus: build.mutation({
+        query: ({ recId, status }) => ({
+          url: `/admin/pb/recommendations/${recId}/status`,
+          method: 'PUT',
+          body: { status },
+        }),
+      }),
+      adminPbSendNow: build.mutation({
+        query: (recId) => ({
+          url: `/admin/pb/recommendations/${recId}/send`,
+          method: 'POST',
+        }),
+        invalidatesTags: (_res, _err, recId) => [{ type: 'REC', id: recId }],
+      }),
+
+
+      /* -------- PB User: list my recommendations (with items) -------- */
+        listMyPbRecommendations: build.query({
+          query: () => ({
+            url: '/pb/my-recommendations',
+            method: 'GET',
+          }),
+          providesTags: (result) =>
+            Array.isArray(result)
+              ? [
+                  ...result.map((r) => ({ type: 'PB', id: r?.recommendation?.id })),
+                  { type: 'PB', id: 'MINE' },
+                ]
+              : [{ type: 'PB', id: 'MINE' }],
+        }),
+
+
+
   }),
 });
 
@@ -655,6 +1003,9 @@ export const {
   useDeleteProfileMutation,
   useRestoreAccountMutation,
   useCheckoutSubscriptionMutation,
+  useCheckoutAddonMutation,
+  useGetSubscriptionSummaryQuery,
+  useCreateBillingPortalSessionMutation,
   useGetSubscriptionsQuery,
   useCreateCheckoutSessionMutation,
   useGetUserQuery,
@@ -685,7 +1036,55 @@ export const {
   useGetRecentlyPlayedQuery,
   useGetMostListenedQuery,
   useGetBlogsQuery,
-  useGetBlogBySlugQuery
+  useGetBlogBySlugQuery,
+
+  //personalized service
+  useGetMyQuestionsQuery,
+  useGetMyQuestionQuery,
+  useCreateQuestionMutation,
+  useAddMyMessageMutation,
+  useGetMyRecommendationQuery,
+  useAddItemFeedbackMutation,
+  useListMyFollowupsQuery,
+  useRecordMyFollowupResponseMutation,
+
+  //Admin personalized service
+  useAdminListQuestionsQuery,
+  useAdminGetQuestionQuery,
+  useAdminAssignQuestionMutation,
+  useAdminAddMessageMutation,
+  useAdminUpdateQuestionStatusMutation,
+  useAdminCreateRecommendationMutation,
+  useAdminGetRecommendationQuery,
+  useAdminAddRecommendationItemMutation,
+  useAdminUpdateRecommendationItemMutation,
+  useAdminDeleteRecommendationItemMutation,
+  useAdminSendRecommendationMutation,
+  useAdminUpdateRecommendationStatusMutation,
+  useAdminListTemplatesQuery,
+  useAdminCreateTemplateMutation,
+  useAdminUpdateTemplateMutation,
+  useAdminDeleteTemplateMutation,
+  useAdminListFollowupsQuery,
+  useAdminMarkFollowupSentMutation,
+
+  // Personalize Basic
+  useCreatePersonalizeBasicRequestMutation,
+  useAdminPbSearchUsersQuery,
+  useAdminPbSearchSongsQuery,
+  useAdminPbSearchPlaylistsQuery,
+
+  useAdminPbListForUserQuery,
+  useAdminPbCreateMutation,
+  useAdminPbGetOneQuery,
+  useAdminPbAddItemMutation,
+  useAdminPbUpdateItemMutation,
+  useAdminPbDeleteItemMutation,
+  useAdminPbUpdateStatusMutation,
+  useAdminPbSendNowMutation,
+
+  // PB User
+  useListMyPbRecommendationsQuery,
 } = api;
 
 

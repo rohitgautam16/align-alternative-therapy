@@ -32,6 +32,10 @@ if (NODE_ENV !== 'test') {
   app.use(morgan('tiny'));
 }
 
+const personalizeRoutes = require('../src/routes');
+app.use('/api/personalize', personalizeRoutes);
+
+
 
 
 app.get('/health', (_req, res) => res.json({ status: 'OK' }));

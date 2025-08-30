@@ -156,7 +156,7 @@ export default function PlaylistView() {
       <div className="flex items-center gap-4 px-8">
         <button
           onClick={() => handlePlaySong(songs[0], 0)}
-          className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition"
+          className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center hover:bg-secondary/70 transition"
         >
           <Play className="w-8 h-8 text-black"/>
         </button>
@@ -178,7 +178,7 @@ export default function PlaylistView() {
                     type="checkbox"
                     checked={selectedIds.includes(mpl.id)}
                     onChange={() => toggleSelect(mpl.id)}
-                    className="accent-red-800"
+                    className="accent-secondary"
                   />
                   <span className="text-white">{mpl.name}</span>
                 </label>
@@ -187,7 +187,7 @@ export default function PlaylistView() {
             {selectedIds.length > 0 && (
               <button
                 onClick={handleAdd}
-                className="mt-3 w-full bg-red-700 py-2 rounded-lg hover:bg-red-800 transition"
+                className="mt-3 w-full bg-secondary py-2 rounded-lg hover:bg-secondary/70 transition"
               >
                 Add to Selected
               </button>
@@ -217,7 +217,7 @@ export default function PlaylistView() {
       {songs.map((song, idx) => (
         <div
           key={song.id}
-          className="group grid grid-cols-[50px_1fr_1fr_80px_100px] items-center text-white py-2 px-2 rounded-lg transition hover:bg-red-700/30 cursor-pointer"
+          className="group grid grid-cols-[50px_1fr_1fr_80px_100px] items-center text-white py-2 px-2 rounded-lg transition hover:bg-secondary/30 cursor-pointer"
           onClick={() => handlePlaySong(song, idx)}
         >
           {/* 1: Track # */}
@@ -273,7 +273,7 @@ export default function PlaylistView() {
         >
           <button
             onClick={() => setShowShareModal(false)}
-            className="absolute top-3 right-3 p-1 hover:bg-red-800 rounded transition"
+            className="absolute top-3 right-3 p-1 hover:bg-secondary/70 rounded transition"
           >
             <X className="w-5 h-5 text-gray-400"/>
           </button>
@@ -284,9 +284,9 @@ export default function PlaylistView() {
               <button
                 key={i}
                 onClick={() => window.open(`https://share.example.com/${Icon.displayName}?url=${encodeURIComponent(window.location.href)}`)}
-                className="p-2 bg-white/30 rounded-full hover:bg-white/70 transition"
+                className="p-2 bg-white/30 rounded-full hover:bg-white/50 cursor-pointer transition"
               >
-                <Icon className="w-6 h-6 text-white hover:text-red-700 transition-colors"/>
+                <Icon className="w-6 h-6 text-white hover:text-secondary/70 transition-colors"/>
               </button>
             ))}
           </div>
@@ -294,7 +294,7 @@ export default function PlaylistView() {
             <p className="text-gray-300 mb-2">Copy direct link</p>
             <button
               onClick={() => navigator.clipboard.writeText(window.location.href)}
-              className="flex items-center justify-center w-full py-2 bg-white/30 hover:bg-red-700 text-gray-200 rounded transition"
+              className="flex items-center justify-center w-full py-2 bg-white/30 hover:bg-secondary/70 text-gray-200 rounded transition"
             >
               <FaTelegramPlane className="w-5 h-5 mr-2"/> Copy link
             </button>

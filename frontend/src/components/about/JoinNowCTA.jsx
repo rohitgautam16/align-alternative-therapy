@@ -1,11 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
 import { ArrowRight, Home, Music2Icon } from 'lucide-react';
 import BinuralBeats from "../../assets/images/binural beats.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
+
+// Set global performance optimizations
+gsap.ticker.lagSmoothing(1000, 16);
 
 const AnimatedCTA = () => {
   const bannerRef = useRef(null);
@@ -19,7 +23,7 @@ const AnimatedCTA = () => {
     navigate('/pricing');
   };
 
-  useEffect(() => {
+  useGSAP(() => {
     const banner = bannerRef.current;
     const content = contentRef.current;
     const image = imageRef.current;
@@ -69,6 +73,7 @@ const AnimatedCTA = () => {
         start: 'top 85%',
         end: 'bottom 20%',
         toggleActions: 'play none none reverse',
+        fastScrollEnd: true,
       },
     });
 
@@ -125,28 +130,37 @@ const AnimatedCTA = () => {
     if (image) {
       const imageElement = image.querySelector('img');
       
-      image.addEventListener('mouseenter', () => {
+      const handleImageMouseEnter = () => {
         gsap.to(imageElement, {
           scale: 1.1,
           duration: 0.6,
           ease: 'power2.out',
         });
-      });
+      };
 
-      image.addEventListener('mouseleave', () => {
+      const handleImageMouseLeave = () => {
         gsap.to(imageElement, {
           scale: 1,
           duration: 0.6,
           ease: 'power2.out',
         });
-      });
+      };
+
+      image.addEventListener('mouseenter', handleImageMouseEnter);
+      image.addEventListener('mouseleave', handleImageMouseLeave);
+
+      // Cleanup event listeners
+      return () => {
+        image.removeEventListener('mouseenter', handleImageMouseEnter);
+        image.removeEventListener('mouseleave', handleImageMouseLeave);
+      };
     }
 
     // CTA Button hover animation
     if (ctaButton) {
       const buttonIcon = ctaButton.querySelector('.cta-icon');
       
-      ctaButton.addEventListener('mouseenter', () => {
+      const handleButtonMouseEnter = () => {
         gsap.to(ctaButton, {
           scale: 1.05,
           duration: 0.3,
@@ -160,9 +174,9 @@ const AnimatedCTA = () => {
             ease: 'power2.out',
           });
         }
-      });
+      };
 
-      ctaButton.addEventListener('mouseleave', () => {
+      const handleButtonMouseLeave = () => {
         gsap.to(ctaButton, {
           scale: 1,
           duration: 0.3,
@@ -176,19 +190,25 @@ const AnimatedCTA = () => {
             ease: 'power2.out',
           });
         }
-      });
+      };
+
+      ctaButton.addEventListener('mouseenter', handleButtonMouseEnter);
+      ctaButton.addEventListener('mouseleave', handleButtonMouseLeave);
+
+      // Cleanup event listeners
+      return () => {
+        ctaButton.removeEventListener('mouseenter', handleButtonMouseEnter);
+        ctaButton.removeEventListener('mouseleave', handleButtonMouseLeave);
+      };
     }
 
-    // Cleanup
-    return () => {
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-    };
-  }, []);
+  }, { scope: bannerRef });
 
   return (
     <section
       ref={bannerRef}
       className="relative bg-black text-white py-16 lg:py-24 overflow-hidden"
+      style={{ willChange: 'transform' }}
     >
       {/* Background decorative elements */}
       {/* <div className="absolute inset-0 opacity-10">
@@ -209,10 +229,19 @@ const AnimatedCTA = () => {
         <div 
           ref={containerRef}
           className="bg-secondary/20 backdrop-blur-sm rounded-3xl p-8 lg:p-12 border border-white/10 shadow-2xl"
+          style={{ 
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden'
+          }}
         >
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Content */}
-            <div ref={contentRef} className="space-y-8">
+            <div 
+              ref={contentRef} 
+              className="space-y-8"
+              style={{ willChange: 'transform, opacity' }}
+            >
               {/* Badge */}
               <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium border border-white/20">
                 <Music2Icon className="w-4 h-4" />
@@ -233,6 +262,10 @@ const AnimatedCTA = () => {
                 ref={ctaButtonRef}
                 onClick={handleNavigate}
                 className="group bg-white text-black px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-all duration-300 border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/25"
+                style={{ 
+                  willChange: 'transform, opacity',
+                  transform: 'translateZ(0)'
+                }}
               >
                 Join Now
                 <ArrowRight className="cta-icon inline-block w-5 h-5 ml-3 transition-transform duration-300 group-hover:translate-x-1" />
@@ -244,11 +277,20 @@ const AnimatedCTA = () => {
               <div
                 ref={imageRef}
                 className="relative rounded-2xl overflow-hidden shadow-2xl cursor-pointer"
+                style={{ 
+                  willChange: 'transform, opacity',
+                  transform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden'
+                }}
               >
                 <img
                   src={BinuralBeats}
                   alt="Luxurious modern house with stunning architecture at night"
                   className="w-full h-[300px] lg:h-[400px] object-cover transition-transform duration-600"
+                  style={{ 
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden'
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
               </div>

@@ -1,3 +1,4 @@
+// src/pages/Admin/AdminPlaylistDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -9,8 +10,9 @@ import {
   useUpdateAdminSongMutation,
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
+  useCreateAdminSongMutation, 
 } from '../../utils/api';
-import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
 
@@ -124,6 +126,29 @@ export default function AdminPlaylistDetail() {
   const [togglingId, setTogglingId] = useState(null);
   const [showAvailable, setShowAvailable] = useState(false);
 
+  // ✅ UPDATED: Create song state (removed category)
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    title: '',
+    slug: '',
+    artist: '',
+    tags: '',
+    artwork_filename: '',
+    cdn_url: '',
+  });
+  const [selectedCreateArtFile, setSelectedCreateArtFile] = useState(null);
+  const [createArtworkKey, setCreateArtworkKey] = useState(null);
+  const [createArtworkUploading, setCreateArtworkUploading] = useState(false);
+  const [createArtworkUploadProgress, setCreateArtworkUploadProgress] = useState(0);
+  const [createArtworkPresignParams, setCreateArtworkPresignParams] = useState(null);
+
+  // ✅ NEW: Audio upload state
+  const [selectedAudioFile, setSelectedAudioFile] = useState(null);
+  const [audioKey, setAudioKey] = useState(null);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+  const [audioPresignParams, setAudioPresignParams] = useState(null);
+
   // ✅ FIXED: All query hooks called unconditionally at the same level
   const { 
     data: p, 
@@ -147,6 +172,9 @@ export default function AdminPlaylistDetail() {
   const [deletePlaylist] = useDeletePlaylistMutation();
   const [updateSong] = useUpdateAdminSongMutation();
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
+  
+  // ✅ NEW: Create song mutation
+  const [createSong, { isLoading: creating }] = useCreateAdminSongMutation();
 
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
@@ -155,6 +183,26 @@ export default function AdminPlaylistDetail() {
       folder: "align-images/playlists",
     },
     { skip: !artworkPresignParams }
+  );
+
+  // ✅ NEW: Presigned URL for create form artwork
+  const { data: createArtworkPresign } = useGetR2PresignUrlQuery(
+    createArtworkPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "align-images/songs",
+    },
+    { skip: !createArtworkPresignParams }
+  );
+
+  // ✅ NEW: Presigned URL for audio files
+  const { data: audioPresign } = useGetR2PresignUrlQuery(
+    audioPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "audio/songs",
+    },
+    { skip: !audioPresignParams }
   );
 
   // ✅ FIXED: All useEffect hooks called unconditionally
@@ -245,6 +293,142 @@ export default function AdminPlaylistDetail() {
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
+  // ✅ NEW: Handle create form artwork upload
+  useEffect(() => {
+    if (!createArtworkPresign || !selectedCreateArtFile || !createArtworkPresignParams) return;
+
+    const uploadCreateArtwork = async () => {
+      try {
+        console.log('🚀 Starting create artwork upload:', {
+          presignUrl: createArtworkPresign.url,
+          key: createArtworkPresign.key,
+          fileName: selectedCreateArtFile.name,
+        });
+
+        setFlash({ txt: "Uploading song artwork...", ok: true });
+        setCreateArtworkUploadProgress(10);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
+            setCreateArtworkUploadProgress(percentComplete);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${createArtworkPresign.key}`;
+            console.log('✅ Create artwork upload successful:', publicUrl);
+            
+            setCreateArtworkKey(createArtworkPresign.key);
+            setCreateForm(f => ({ ...f, artwork_filename: publicUrl }));
+            setFlash({ txt: "Song artwork uploaded successfully!", ok: true });
+            setCreateArtworkUploadProgress(100);
+            
+            setSelectedCreateArtFile(null);
+            setCreateArtworkPresignParams(null);
+            const artInput = document.getElementById('create-song-artwork-upload');
+            if (artInput) artInput.value = '';
+            
+            setTimeout(() => {
+              setCreateArtworkUploading(false);
+              setCreateArtworkUploadProgress(0);
+            }, 3000);
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        xhr.open('PUT', createArtworkPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedCreateArtFile.type);
+        xhr.send(selectedCreateArtFile);
+        
+      } catch (err) {
+        console.error('Create artwork upload error:', err);
+        setFlash({ txt: `Song artwork upload failed: ${err.message}`, ok: false });
+        setCreateArtworkUploadProgress(0);
+        setCreateArtworkUploading(false);
+      }
+    };
+
+    uploadCreateArtwork();
+  }, [createArtworkPresign, selectedCreateArtFile, createArtworkPresignParams]);
+
+  // ✅ NEW: Handle audio upload
+  useEffect(() => {
+    if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
+
+    const uploadAudio = async () => {
+      try {
+        console.log('🚀 Starting audio upload:', {
+          presignUrl: audioPresign.url,
+          key: audioPresign.key,
+          fileName: selectedAudioFile.name,
+        });
+
+        setFlash({ txt: "Uploading audio file...", ok: true });
+        setAudioUploadProgress(10);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
+            setAudioUploadProgress(percentComplete);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
+            console.log('✅ Audio upload successful:', publicUrl);
+            
+            setAudioKey(audioPresign.key);
+            setCreateForm(f => ({ ...f, cdn_url: publicUrl }));
+            setFlash({ txt: "Audio file uploaded successfully!", ok: true });
+            setAudioUploadProgress(100);
+            
+            setSelectedAudioFile(null);
+            setAudioPresignParams(null);
+            const audioInput = document.getElementById('create-song-audio-upload');
+            if (audioInput) audioInput.value = '';
+            
+            setTimeout(() => {
+              setAudioUploading(false);
+              setAudioUploadProgress(0);
+            }, 3000);
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        xhr.open('PUT', audioPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedAudioFile.type);
+        xhr.send(selectedAudioFile);
+        
+      } catch (err) {
+        console.error('Audio upload error:', err);
+        setFlash({ txt: `Audio upload failed: ${err.message}`, ok: false });
+        setAudioUploadProgress(0);
+        setAudioUploading(false);
+      }
+    };
+
+    uploadAudio();
+  }, [audioPresign, selectedAudioFile, audioPresignParams]);
+
   // ✅ FIXED: All useMemo hooks called unconditionally at the same level
   const categories = React.useMemo(() => {
     return Array.isArray(catRaw?.data) ? catRaw.data : [];
@@ -253,6 +437,11 @@ export default function AdminPlaylistDetail() {
   const selectedCategory = React.useMemo(() => {
     return categories.find((c) => c.id === form?.category_id);
   }, [categories, form?.category_id]);
+
+  // ✅ NEW: Get current playlist info for display
+  const currentPlaylist = React.useMemo(() => {
+    return p;
+  }, [p]);
 
   const allSongs = React.useMemo(() => {
     return Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
@@ -321,6 +510,18 @@ export default function AdminPlaylistDetail() {
   }
   if (!form) return null;
 
+  // ✅ NEW: Auto-generate slug from title for create form
+  const generateSlug = (title) => {
+    if (!title) return '';
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
   // ✅ All handler functions remain the same
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
@@ -340,6 +541,100 @@ export default function AdminPlaylistDetail() {
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
       setArtworkUploading(false);
       setArtworkUploadProgress(0);
+    }
+  };
+
+  // ✅ NEW: Handle create form artwork upload
+  const handleCreateArtworkUpload = async () => {
+    if (!selectedCreateArtFile) return;
+    
+    setCreateArtworkUploading(true);
+    setCreateArtworkUploadProgress(5);
+    setFlash({ txt: "Getting upload URL...", ok: true });
+    
+    try {
+      setCreateArtworkPresignParams({
+        filename: selectedCreateArtFile.name,
+        contentType: selectedCreateArtFile.type,
+        folder: "align-images/songs",
+      });
+    } catch (err) {
+      console.error('Create upload error:', err);
+      setFlash({ txt: `Song artwork upload failed: ${err.message}`, ok: false });
+      setCreateArtworkUploading(false);
+      setCreateArtworkUploadProgress(0);
+    }
+  };
+
+  // ✅ NEW: Handle audio file upload
+  const handleAudioUpload = async () => {
+    if (!selectedAudioFile) return;
+    
+    setAudioUploading(true);
+    setAudioUploadProgress(5);
+    setFlash({ txt: "Getting audio upload URL...", ok: true });
+    
+    try {
+      setAudioPresignParams({
+        filename: selectedAudioFile.name,
+        contentType: selectedAudioFile.type,
+        folder: "audio/songs",
+      });
+    } catch (err) {
+      console.error('Audio upload error:', err);
+      setFlash({ txt: `Audio upload failed: ${err.message}`, ok: false });
+      setAudioUploading(false);
+      setAudioUploadProgress(0);
+    }
+  };
+
+  // ✅ UPDATED: Handle create song with fixed playlist (removed category)
+  const handleCreateSong = async (e) => {
+    e.preventDefault();
+    
+    try {
+      // Force the playlist to be the current playlist
+      const songData = {
+        ...createForm,
+        name: createForm.title, // Some APIs expect 'name' field
+        playlist: playlistId, // Always use current playlist
+        category: null, // No category selection
+      };
+      
+      const newSong = await createSong(songData).unwrap();
+      setFlash({ txt: 'Song created successfully!', ok: true });
+      
+      // Reset create form (removed category)
+      setCreateForm({
+        title: '',
+        slug: '',
+        artist: '',
+        tags: '',
+        artwork_filename: '',
+        cdn_url: '',
+      });
+      setSelectedCreateArtFile(null);
+      setCreateArtworkKey(null);
+      setCreateArtworkUploading(false);
+      setCreateArtworkUploadProgress(0);
+      setSelectedAudioFile(null);
+      setAudioKey(null);
+      setAudioUploading(false);
+      setAudioUploadProgress(0);
+      
+      // Clear file inputs
+      const artInput = document.getElementById('create-song-artwork-upload');
+      if (artInput) artInput.value = '';
+      const audioInput = document.getElementById('create-song-audio-upload');
+      if (audioInput) audioInput.value = '';
+      
+      setShowCreateForm(false);
+      
+      // Refresh songs
+      await refetchSongs();
+    } catch (err) {
+      console.error('Create song error:', err);
+      setFlash({ txt: 'Failed to create song.', ok: false });
     }
   };
 
@@ -640,16 +935,283 @@ export default function AdminPlaylistDetail() {
         )}
       </section>
 
-      {/* Enhanced Add Song Section with Search and Sort */}
+      {/* ✅ Enhanced Add Song Section with Search, Sort, and Create */}
       <section className="space-y-4">
         <h3 className="text-2xl font-semibold">Add to Playlist</h3>
-        <button
-          onClick={() => setShowAvailable(v => !v)}
-          className="flex items-center gap-1 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
-        >
-          <Plus size={16} /> {showAvailable ? 'Close' : 'Add Songs…'}
-        </button>
+        
+        {/* ✅ NEW: Action buttons row */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => setShowAvailable(v => !v)}
+            className="flex items-center gap-1 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 flex-1 sm:flex-none"
+          >
+            <Plus size={16} /> {showAvailable ? 'Close' : 'Add Existing Songs…'}
+          </button>
+          
+          <button
+            onClick={() => setShowCreateForm(v => !v)}
+            className="flex items-center gap-1 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 flex-1 sm:flex-none"
+          >
+            <Plus size={16} /> {showCreateForm ? 'Cancel Create' : 'Create New Song'}
+          </button>
+        </div>
 
+        {/* ✅ UPDATED: Create Song Form (removed category, added audio upload) */}
+        <AnimatePresence>
+          {showCreateForm && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              onSubmit={handleCreateSong}
+              className="bg-gray-800 p-4 sm:p-6 rounded-lg space-y-4 overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <Plus size={20} /> Create New Song
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Title *</label>
+                  <input
+                    placeholder="Song title"
+                    value={createForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setCreateForm(prevForm => ({ 
+                        ...prevForm, 
+                        title,
+                        slug: prevForm.slug === '' || prevForm.slug === generateSlug(prevForm.title) 
+                          ? generateSlug(title) 
+                          : prevForm.slug,
+                      }));
+                    }}
+                    required
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Slug *</label>
+                  <input
+                    placeholder="song-slug"
+                    value={createForm.slug}
+                    onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
+                    required
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Artist</label>
+                  <input
+                    placeholder="Artist name"
+                    value={createForm.artist}
+                    onChange={(e) => setCreateForm({ ...createForm, artist: e.target.value })}
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Tags</label>
+                  <input
+                    placeholder="comma, separated, tags"
+                    value={createForm.tags}
+                    onChange={(e) => setCreateForm({ ...createForm, tags: e.target.value })}
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                {/* ✅ Read-Only Playlist Field */}
+                <div className="sm:col-span-2">
+                  <label className="block text-gray-400 text-sm mb-1">Playlist</label>
+                  <div className="w-full p-2 bg-gray-700/50 rounded text-gray-300 border border-gray-600 flex items-center gap-2">
+                    <img
+                      src={currentPlaylist?.image || currentPlaylist?.artwork_filename}
+                      alt="Playlist"
+                      className="w-5 h-5 rounded object-cover flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEwIiBjeT0iMTAiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
+                      }}
+                    />
+                    <span className="text-sm">{currentPlaylist?.title || 'Current Playlist'}</span>
+                    <span className="text-xs text-blue-400 ml-auto">Auto-selected</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ✅ NEW: Audio File Upload */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Audio File</label>
+                <input
+                  type="text"
+                  placeholder="Or paste audio URL"
+                  value={createForm.cdn_url}
+                  onChange={(e) => setCreateForm({ ...createForm, cdn_url: e.target.value })}
+                  className="w-full p-2 bg-gray-700 rounded text-white mb-2 text-sm"
+                />
+                
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      id="create-song-audio-upload"
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => setSelectedAudioFile(e.target.files?.[0] || null)}
+                    />
+                    <label
+                      htmlFor="create-song-audio-upload"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                    >
+                      <Upload size={14} />
+                      <span className="truncate">
+                        {selectedAudioFile ? selectedAudioFile.name : 'Choose Audio File'}
+                      </span>
+                    </label>
+                    
+                    {audioKey && (
+                      <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                        <CheckCircle size={14} />
+                        <span>Uploaded</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {audioUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {audioUploadProgress === 0 ? 'Preparing upload...' : 
+                           audioUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{audioUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            audioUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                          }`}
+                          style={{ width: `${Math.max(audioUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {selectedAudioFile && !audioKey && (
+                    <button
+                      type="button"
+                      onClick={handleAudioUpload}
+                      disabled={audioUploading}
+                      className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
+                    >
+                      {audioUploading ? `Uploading... ${audioUploadProgress}%` : 'Upload Audio'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Artwork Upload */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Artwork</label>
+                <input
+                  type="text"
+                  placeholder="Or paste artwork URL"
+                  value={createForm.artwork_filename}
+                  onChange={(e) => setCreateForm({ ...createForm, artwork_filename: e.target.value })}
+                  className="w-full p-2 bg-gray-700 rounded text-white mb-2 text-sm"
+                />
+                
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      id="create-song-artwork-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setSelectedCreateArtFile(e.target.files?.[0] || null)}
+                    />
+                    <label
+                      htmlFor="create-song-artwork-upload"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                    >
+                      <Upload size={14} />
+                      <span className="truncate">
+                        {selectedCreateArtFile ? selectedCreateArtFile.name : 'Choose Image'}
+                      </span>
+                    </label>
+                    
+                    {createArtworkKey && (
+                      <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                        <CheckCircle size={14} />
+                        <span>Uploaded</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {createArtworkUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {createArtworkUploadProgress === 0 ? 'Preparing upload...' : 
+                           createArtworkUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{createArtworkUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            createArtworkUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                          }`}
+                          style={{ width: `${Math.max(createArtworkUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {selectedCreateArtFile && !createArtworkKey && (
+                    <button
+                      type="button"
+                      onClick={handleCreateArtworkUpload}
+                      disabled={createArtworkUploading}
+                      className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
+                    >
+                      {createArtworkUploading ? `Uploading... ${createArtworkUploadProgress}%` : 'Upload Artwork'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 order-2 sm:order-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-4 py-2 bg-blue-600 rounded disabled:opacity-50 hover:bg-blue-500 order-1 sm:order-2"
+                >
+                  {creating ? 'Creating…' : 'Create Song'}
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
+
+        {/* Add Existing Songs Section */}
         {showAvailable && (
           <div className="space-y-4">
             <div className="bg-gray-800 p-4 rounded-lg space-y-4">
@@ -674,8 +1236,6 @@ export default function AdminPlaylistDetail() {
                   >
                     <option value="title">Sort by Title</option>
                     <option value="artist">Sort by Artist</option>
-                    {/* <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option> */}
                   </select>
                 </div>
               </div>

@@ -61,8 +61,8 @@ async function createUserController(req, res, next) {
 
 async function updateUserController(req, res, next) {
   try {
-    const { full_name, status_message, user_roles, active } = req.body;
-    const updated = await updateUserAdmin(req.params.id, { full_name, status_message, user_roles, active });
+    const { full_name, status_message, user_roles, active, is_subscribed } = req.body;
+    const updated = await updateUserAdmin(req.params.id, { full_name, status_message, user_roles, active, is_subscribed });
     res.json(updated);
   } catch (err) {
     next(err);

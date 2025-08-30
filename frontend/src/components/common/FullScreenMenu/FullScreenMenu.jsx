@@ -1,44 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { X, Facebook, Instagram, Linkedin } from 'lucide-react';
+// src/components/navigation/FullScreenMenu.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Instagram } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
   const navigate = useNavigate();
-  const [currentImage, setCurrentImage] = useState(0);
-  const [nextImageIndex, setNextImageIndex] = useState(null);
 
-  // Animation states
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-
-  useEffect(() => {
-    if (isMenuOpen) {
-      // Start overlay animation immediately
-      setShowOverlay(true);
-      
-      // Show menu during the middle of overlay animation (when screen is fully covered)
-      // This happens at 30% of the animation (around 0.6s when overlay is stationary and covering screen)
-      const menuTimer = setTimeout(() => {
-        setShowMenu(true);
-      }, 600); // Menu appears when overlay is fully covering the screen
-      
-      // Remove overlay after animation completes
-      const overlayTimer = setTimeout(() => {
-        setShowOverlay(false);
-      }, 2000);
-      
-      return () => {
-        clearTimeout(menuTimer);
-        clearTimeout(overlayTimer);
-      };
-    } else {
-      // Hide everything immediately
-      setShowOverlay(false);
-      setShowMenu(false);
-    }
-  }, [isMenuOpen]);
-
-  // Define menu items with paths
+  // Menu items
   const menuItems = [
     { title: 'Home', path: '/', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/anh-tuan-thomas-w5m0E6SogmM-unsplash.jpg' },
     { title: 'About Us', path: '/about', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-egoagency-7745134.jpg' },
@@ -46,38 +14,105 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
     { title: 'Contact', path: '/contact-us', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/photo-1423666639041-f56000c27a9a.jpeg' }
   ];
 
+  // Left preview image states
+  const [currentImage, setCurrentImage] = useState(0);
+  const [nextImageIndex, setNextImageIndex] = useState(null);
+  const [animKey, setAnimKey] = useState(0); // remount overlay to restart CSS animation
+
+  // rAF throttle
+  const hoverQueued = useRef(null);
+  const rafId = useRef(0);
+
+  // Overlay/Menu visibility
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Desktop check (for preview behavior)
+  const isDesktopRef = useRef(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => { isDesktopRef.current = mql.matches; };
+    update();
+    mql.addEventListener?.('change', update);
+    return () => mql.removeEventListener?.('change', update);
+  }, []);
+
+  // Open/close animation scheduling
+  useEffect(() => {
+    if (isMenuOpen) {
+      setShowOverlay(true);
+      const menuTimer = setTimeout(() => setShowMenu(true), 600);
+      const overlayTimer = setTimeout(() => setShowOverlay(false), 2000);
+      return () => { clearTimeout(menuTimer); clearTimeout(overlayTimer); };
+    } else {
+      setShowOverlay(false);
+      setShowMenu(false);
+    }
+  }, [isMenuOpen]);
+
+  // Preload images
+  useEffect(() => {
+    menuItems.forEach(item => {
+      const img = new Image();
+      img.src = item.image;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Hover → preview (desktop only)
   const handleMenuItemHover = (index) => {
-    if (index !== currentImage) {
-      setNextImageIndex(index);
-      setTimeout(() => {
-        setCurrentImage(index);
-        setNextImageIndex(null);
-      }, 800);
+    if (!isDesktopRef.current) return;
+    if (index === currentImage) return;
+
+    hoverQueued.current = index;
+    if (!rafId.current) {
+      rafId.current = requestAnimationFrame(() => {
+        const idx = hoverQueued.current;
+        rafId.current = 0;
+        hoverQueued.current = null;
+        setNextImageIndex(idx);
+        setAnimKey(k => k + 1);
+      });
     }
   };
 
-  const handleClose = () => {
-    setIsMenuOpen(false);
+  // Commit preview after clip anim completes
+  const handleRevealEnd = () => {
+    if (nextImageIndex == null) return;
+    setCurrentImage(nextImageIndex);
+    setNextImageIndex(null);
   };
+
+  const handleClose = () => setIsMenuOpen(false);
 
   return (
     <>
-      {/* Main menu - renders only when overlay is covering screen */}
       {showMenu && (
-        <div className="fixed inset-0 z-140 h-screen flex">
-          {/* Left Section - Image (40%) */}
-          <div className="w-2/5 relative overflow-hidden">
+        <div className="fixed inset-0 z-140 max-h-screen bg-black flex">
+          {/* LEFT: Image column (hidden on mobile; visible on lg+) */}
+          <div className="hidden md:block lg:block lg:w-2/5 relative overflow-hidden">
             <img
               src={menuItems[currentImage].image}
               alt="Background"
               className="w-full h-full object-cover"
+              loading="eager"
+              decoding="async"
+              style={{ transform: 'translateZ(0)' }}
             />
+
             {nextImageIndex !== null && (
               <div
+                key={animKey}
                 className="absolute inset-0 w-full h-full animate-clipPath"
-                style={{ background: `url(${menuItems[nextImageIndex].image}) center/cover` }}
+                style={{
+                  background: `url(${menuItems[nextImageIndex].image}) center/cover`,
+                  backfaceVisibility: 'hidden',
+                  transform: 'translateZ(0)',
+                }}
+                onAnimationEnd={handleRevealEnd}
               />
             )}
+
             <div className="absolute inset-0 bg-black/40 z-20" />
             <div className="absolute bottom-8 left-8 z-20">
               <div className="text-5xl font-bold text-white tracking-wider">ALIGN</div>
@@ -85,62 +120,65 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
             </div>
           </div>
 
-          {/* Right Section - Menu (60%) */}
-          <div className="w-3/5 bg-black h-full flex flex-col justify-between relative">
-            {/* Close Button */}
-            <div className="absolute top-8 right-8 z-30">
+          {/* RIGHT: Menu (full width on mobile, 60% on lg+) */}
+          <div className="w-full lg:w-3/5 bg-black flex flex-col justify-between relative overflow-y-auto">
+            {/* Close */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-8 lg:right-8 z-30">
               <button
                 onClick={handleClose}
-                className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 hover:rotate-90"
+                className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 hover:rotate-90"
                 aria-label="Close menu"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Vertical Menu Items - Centered */}
-            <nav className="flex-1 flex flex-col justify-center items-end px-12 py-12 overflow-hidden">
-              <div className="space-y-6">
+            {/* Items */}
+            <nav className="flex-1 flex flex-col justify-center items-stretch lg:items-end px-6 sm:px-10 lg:px-12 py-6 lg:py-12">
+              <div className="">
                 {menuItems.map((item, index) => (
                   <a
                     key={item.title}
                     href={item.path}
-                    onClick={(e) => { 
-                      e.preventDefault(); 
+                    onClick={(e) => {
+                      e.preventDefault();
                       setIsMenuOpen(false);
                       navigate(item.path);
                     }}
-                    className="group relative block text-white hover:text-red-400 transition-all duration-300"
+                    className="group relative block text-white transition-all duration-300"
                     onMouseEnter={() => handleMenuItemHover(index)}
+                    onPointerEnter={() => handleMenuItemHover(index)}
                   >
-                    <div className="flex items-center justify-between gap-2.5 py-4">
-                      <span className="text-6xl font-light tracking-wide group-hover:translate-x-6 transition-transform duration-300">{item.title}</span>
-                      <span className="text-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-8 group-hover:translate-x-0">→</span>
+                    <div className="flex items-center justify-between gap-2.5 py-4 sm:py-5 lg:py-4">
+                      <span className="text-7xl sm:text-6xl lg:text-6xl xl:text-8xl font-light tracking-wide transition-transform duration-300 group-hover:translate-x-2 sm:group-hover:translate-x-4">
+                        {item.title}
+                      </span>
+                      <span className="text-lg sm:text-xl lg:text-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
+                        →
+                      </span>
                     </div>
                   </a>
                 ))}
               </div>
             </nav>
 
-            {/* Contact Information & Social Icons */}
-            <div className="px-12 py-2 border-t border-white/20">
-              <div className="flex justify-between items-end">
+            {/* Footer */}
+            <div className="px-6 sm:px-10 lg:px-12 py-4 border-t border-white/15">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                 <div className="text-white/70 space-y-1">
-                  <p className="text-base font-light">t. +1 (647) 897-8834</p>
-                  <p className="text-base font-light">e. contact@align-alternativetherapy.com</p>
-                  <p className="text-xs text-white/50 mt-3">Vancouver, BC, Canada</p>
+                  <p className="text-sm sm:text-base font-light">t. +1 (647) 897-8834</p>
+                  <p className="text-sm sm:text-base font-light">e. contact@align-alternativetherapy.com</p>
+                  <p className="text-[11px] sm:text-xs text-white/50 mt-2">Vancouver, BC, Canada</p>
                 </div>
-                <div className="flex gap-4">
-                  {[Instagram].map((Icon, i) => (
-                    <a
-                      key={i}
-                      href="https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx"
-                      target='blank'
-                      className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1"
-                    >
-                      <Icon size={18} />
-                    </a>
-                  ))}
+                <div className="flex gap-3 sm:gap-4">
+                  <a
+                    href="https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx"
+                    target="_blank" rel="noreferrer"
+                    className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-all duration-300 transform hover:scale-110 hover:-translate-y-0.5"
+                    aria-label="Instagram"
+                  >
+                    <Instagram size={18} />
+                  </a>
                 </div>
               </div>
             </div>
@@ -148,12 +186,9 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
         </div>
       )}
 
-      {/* Sliding overlay animation - highest z-index */}
-      {showOverlay && (
-        <div className="fixed inset-0 z-150 bg-black animate-overlay" />
-      )}
+      {showOverlay && <div className="fixed inset-0 z-150 bg-black animate-overlay" />}
 
-      {/* Global styles for animations */}
+      {/* Animations */}
       <style jsx global>{`
         @keyframes overlaySlide {
           0% { transform: translateY(-100%); }
@@ -164,11 +199,20 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
         .animate-overlay {
           animation: overlaySlide 2s ease-in-out forwards;
         }
+
         @keyframes clipPath {
           from { clip-path: polygon(0 0, 100% 0, 100% 0, 0 0); }
-          to { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+          to   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
         }
-        .animate-clipPath { animation: clipPath 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        .animate-clipPath {
+          animation: clipPath 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          will-change: clip-path;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-clipPath { animation-duration: 0.01ms; animation-iteration-count: 1; }
+          .animate-overlay { animation-duration: 0.01ms; animation-iteration-count: 1; }
+        }
       `}</style>
     </>
   );

@@ -29,13 +29,12 @@ async function registerController(req, res, next) {
 }
 
 async function loginController(req, res, next) {
-
-console.log('DB config:', {
-  host:    process.env.DB_HOST,
-  port:    process.env.DB_PORT,
-  user:    process.env.DB_USER,
-  database: process.env.DB_NAME,
-});
+  console.log('DB config:', {
+    host:    process.env.DB_HOST,
+    port:    process.env.DB_PORT,
+    user:    process.env.DB_USER,
+    database: process.env.DB_NAME,
+  });
 
   try {
     const { email, password } = req.body;
@@ -54,12 +53,12 @@ console.log('DB config:', {
     }
 
     const accessToken  = generateAccessToken({
-     id:         user.id,
-     email:      user.email,
-     full_name:  user.full_name,
-     user_roles: user.user_roles
-   });
-    
+      id:         user.id,
+      email:      user.email,
+      full_name:  user.full_name,
+      user_roles: user.user_roles
+    });
+
     const refreshToken = generateRefreshToken({
       id:         user.id,
       email:      user.email,
@@ -80,18 +79,19 @@ console.log('DB config:', {
       expires:  expiresAt,
     });
 
-   
-    await syncUserSubscriptionFlag(user.id);
+    // IMPORTANT: do NOT sync subscription state here.
+    // Subscription state is authoritative from webhooks and explicit endpoints only.
 
-   
+    // Return the stored user record (read-only)
+    const { fetchUserById } = require('../services/subscriptionSyncService');
     const fullUser = await fetchUserById(user.id);
-
 
     return res.json({ accessToken, user: fullUser });
   } catch (err) {
     next(err);
   }
 }
+
 
 async function adminLoginController(req, res, next) {
   try {

@@ -1,6 +1,6 @@
 // src/components/admin-ui/AdminPlaylistCard.jsx
 import React from 'react';
-import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Music } from 'lucide-react';
 
 export default function AdminPlaylistCard({
   playlist,
@@ -9,6 +9,7 @@ export default function AdminPlaylistCard({
   onToggle,
   status: { loading, success, error } = {},
   hideToggleButton = false, // New prop to hide the add/remove button
+  songCount = 0, // ✅ NEW: Prop to receive song count
 }) {
   return (
     <div className="bg-gray-800 rounded-lg flex flex-col-reverse md:flex-row h-auto md:h-48 overflow-hidden">
@@ -18,9 +19,14 @@ export default function AdminPlaylistCard({
           <h3 className="font-medium text-lg md:text-xl text-white truncate mb-1">
             {playlist.name || playlist.title}
           </h3>
-          <p className="text-sm md:text-md text-gray-400 truncate">
+          <p className="text-sm md:text-md text-gray-400 truncate mb-1">
             Playlist Id: {playlist.id}
           </p>
+          {/* ✅ NEW: Show song count */}
+          <div className="flex items-center gap-1 text-xs md:text-sm text-gray-500 truncate">
+            <Music size={12} />
+            <span>{songCount} song{songCount !== 1 ? 's' : ''}</span>
+          </div>
         </div>
         
         <div className="mt-3 md:mt-4 flex items-center gap-2 flex-wrap">

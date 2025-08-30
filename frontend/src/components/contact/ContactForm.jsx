@@ -181,7 +181,7 @@ const ContactForm = () => {
           <div className="grid lg:grid-cols-2 gap-16 items-start"
                style={{ fontFamily: 'Bosch' }}>
             {/* Form */}
-            <div>
+            <div className='order-2 lg:order-1'>
               <h3 ref={formTitleRef} className="text-4xl font-bold mb-12">Reach Out to Us</h3>
               <form ref={formRef} className="space-y-8" onSubmit={handleSubmit}>
                 {/* Name and Email Row */}
@@ -247,7 +247,7 @@ const ContactForm = () => {
             </div>
 
             {/* Image */}
-            <div ref={imageRef} className="relative h-full">
+            <div ref={imageRef} className="relative h-full order-1 lg:order-2">
               <img
                 src="https://cdn.align-alternativetherapy.com/static-pages-media/pexels-airamdphoto-9158464.jpg"
                 alt="Aerial view of green agricultural fields"

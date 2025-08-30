@@ -1,10 +1,15 @@
 // src/pages/DashboardHome.jsx
 import React from 'react';
+import { useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import CarouselSection from '../components/dashboard/CarouselSection';
 import CategorySection from '../components/dashboard/CategorySection';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
 import SongCard     from '../components/custom-ui/SongCard';
-import TransitionWrapper from '../components/custom-ui/transition';
+import PersonalizeBanner from '../components/dashboard/Personalized Service/PersonalizeBanner';
+
+import PersonalizeCTA from '../components/dashboard/Personalized Service/PersonalizeCTA';
+import PBMyRecommendations from '../components/dashboard/Personalized Service/PBMyRecommendations';
 
 import {
   useGetDashboardAllPlaylistsQuery,
@@ -14,6 +19,20 @@ import {
 } from '../utils/api';
 
 const DashboardHome = () => {
+
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const returnTo = sessionStorage.getItem('returnToPath') || sessionStorage.getItem('returnTo');
+    if (returnTo) {
+      sessionStorage.removeItem('returnToPath')
+      sessionStorage.removeItem('returnTo')
+      navigate(returnTo, { replace: true })
+    }
+  }, [navigate])
+
+
   // New releases
   const { data: nrRaw = {}, isLoading: nrL, isError: nrE } =
     useGetDashboardNewReleasesQuery({ playlistLimit: 12, songLimit: 8 });
@@ -28,10 +47,15 @@ const DashboardHome = () => {
   const { data: recent = [], isLoading: rpL, isError: rpE } = useGetRecentPlaysQuery(10);
 
   return (
-    <div className="space-y-12 rounded-2xl">
+      <div className="space-y-12 rounded-2xl">
       <CategorySection />
 
-      {/* New Releases */}
+      {/* <PersonalizeBanner /> */}
+
+      
+     <PBMyRecommendations />
+
+
       <CarouselSection
         title="New Releases"
         items={combinedNew}
@@ -70,8 +94,12 @@ const DashboardHome = () => {
         useQuery={useGetDashboardAllPlaylistsQuery}
         renderItem={(pl) => <PlaylistCard key={pl.id} playlist={pl} />}
       />
+
+      <PersonalizeCTA/>
+      
     </div>
+    
   );
 };
 
-export default TransitionWrapper(DashboardHome);
+export default DashboardHome;

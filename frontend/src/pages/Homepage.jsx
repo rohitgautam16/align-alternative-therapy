@@ -31,4 +31,4 @@ const Homepage = () => {
   );
 };
 
-export default TransitionWrapper(Homepage);
+export default Homepage;

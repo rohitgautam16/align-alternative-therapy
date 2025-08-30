@@ -67,14 +67,14 @@ const BlogHero = () => {
   };
 
   return (
-    <section ref={scope} className="min-h-screen w-full bg-black font-sans">
+    <section ref={scope} className="h-fit w-full bg-black font-sans px-5 py-10">
       <div className="px-3 sm:px-6 lg:px-12 xl:px-16 py-4 sm:py-6 lg:py-8">
         
         {/* Row-1: Header Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
           {/* Big heading */}
           <div className="col-span-1 lg:col-span-4">
-            <h1 className="hero-title text-2xl sm:text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] font-medium leading-[0.9] text-white">
+            <h1 className="hero-title text-2xl sm:text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] font-medium leading-[1.2] text-white">
               Explore the Science<br />
               <span className="bg-gradient-to-r from-gray-300 to-gray-500 bg-clip-text text-transparent">
                 of Sound

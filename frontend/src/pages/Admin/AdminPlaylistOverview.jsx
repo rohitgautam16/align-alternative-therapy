@@ -5,7 +5,8 @@ import {
   useCreatePlaylistMutation,
   useListCategoriesQuery,
   useUploadR2FilesMutation,
-  useGetR2PresignUrlQuery, // ✅ Added for presigned URL uploads
+  useGetR2PresignUrlQuery,
+  useGetAdminSongsQuery 
 } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { Grid3X3, List, Eye, Plus, Search, X, Upload, CheckCircle } from 'lucide-react';
@@ -129,6 +130,11 @@ export default function AdminPlaylistsOverview() {
     pageSize: 100,
   });
 
+  // ✅ Fetch all songs for counting
+  const {
+    data: allSongsRaw = { data: [] },
+  } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
+
   // Create new playlist (kept exactly the same)
   const [createPlaylist, { isLoading: creating }] = useCreatePlaylistMutation();
 
@@ -173,6 +179,33 @@ export default function AdminPlaylistsOverview() {
     if (!catRaw) return [];
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
+
+  // ✅ FIXED: Process songs data the same way as AdminPlaylistDetail
+  const allSongs = React.useMemo(() => {
+    return Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
+  }, [allSongsRaw]);
+
+  // ✅ FIXED: Create song count mapping for playlists overview
+  const songCounts = React.useMemo(() => {
+    const counts = {};
+    
+    // Initialize all playlists with 0 count
+    allPlaylists.forEach(playlist => {
+      counts[playlist.id] = 0;
+    });
+    
+    // Count songs per playlist using the same field names as AdminPlaylistDetail
+    if (Array.isArray(allSongs)) {
+      allSongs.forEach(song => {
+        const playlistId = song.playlist_id || song.playlistId || song.playlist;
+        if (playlistId && counts.hasOwnProperty(playlistId)) {
+          counts[playlistId]++;
+        }
+      });
+    }
+    
+    return counts;
+  }, [allPlaylists, allSongs]);
 
   // Filter playlists (kept exactly the same)
   const filteredPlaylists = React.useMemo(() => {
@@ -682,6 +715,7 @@ export default function AdminPlaylistsOverview() {
                   onToggle={() => {}}
                   status={{}}
                   hideToggleButton={true}
+                  songCount={songCounts[playlist.id] || 0} 
                 />
               ))}
             </div>

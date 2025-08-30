@@ -3,6 +3,10 @@
 const express = require('express');
 const db      = require('./db');
 const multer = require('multer');
+const { body, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
+const { sendMail } = require('./mail/mailer'); 
+
 // const upload = multer({ storage: multer.memoryStorage() });
 const AWS = require('aws-sdk');
 const mime       = require('mime-types');
@@ -27,6 +31,16 @@ const storage = multer.memoryStorage();
 //const upload = multer({ storage });
 const { requireAuth, requireAdmin } = require('./middleware/auth');
 const { listUsers } = require('./controllers/admin Controllers/adminUserController');
+
+function escapeHtml(str = '') {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 
 const s3 = new S3Client({
   endpoint: process.env.R2_ENDPOINT,
@@ -61,7 +75,7 @@ router.get("/admin/r2/presign", async (req, res, next) => {
       ContentType: contentType,
     });
 
-    // ✅ Now this will work correctly with v3 client
+
     const url = await getSignedUrl(s3, command, { expiresIn: 300 });
 
     console.log('✅ Presigned URL generated successfully');
@@ -266,11 +280,55 @@ router.delete ('/user-playlists/:id',                requireAuth, pc.deletePlayl
 router.post   ('/user-playlists/:id/songs',          requireAuth, pc.addSong);
 router.delete ('/user-playlists/:id/songs/:songId',  requireAuth, pc.removeSong);
 
-const { checkoutController } = require('./controllers/subscriptionController');
+const { checkoutController, checkoutAddonController, cancelSubscriptionController, cancelAddonController, removeBaseController, subscriptionSummaryController, createBillingPortalSession } = require('./controllers/subscriptionController');
 
 console.log('requireAuth:', typeof requireAuth);
 console.log('checkoutController:', typeof checkoutController);
 router.post('/subscribe/checkout', requireAuth, checkoutController);
+router.post('/subscribe/checkout-addon', requireAuth, checkoutAddonController);
+router.post('/subscribe/cancel', requireAuth, cancelSubscriptionController);
+router.post('/subscribe/cancel-addon', requireAuth, cancelAddonController);
+router.post('/subscribe/remove-base', requireAuth, removeBaseController);
+router.get('/subscribe/summary', requireAuth, subscriptionSummaryController);
+router.post('/billing/portal', requireAuth, createBillingPortalSession);
+
+// Add-on Personalized Service
+const personalize = require('./controllers/personalizeController');
+
+router.post('/personalize/questions', requireAuth, personalize.createQuestionController);
+router.get('/personalize/questions', requireAuth, personalize.listMyQuestionsController);
+router.get('/personalize/questions/:id', requireAuth, personalize.getMyQuestionController);
+router.post('/personalize/questions/:id/messages', requireAuth, personalize.addMyMessageController);
+
+router.get('/personalize/recommendations/:id', requireAuth, personalize.getMyRecommendationController);
+router.post('/personalize/items/:itemId/feedback', requireAuth, personalize.addItemFeedbackController);
+
+router.get('/personalize/followups', requireAuth, personalize.listMyFollowupsController);
+router.post('/personalize/followups/:id/response', requireAuth, personalize.recordMyFollowupResponseController);
+
+// ADMIN
+router.get('/personalize/admin/questions', requireAuth, requireAdmin, personalize.adminListQuestionsController);
+router.get('/personalize/admin/questions/:id', requireAuth, requireAdmin, personalize.adminGetQuestionController);
+router.post('/personalize/admin/questions/:id/assign', requireAuth, requireAdmin, personalize.adminAssignQuestionController);
+router.post('/personalize/admin/questions/:id/messages', requireAuth, requireAdmin, personalize.adminAddMessageController);
+router.patch('/personalize/admin/questions/:id/status', requireAuth, requireAdmin, personalize.adminUpdateQuestionStatusController);
+
+router.post('/personalize/admin/recommendations', requireAuth, requireAdmin, personalize.adminCreateRecommendationController);
+router.get('/personalize/admin/recommendations/:id', requireAuth, requireAdmin, personalize.adminGetRecommendationController);
+router.post('/personalize/admin/recommendations/:id/items', requireAuth, requireAdmin, personalize.adminAddRecommendationItemController);
+router.patch('/personalize/admin/recommendations/items/:itemId', requireAuth, requireAdmin, personalize.adminUpdateRecommendationItemController);
+router.delete('/personalize/admin/recommendations/items/:itemId', requireAuth, requireAdmin, personalize.adminDeleteRecommendationItemController);
+router.post('/personalize/admin/recommendations/:id/send', requireAuth, requireAdmin, personalize.adminSendRecommendationController);
+router.patch('/personalize/admin/recommendations/:id/status', requireAuth, requireAdmin, personalize.adminUpdateRecommendationStatusController);
+
+router.post('/personalize/admin/templates', requireAuth, requireAdmin, personalize.adminCreateTemplateController);
+router.get('/personalize/admin/templates', requireAuth, requireAdmin, personalize.adminListTemplatesController);
+router.patch('/personalize/admin/templates/:id', requireAuth, requireAdmin, personalize.adminUpdateTemplateController);
+router.delete('/personalize/admin/templates/:id', requireAuth, requireAdmin, personalize.adminDeleteTemplateController);
+
+router.get('/personalize/admin/followups', requireAuth, requireAdmin, personalize.adminListFollowupsController);
+router.post('/personalize/admin/followups/:id/sent', requireAuth, requireAdmin, personalize.adminMarkFollowupSentController);
+
 
 const {
   recordPlay,
@@ -430,14 +488,14 @@ router.get('/users', async (_req, res) => {
     const [rows] = await db.query(`
       SELECT
         id,
-        status,
         status_message   AS status_message,
         active,
-        last_active      AS last_active,
         created_at       AS created_at,
         updated_at       AS updated_at,
         deleted_at       AS deleted_at,
-        is_subscribed
+        is_subscribed,
+        user_roles,
+        has_addon
       FROM users
     `);
     return res.json(rows);
@@ -469,6 +527,37 @@ router.get('/songs/:id',     getDashboardSongByIdController);
 router.get('/search',        searchDashboardController);
 router.get('/dashboard/playlists/new-releases', getDashboardNewReleasesController);
 router.get('/dashboard/songs', requireAuth, getDashboardAllSongsController);
+
+
+// --- Basic Personalize Service: public request form ---
+const personalizeBasic = require('./controllers/PersonalizeBasicController');
+
+// ...
+
+router.post('/personalize-basic/request', personalizeBasic.createBasicPersonalizeRequest);
+
+router.get('/personalize-basic/ping', (req, res) => res.json({ ok: true }));
+
+// --- Basic personalize (admin sends recs directly to a user) ---
+const pb = require('./controllers/admin Controllers/adminbasicPersonalizecontroller');
+
+// ------- PB ADMIN (all require admin) -------
+router.get ('/admin/pb/search/users',      requireAuth, requireAdmin, pb.searchUsers);
+router.get ('/admin/pb/search/songs',      requireAuth, requireAdmin, pb.searchSongs);
+router.get ('/admin/pb/search/playlists',  requireAuth, requireAdmin, pb.searchPlaylists);
+
+router.get ('/admin/pb/recommendations',   requireAuth, requireAdmin, pb.listForUser);        // ?userId=123
+router.post('/admin/pb/recommendations',   requireAuth, requireAdmin, pb.create);
+router.get ('/admin/pb/recommendations/:id', requireAuth, requireAdmin, pb.getOne);
+router.post('/admin/pb/recommendations/:id/items', requireAuth, requireAdmin, pb.addItem);
+router.put ('/admin/pb/recommendations/items/:itemId', requireAuth, requireAdmin, pb.updateItem);
+router.delete('/admin/pb/recommendations/items/:itemId', requireAuth, requireAdmin, pb.deleteItem);
+router.put ('/admin/pb/recommendations/:id/status', requireAuth, requireAdmin, pb.updateStatus);
+router.post('/admin/pb/recommendations/:id/send',   requireAuth, requireAdmin, pb.sendNow);
+
+
+// ---------- User PB (isolated) ----------
+router.get('/pb/my-recommendations', requireAuth, pb.listMineForCurrentUser);
 
 
 // router.get('/categories', async (_req, res) => {

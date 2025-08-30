@@ -91,19 +91,21 @@ async function createUserAdmin({ email, password, full_name, user_roles, active,
 /**
  * Update an existing user
  */
-async function updateUserAdmin(id, { full_name, status_message, user_roles, active }) {
+async function updateUserAdmin(id, { full_name, status_message, user_roles, active, is_subscribed }) {
   await db.query(
     `UPDATE users
        SET full_name      = ?,
            status_message = ?,
            user_roles     = ?,
            active         = ?,
+           is_subscribed  = ?,
            updated_at     = CURRENT_TIMESTAMP
      WHERE id = ?`,
-    [full_name, status_message, user_roles, active, id]
+    [full_name, status_message, user_roles, active, is_subscribed, id]
   );
   return getUserById(id);
 }
+
 
 /**
  * Soft‑delete a user

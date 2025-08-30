@@ -13,25 +13,26 @@ export default function AdminUserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Data & mutations (kept exactly the same)
+  // Data & mutations
   const { data: user, isLoading, isError } = useGetAdminUserQuery(id);
   const [updateUser, { isLoading: isSaving }] = useUpdateUserMutation();
   const [deleteUser] = useDeleteUserMutation();
 
-  // Local state (kept exactly the same)
+  // Local state
   const [form, setForm] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // Initialize form (kept exactly the same)
+  // Initialize form with integer values to match database
   useEffect(() => {
     if (user) {
       setForm({
-        full_name:      user.full_name,
+        full_name: user.full_name || '',
         status_message: user.status_message || '',
-        user_roles:     user.user_roles,
-        active:         user.active,
+        user_roles: user.user_roles,
+        active: user.active,
+        is_subscribed: user.is_subscribed ? 1 : 0, // Store as integer (0 or 1)
       });
     }
   }, [user]);
@@ -44,20 +45,29 @@ export default function AdminUserDetail() {
     }
   }, [flash]);
 
-  // Handlers (kept exactly the same logic)
+  // Handle save with proper data types
   const handleSave = async () => {
     try {
-      await updateUser({ id, ...form }).unwrap();
+      const payload = {
+        id: +id,
+        full_name: String(form.full_name || ''),
+        status_message: String(form.status_message || ''),
+        user_roles: Number(form.user_roles),
+        active: Number(form.active),
+        is_subscribed: Number(form.is_subscribed),
+      };
+      
+      await updateUser(payload).unwrap();
       setFlash({ txt: 'User updated successfully!', ok: true });
       setEditMode(false);
     } catch (err) {
-      console.error(err);
+      console.error('Update failed:', err);
       setFlash({ txt: 'Failed to update user.', ok: false });
     }
   };
 
   const confirmDelete = () => setShowDeleteModal(true);
-  const cancelDelete  = () => setShowDeleteModal(false);
+  const cancelDelete = () => setShowDeleteModal(false);
 
   const handleDelete = async () => {
     try {
@@ -66,28 +76,35 @@ export default function AdminUserDetail() {
       setShowDeleteModal(false);
       setTimeout(() => navigate('/admin/users'), 500);
     } catch (err) {
-      console.error(err);
+      console.error('Delete failed:', err);
       setFlash({ txt: 'Failed to delete user.', ok: false });
       setShowDeleteModal(false);
     }
   };
 
-  if (isLoading) return (
-    <div className="p-4 sm:p-6 text-white">
-      <div className="flex justify-center items-center py-12">
-        <div className="text-gray-400">Loading user details...</div>
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="p-4 sm:p-6 text-white">
+        <div className="flex justify-center items-center py-12">
+          <div className="text-gray-400">Loading user details...</div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   
-  if (isError || !user) return (
-    <div className="p-4 sm:p-6 text-white">
-      <div className="bg-red-900/20 border border-red-600 p-4 rounded">
-        <p className="text-red-400">Failed to load user details.</p>
+  // Error state
+  if (isError || !user) {
+    return (
+      <div className="p-4 sm:p-6 text-white">
+        <div className="bg-red-900/20 border border-red-600 p-4 rounded">
+          <p className="text-red-400">Failed to load user details.</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   
+  // Wait for form initialization
   if (!form) return null;
 
   return (
@@ -119,7 +136,7 @@ export default function AdminUserDetail() {
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
-            onClick={() => setEditMode((e) => !e)}
+            onClick={() => setEditMode(prev => !prev)}
             className="flex items-center gap-1 bg-gray-700 px-3 py-2 rounded hover:bg-gray-600 transition-colors flex-1 sm:flex-none"
           >
             <Edit3 size={16} /> 
@@ -154,9 +171,11 @@ export default function AdminUserDetail() {
           {/* Profile Header */}
           <div className="bg-gradient-to-br from-gray-700 to-gray-800 p-6 text-center">
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-600 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl sm:text-3xl font-semibold text-gray-300">
-              {(user.full_name || user.email || 'U').charAt(0).toUpperCase()}
+              {(form.full_name || user.email || 'U').charAt(0).toUpperCase()}
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold mb-2">{user.full_name || 'Unnamed User'}</h3>
+            <h3 className="text-lg sm:text-xl font-semibold mb-2">
+              {form.full_name || 'Unnamed User'}
+            </h3>
             <p className="text-gray-300 text-sm sm:text-base break-all">{user.email}</p>
           </div>
 
@@ -170,33 +189,33 @@ export default function AdminUserDetail() {
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-sm">Role:</span>
               <span className={`inline-flex px-2 py-1 text-xs rounded ${
-                user.user_roles === 1 
+                form.user_roles === 1 
                   ? 'bg-purple-600/20 text-purple-400' 
                   : 'bg-blue-600/20 text-blue-400'
               }`}>
-                {user.user_roles === 1 ? 'Admin' : 'User'}
+                {form.user_roles === 1 ? 'Admin' : 'User'}
               </span>
             </div>
             
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-sm">Status:</span>
               <span className={`inline-flex px-2 py-1 text-xs rounded ${
-                user.active 
+                form.active 
                   ? 'bg-green-600/20 text-green-400' 
                   : 'bg-red-600/20 text-red-400'
               }`}>
-                {user.active ? 'Active' : 'Inactive'}
+                {form.active ? 'Active' : 'Inactive'}
               </span>
             </div>
             
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-sm">Subscribed:</span>
               <span className={`inline-flex px-2 py-1 text-xs rounded ${
-                user.is_subscribed 
+                form.is_subscribed === 1
                   ? 'bg-emerald-600/20 text-emerald-400' 
                   : 'bg-gray-600/20 text-gray-400'
               }`}>
-                {user.is_subscribed ? 'Yes' : 'No'}
+                {form.is_subscribed === 1 ? 'Yes' : 'No'}
               </span>
             </div>
             
@@ -225,13 +244,13 @@ export default function AdminUserDetail() {
                 {editMode ? (
                   <input
                     value={form.full_name}
-                    onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                    onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
                     className="w-full p-3 bg-gray-700 rounded-lg text-white border border-gray-600 focus:border-blue-500 focus:outline-none transition-colors"
                     placeholder="Enter full name"
                   />
                 ) : (
                   <div className="p-3 bg-gray-700/50 rounded-lg text-gray-300">
-                    {user.full_name || '—'}
+                    {form.full_name || '—'}
                   </div>
                 )}
               </div>
@@ -251,7 +270,7 @@ export default function AdminUserDetail() {
                 {editMode ? (
                   <select
                     value={form.user_roles}
-                    onChange={(e) => setForm((f) => ({ ...f, user_roles: +e.target.value }))}
+                    onChange={(e) => setForm(prev => ({ ...prev, user_roles: +e.target.value }))}
                     className="w-full p-3 bg-gray-700 rounded-lg text-white border border-gray-600 focus:border-blue-500 focus:outline-none transition-colors"
                   >
                     <option value={0}>User</option>
@@ -259,7 +278,7 @@ export default function AdminUserDetail() {
                   </select>
                 ) : (
                   <div className="p-3 bg-gray-700/50 rounded-lg text-gray-300">
-                    {user.user_roles === 1 ? 'Admin' : 'User'}
+                    {form.user_roles === 1 ? 'Admin' : 'User'}
                   </div>
                 )}
               </div>
@@ -270,7 +289,7 @@ export default function AdminUserDetail() {
                 {editMode ? (
                   <select
                     value={form.active}
-                    onChange={(e) => setForm((f) => ({ ...f, active: +e.target.value }))}
+                    onChange={(e) => setForm(prev => ({ ...prev, active: +e.target.value }))}
                     className="w-full p-3 bg-gray-700 rounded-lg text-white border border-gray-600 focus:border-blue-500 focus:outline-none transition-colors"
                   >
                     <option value={1}>Active</option>
@@ -278,10 +297,32 @@ export default function AdminUserDetail() {
                   </select>
                 ) : (
                   <div className="p-3 bg-gray-700/50 rounded-lg text-gray-300">
-                    {user.active ? 'Active' : 'Inactive'}
+                    {form.active ? 'Active' : 'Inactive'}
                   </div>
                 )}
               </div>
+
+              {/* Subscription Status */}
+              <div>
+                <label className="block text-gray-400 mb-2 text-sm font-medium">Subscription Status</label>
+                {editMode ? (
+                  <select
+                    value={form.is_subscribed}
+                    onChange={(e) => setForm(prev => ({ ...prev, is_subscribed: +e.target.value }))}
+                    className="w-full p-3 bg-gray-700 rounded-lg text-white border border-gray-600 focus:border-blue-500 focus:outline-none transition-colors"
+                  >
+                    <option value={1}>Subscribed</option>
+                    <option value={0}>Not Subscribed</option>
+                  </select>
+                ) : (
+                  <div className="p-3 bg-gray-700/50 rounded-lg text-gray-300">
+                    {form.is_subscribed === 1 ? 'Subscribed' : 'Not Subscribed'}
+                  </div>
+                )}
+              </div>
+
+              {/* Empty div to maintain grid alignment */}
+              <div></div>
             </div>
 
             {/* Status Message */}
@@ -290,14 +331,14 @@ export default function AdminUserDetail() {
               {editMode ? (
                 <textarea
                   value={form.status_message}
-                  onChange={(e) => setForm((f) => ({ ...f, status_message: e.target.value }))}
+                  onChange={(e) => setForm(prev => ({ ...prev, status_message: e.target.value }))}
                   rows={3}
                   className="w-full p-3 bg-gray-700 rounded-lg text-white border border-gray-600 focus:border-blue-500 focus:outline-none transition-colors resize-none"
                   placeholder="Enter status message (optional)"
                 />
               ) : (
                 <div className="p-3 bg-gray-700/50 rounded-lg text-gray-300 min-h-[80px]">
-                  {user.status_message || '—'}
+                  {form.status_message || '—'}
                 </div>
               )}
             </div>
@@ -367,7 +408,8 @@ export default function AdminUserDetail() {
                 </div>
                 
                 <p className="text-gray-300">
-                  Are you sure you want to permanently delete <strong className="text-white">{user.full_name || user.email}</strong>?
+                  Are you sure you want to permanently delete{' '}
+                  <strong className="text-white">{form.full_name || user.email}</strong>?
                 </p>
                 
                 <div className="flex flex-col sm:flex-row justify-end gap-2">

@@ -8,9 +8,12 @@ import {
   useGetDashboardAllPlaylistsQuery,
   useUpdatePlaylistMutation,
   useUploadR2FilesMutation,
-  useGetR2PresignUrlQuery, // ✅ Added for presigned URL uploads
+  useGetR2PresignUrlQuery,
+  useGetAdminSongsQuery,
+  useCreatePlaylistMutation, // ✅ NEW: Added for creating playlists
+  useListCategoriesQuery, // ✅ NEW: Added for category dropdown in create form
 } from '../../utils/api';
-import { ArrowLeft, Edit3, Save, Trash2, Plus, Upload, CheckCircle, Search, Filter } from 'lucide-react';
+import { ArrowLeft, Edit3, Save, Trash2, Plus, Upload, CheckCircle, Search, Filter, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminPlaylistCard from '../../components/custom-ui/AdminPlaylistCard';
 
@@ -33,6 +36,21 @@ export default function AdminCategoryDetail() {
   const [togglingId, setTogglingId] = useState(null);
   const [showAvailable, setShowAvailable] = useState(false);
 
+  // ✅ UPDATED: Create playlist state without category_id (it's fixed to current category)
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    title: '',
+    slug: '',
+    tags: '',
+    artwork_filename: '',
+    paid: 0,
+  });
+  const [selectedCreateArtFile, setSelectedCreateArtFile] = useState(null);
+  const [createArtworkKey, setCreateArtworkKey] = useState(null);
+  const [createArtworkUploading, setCreateArtworkUploading] = useState(false);
+  const [createArtworkUploadProgress, setCreateArtworkUploadProgress] = useState(0);
+  const [createArtworkPresignParams, setCreateArtworkPresignParams] = useState(null);
+
   // ✅ FIXED: All query hooks called unconditionally at the same level
   const { data: cat, isLoading: catL, isError: catE, refetch: refetchCat } =
     useGetAdminCategoryQuery(categoryId);
@@ -44,10 +62,24 @@ export default function AdminCategoryDetail() {
     refetch: refetchPLs,
   } = useGetDashboardAllPlaylistsQuery();
 
+  // ✅ ADDED: Fetch all songs for counting
+  const {
+    data: allSongsRaw = { data: [] },
+  } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
+
+  // ✅ NEW: Fetch categories for displaying current category info
+  const { data: catRaw = { data: [] } } = useListCategoriesQuery({
+    page: 1,
+    pageSize: 100,
+  });
+
   const [updateCategory, { isLoading: catSaving }] = useUpdateCategoryMutation();
   const [deleteCategory] = useDeleteCategoryMutation();
   const [updatePlaylist] = useUpdatePlaylistMutation();
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
+  
+  // ✅ NEW: Create playlist mutation
+  const [createPlaylist, { isLoading: creating }] = useCreatePlaylistMutation();
 
   // ✅ NEW: Use presigned URL hook with conditional skip
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
@@ -57,6 +89,16 @@ export default function AdminCategoryDetail() {
       folder: "align-images/categories",
     },
     { skip: !artworkPresignParams }
+  );
+
+  // ✅ NEW: Presigned URL for create form artwork
+  const { data: createArtworkPresign } = useGetR2PresignUrlQuery(
+    createArtworkPresignParams || {
+      filename: "",
+      contentType: "",
+      folder: "align-images/playlists",
+    },
+    { skip: !createArtworkPresignParams }
   );
 
   // ✅ FIXED: All useEffect hooks called unconditionally
@@ -154,6 +196,74 @@ export default function AdminCategoryDetail() {
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
+  // ✅ NEW: Handle create form artwork upload
+  useEffect(() => {
+    if (!createArtworkPresign || !selectedCreateArtFile || !createArtworkPresignParams) return;
+
+    const uploadCreateArtwork = async () => {
+      try {
+        console.log('🚀 Starting create artwork upload:', {
+          presignUrl: createArtworkPresign.url,
+          key: createArtworkPresign.key,
+          fileName: selectedCreateArtFile.name,
+        });
+
+        setFlash({ txt: "Uploading playlist artwork...", ok: true });
+        setCreateArtworkUploadProgress(10);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
+            setCreateArtworkUploadProgress(percentComplete);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const publicUrl = `https://cdn.align-alternativetherapy.com/${createArtworkPresign.key}`;
+            console.log('✅ Create artwork upload successful:', publicUrl);
+            
+            setCreateArtworkKey(createArtworkPresign.key);
+            setCreateForm(f => ({ ...f, artwork_filename: publicUrl }));
+            setFlash({ txt: "Playlist artwork uploaded successfully!", ok: true });
+            setCreateArtworkUploadProgress(100);
+            
+            setSelectedCreateArtFile(null);
+            setCreateArtworkPresignParams(null);
+            const artInput = document.getElementById('create-playlist-artwork-upload');
+            if (artInput) artInput.value = '';
+            
+            setTimeout(() => {
+              setCreateArtworkUploading(false);
+              setCreateArtworkUploadProgress(0);
+            }, 3000);
+            
+          } else {
+            throw new Error('Upload failed');
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          throw new Error('Upload failed');
+        });
+
+        xhr.open('PUT', createArtworkPresign.url);
+        xhr.setRequestHeader('Content-Type', selectedCreateArtFile.type);
+        xhr.send(selectedCreateArtFile);
+        
+      } catch (err) {
+        console.error('Create artwork upload error:', err);
+        setFlash({ txt: `Playlist artwork upload failed: ${err.message}`, ok: false });
+        setCreateArtworkUploadProgress(0);
+        setCreateArtworkUploading(false);
+      }
+    };
+
+    uploadCreateArtwork();
+  }, [createArtworkPresign, selectedCreateArtFile, createArtworkPresignParams]);
+
   // ✅ FIXED: All useMemo hooks called unconditionally at the same level
   const assigned = React.useMemo(() => {
     if (!allPLs || !categoryId) return [];
@@ -164,6 +274,22 @@ export default function AdminCategoryDetail() {
     if (!allPLs || !categoryId) return [];
     return allPLs.filter(p => p.categoryId !== +categoryId);
   }, [allPLs, categoryId]);
+
+  // ✅ ADDED: Process songs data the same way as AdminPlaylistDetail
+  const allSongs = React.useMemo(() => {
+    return Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
+  }, [allSongsRaw]);
+
+  // ✅ NEW: Process categories for displaying current category info
+  const categories = React.useMemo(() => {
+    if (!catRaw) return [];
+    return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
+  }, [catRaw]);
+
+  // ✅ NEW: Get current category info for display
+  const currentCategory = React.useMemo(() => {
+    return categories.find(c => c.id === +categoryId);
+  }, [categories, categoryId]);
 
   // ✅ NEW: Filter and sort available playlists
   const filteredAndSortedAvailable = React.useMemo(() => {
@@ -203,10 +329,46 @@ export default function AdminCategoryDetail() {
     return sorted;
   }, [available, availablePlaylistsSearch, availablePlaylistsSort]);
 
+  // ✅ FIXED: Song count calculation with proper data processing
+  const songCounts = React.useMemo(() => {
+    const counts = {};
+    
+    // Initialize all playlists with 0 count
+    [...assigned, ...filteredAndSortedAvailable].forEach(playlist => {
+      counts[playlist.id] = 0;
+    });
+    
+    // Count songs per playlist using the same field names as AdminPlaylistDetail
+    if (Array.isArray(allSongs)) {
+      allSongs.forEach(song => {
+        const playlistId = song.playlist_id || song.playlistId || song.playlist;
+        if (playlistId && counts.hasOwnProperty(playlistId)) {
+          counts[playlistId]++;
+        }
+      });
+    }
+    
+    console.log('🔍 CategoryDetail song counts:', counts);
+    
+    return counts;
+  }, [assigned, filteredAndSortedAvailable, allSongs]);
+
   // ✅ Early returns after all hooks are called
   if (catL || plsL) return <div className="p-6 text-white">Loading…</div>;
   if (catE) return <div className="p-6 text-red-500">Error loading category.</div>;
   if (!form) return null;
+
+  // ✅ NEW: Auto-generate slug from title for create form
+  const generateSlug = (title) => {
+    if (!title) return '';
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
 
   // ✅ ENHANCED: Manual artwork upload handler with presigned URL and progress
   const handleArtworkUpload = async () => {
@@ -228,6 +390,69 @@ export default function AdminCategoryDetail() {
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
       setArtworkUploading(false);
       setArtworkUploadProgress(0);
+    }
+  };
+
+  // ✅ NEW: Handle create form artwork upload
+  const handleCreateArtworkUpload = async () => {
+    if (!selectedCreateArtFile) return;
+    
+    setCreateArtworkUploading(true);
+    setCreateArtworkUploadProgress(5);
+    setFlash({ txt: "Getting upload URL...", ok: true });
+    
+    try {
+      setCreateArtworkPresignParams({
+        filename: selectedCreateArtFile.name,
+        contentType: selectedCreateArtFile.type,
+        folder: "align-images/playlists",
+      });
+    } catch (err) {
+      console.error('Create upload error:', err);
+      setFlash({ txt: `Playlist artwork upload failed: ${err.message}`, ok: false });
+      setCreateArtworkUploading(false);
+      setCreateArtworkUploadProgress(0);
+    }
+  };
+
+  // ✅ UPDATED: Handle create playlist with fixed category
+  const handleCreatePlaylist = async (e) => {
+    e.preventDefault();
+    
+    try {
+      // Force the category_id to be the current category
+      const playlistData = {
+        ...createForm,
+        category_id: categoryId, // Always use current category
+      };
+      
+      const newPlaylist = await createPlaylist(playlistData).unwrap();
+      setFlash({ txt: 'Playlist created successfully!', ok: true });
+      
+      // Reset create form (removed category_id)
+      setCreateForm({
+        title: '',
+        slug: '',
+        tags: '',
+        artwork_filename: '',
+        paid: 0,
+      });
+      setSelectedCreateArtFile(null);
+      setCreateArtworkKey(null);
+      setCreateArtworkUploading(false);
+      setCreateArtworkUploadProgress(0);
+      
+      // Clear file input
+      const artInput = document.getElementById('create-playlist-artwork-upload');
+      if (artInput) artInput.value = '';
+      
+      setShowCreateForm(false);
+      
+      // Refresh playlists
+      await refetchPLs();
+    } catch (err) {
+      console.error('Create playlist error:', err);
+      setFlash({ txt: 'Failed to create playlist.', ok: false });
     }
   };
 
@@ -472,6 +697,7 @@ export default function AdminCategoryDetail() {
                   onView={() => navigate(`/admin/playlists/${pl.id}`)}
                   onToggle={() => togglePlaylist(pl, false)}
                   status={{ loading: isLoading, success: isSuccess, error: isError }}
+                  songCount={songCounts[pl.id] || 0}
                 />
               );
             })}
@@ -479,19 +705,217 @@ export default function AdminCategoryDetail() {
         )}
       </section>
 
-      {/* ✅ Enhanced Add Playlist Section with Search and Sort */}
+      {/* ✅ Enhanced Add Playlist Section with Search, Sort, and Create */}
       <section className="space-y-4">
         <h3 className="text-2xl font-semibold">Add to Category</h3>
-        <button
-          onClick={() => setShowAvailable(v => !v)}
-          className="flex items-center gap-1 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
-        >
-          <Plus size={16} /> {showAvailable ? 'Close' : 'Add Playlists…'}
-        </button>
+        
+        {/* ✅ NEW: Action buttons row */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => setShowAvailable(v => !v)}
+            className="flex items-center gap-1 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 flex-1 sm:flex-none"
+          >
+            <Plus size={16} /> {showAvailable ? 'Close' : 'Add Existing Playlists…'}
+          </button>
+          
+          <button
+            onClick={() => setShowCreateForm(v => !v)}
+            className="flex items-center gap-1 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 flex-1 sm:flex-none"
+          >
+            <Plus size={16} /> {showCreateForm ? 'Cancel Create' : 'Create New Playlist'}
+          </button>
+        </div>
 
+        {/* ✅ UPDATED: Create Playlist Form with Read-Only Category */}
+        <AnimatePresence>
+          {showCreateForm && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              onSubmit={handleCreatePlaylist}
+              className="bg-gray-800 p-4 sm:p-6 rounded-lg space-y-4 overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <Plus size={20} /> Create New Playlist
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Title *</label>
+                  <input
+                    placeholder="Playlist title"
+                    value={createForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setCreateForm(prevForm => ({ 
+                        ...prevForm, 
+                        title,
+                        slug: prevForm.slug === '' || prevForm.slug === generateSlug(prevForm.title) 
+                          ? generateSlug(title) 
+                          : prevForm.slug,
+                      }));
+                    }}
+                    required
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Slug *</label>
+                  <input
+                    placeholder="playlist-slug"
+                    value={createForm.slug}
+                    onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
+                    required
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Tags</label>
+                  <input
+                    placeholder="comma, separated, tags"
+                    value={createForm.tags}
+                    onChange={(e) => setCreateForm({ ...createForm, tags: e.target.value })}
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+                
+                {/* ✅ UPDATED: Read-Only Category Field */}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Category</label>
+                  <div className="w-full p-2 bg-gray-700/50 rounded text-gray-300 border border-gray-600 flex items-center gap-2">
+                    <img
+                      src={currentCategory?.image || currentCategory?.artwork_filename}
+                      alt="Category"
+                      className="w-5 h-5 rounded object-cover flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMCA1TDEzIDEwSDdMMTAgNVoiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
+                      }}
+                    />
+                    <span className="text-sm">{currentCategory?.title || 'Current Category'}</span>
+                    <span className="text-xs text-blue-400 ml-auto">Auto-selected</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Type</label>
+                  <select
+                    value={createForm.paid}
+                    onChange={(e) => setCreateForm({ ...createForm, paid: Number(e.target.value) })}
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  >
+                    <option value={0}>Free</option>
+                    <option value={1}>Paid</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Artwork Upload */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Artwork</label>
+                <input
+                  type="text"
+                  placeholder="Or paste artwork URL"
+                  value={createForm.artwork_filename}
+                  onChange={(e) => setCreateForm({ ...createForm, artwork_filename: e.target.value })}
+                  className="w-full p-2 bg-gray-700 rounded text-white mb-2 text-sm"
+                />
+                
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      id="create-playlist-artwork-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setSelectedCreateArtFile(e.target.files?.[0] || null)}
+                    />
+                    <label
+                      htmlFor="create-playlist-artwork-upload"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded cursor-pointer text-sm flex-1 sm:flex-none"
+                    >
+                      <Upload size={14} />
+                      <span className="truncate">
+                        {selectedCreateArtFile ? selectedCreateArtFile.name : 'Choose Image'}
+                      </span>
+                    </label>
+                    
+                    {createArtworkKey && (
+                      <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
+                        <CheckCircle size={14} />
+                        <span>Uploaded</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {createArtworkUploading && (
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">
+                          {createArtworkUploadProgress === 0 ? 'Preparing upload...' : 
+                           createArtworkUploadProgress === 100 ? 'Upload Complete!' : 'Uploading...'}
+                        </span>
+                        <span className="text-xs text-gray-400">{createArtworkUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                            createArtworkUploadProgress === 100 ? 'bg-green-600' : 'bg-blue-600'
+                          }`}
+                          style={{ width: `${Math.max(createArtworkUploadProgress, 5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {selectedCreateArtFile && !createArtworkKey && (
+                    <button
+                      type="button"
+                      onClick={handleCreateArtworkUpload}
+                      disabled={createArtworkUploading}
+                      className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-sm transition-colors"
+                    >
+                      {createArtworkUploading ? `Uploading... ${createArtworkUploadProgress}%` : 'Upload Artwork'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 order-2 sm:order-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-4 py-2 bg-blue-600 rounded disabled:opacity-50 hover:bg-blue-500 order-1 sm:order-2"
+                >
+                  {creating ? 'Creating…' : 'Create Playlist'}
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
+
+        {/* Add Existing Playlists Section */}
         {showAvailable && (
           <div className="space-y-4">
-            {/* ✅ NEW: Search and Sort Controls */}
+            {/* Search and Sort Controls */}
             <div className="bg-gray-800 p-4 rounded-lg space-y-4">
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Search Bar */}
@@ -515,9 +939,6 @@ export default function AdminCategoryDetail() {
                     className="px-3 py-2 bg-gray-700 rounded text-white text-sm border-none outline-none"
                   >
                     <option value="title">Sort by Title</option>
-                    {/* <option value="slug">Sort by Slug</option> */}
-                    {/* <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option> */}
                     <option value="paid">Paid First</option>
                     <option value="free">Free First</option>
                   </select>
@@ -538,7 +959,7 @@ export default function AdminCategoryDetail() {
               </div>
             </div>
 
-            {/*  Updated: Display Filtered and Sorted Playlists */}
+            {/* Display Filtered and Sorted Playlists */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
               {filteredAndSortedAvailable.length === 0 ? (
                 <div className="col-span-full">
@@ -562,6 +983,7 @@ export default function AdminCategoryDetail() {
                       onView={() => navigate(`/admin/playlists/${pl.id}`)}
                       onToggle={() => togglePlaylist(pl, true)}
                       status={{ loading: isLoading, success: isSuccess, error: isError }}
+                      songCount={songCounts[pl.id] || 0}
                     />
                   );
                 })

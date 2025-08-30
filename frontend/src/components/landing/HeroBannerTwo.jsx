@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdArrowOutward } from "react-icons/md";
+import Preloader from "../custom-ui/Preloader"; 
 
 const videoUrl = "https://cdn.align-alternativetherapy.com/static-pages-media/13115940_3840_2160_60fps.mp4";
 
@@ -9,33 +10,104 @@ const HeroBannerTwo = () => {
   const cursorRef = useRef(null);
   const navigate = useNavigate();
   const [isHovering, setIsHovering] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [showPreloader, setShowPreloader] = useState(true);
 
+  const MIN_LOADING_TIME = 2000; // Minimum 2 seconds
+
+  // Handle preloader completion
+  const handlePreloaderComplete = useCallback(() => {
+    setIsVideoLoaded(true);
+    setShowPreloader(false);
+  }, []);
+
+  // Improved Video Loading Strategy
   useEffect(() => {
     const video = videoRef.current;
     if (video) {
-      video.load();
-      setTimeout(async () => {
+      video.preload = "metadata";
+      
+      const handleCanPlay = async () => {
         try {
-          await video.play();
+          if (video.readyState >= 3) {
+            await video.play();
+            
+            // Let the preloader handle the timing
+            const loadStartTime = Date.now();
+            const checkMinDuration = () => {
+              const elapsed = Date.now() - loadStartTime;
+              if (elapsed >= MIN_LOADING_TIME) {
+                // Video is ready, preloader will complete on its own
+              } else {
+                setTimeout(checkMinDuration, MIN_LOADING_TIME - elapsed);
+              }
+            };
+            checkMinDuration();
+          }
         } catch (error) {
           console.log("Video autoplay failed:", error);
+          // Still let preloader complete normally
         }
-      }, 100);
+      };
+
+      if (video.readyState >= 3) {
+        handleCanPlay();
+      } else {
+        video.addEventListener('canplay', handleCanPlay);
+        video.addEventListener('loadeddata', handleCanPlay);
+      }
+
+      return () => {
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('loadeddata', handleCanPlay);
+      };
     }
   }, []);
 
+  // Intersection Observer Preloading
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              video.preload = "auto";
+              video.load();
+              observer.disconnect();
+            }
+          });
+        },
+        { 
+          threshold: 0.1,
+          rootMargin: '50px'
+        }
+      );
+      
+      observer.observe(video);
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  // Optimized cursor movement with throttling
   useEffect(() => {
     const cursor = cursorRef.current;
+    let animationFrame;
 
     const handleGlobalMouseMove = (e) => {
-      if (cursor) {
-        cursor.style.top = `${e.pageY - 40}px`;
-        cursor.style.left = `${e.pageX - 40}px`;
+      if (cursor && isVideoLoaded) {
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
+        
+        animationFrame = requestAnimationFrame(() => {
+          cursor.style.transform = `translate(${e.pageX - 40}px, ${e.pageY - 40}px)`;
+        });
       }
     };
 
     const handleGlobalClick = () => {
-      if (cursor && isHovering) {
+      if (cursor && isHovering && isVideoLoaded) {
         cursor.classList.add("expand");
         setTimeout(() => {
           cursor.classList.remove("expand");
@@ -44,18 +116,25 @@ const HeroBannerTwo = () => {
       }
     };
 
-    document.addEventListener('mousemove', handleGlobalMouseMove);
-    document.addEventListener('click', handleGlobalClick);
+    if (isVideoLoaded) {
+      document.addEventListener('mousemove', handleGlobalMouseMove, { passive: true });
+      document.addEventListener('click', handleGlobalClick);
+    }
 
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('click', handleGlobalClick);
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
     };
-  }, [isHovering, navigate]);
+  }, [isHovering, navigate, isVideoLoaded]);
 
   const handleMouseEnter = useCallback(() => {
-    setIsHovering(true);
-  }, []);
+    if (isVideoLoaded) {
+      setIsHovering(true);
+    }
+  }, [isVideoLoaded]);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovering(false);
@@ -63,17 +142,24 @@ const HeroBannerTwo = () => {
 
   return (
     <>
-      {/* Custom Cursor */}
+      {/* Preloader Component */}
+      <Preloader 
+        isVisible={showPreloader}
+        onComplete={handlePreloaderComplete}
+        minDuration={MIN_LOADING_TIME}
+        targetText="ALIGN"
+      />
+
       <div
         ref={cursorRef}
         className="cursor"
         style={{
-          display: isHovering ? "flex" : "none",
+          display: isHovering && isVideoLoaded ? "flex" : "none",
           width: "clamp(60px, 8vw, 80px)",
           height: "clamp(60px, 8vw, 80px)",
           position: "fixed",
-          top: "50%",
-          left: "50%",
+          top: 0,
+          left: 0,
           alignItems: "center",
           justifyContent: "center",
           borderRadius: "50%",
@@ -89,7 +175,7 @@ const HeroBannerTwo = () => {
           backdropFilter: "blur(10px)",
           boxShadow: "0 2px 15px rgba(0, 0, 0, 0.2)",
           opacity: 1,
-          transform: "scale(1)",
+          willChange: "transform",
         }}
       >
         LOGIN TO<br />LISTEN
@@ -113,6 +199,8 @@ const HeroBannerTwo = () => {
             width: "100%",
             height: "100%",
             zIndex: 1,
+            opacity: isVideoLoaded ? 1 : 0,
+            transition: "opacity 0.8s ease-in",
           }}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -123,15 +211,16 @@ const HeroBannerTwo = () => {
             loop
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             style={{
               width: "100%",
               height: "100%",
               objectFit: "cover",
+              backgroundColor: "#000",
             }}
           >
             <source src={videoUrl} type="video/mp4" />
-            <source src={videoUrl.replace('uhd_2560_1440_30fps', 'hd_1920_1080_30fps')} type="video/mp4" />
+            <source src={videoUrl.replace('3840_2160_60fps', '1920_1080_30fps')} type="video/mp4" />
           </video>
 
           {/* Video Overlay */}
@@ -160,6 +249,9 @@ const HeroBannerTwo = () => {
             background: "linear-gradient(transparent, rgba(0,0,0,0.6))",
             padding: "clamp(1rem, 4vw, 2rem) 0 clamp(1.5rem, 4vw, 3rem) 0",
             pointerEvents: "none",
+            opacity: isVideoLoaded ? 1 : 0,
+            transform: isVideoLoaded ? "translateY(0)" : "translateY(20px)",
+            transition: "all 0.8s ease-in-out 0.4s",
           }}
         >
           {/* Responsive Marquee */}
@@ -173,7 +265,7 @@ const HeroBannerTwo = () => {
             <div
               style={{
                 display: "flex",
-                animation: "scroll 20s linear infinite",
+                animation: isVideoLoaded ? "scroll 20s linear infinite" : "none",
                 whiteSpace: "nowrap",
                 willChange: "transform",
               }}
@@ -207,14 +299,12 @@ const HeroBannerTwo = () => {
                 </div>
               </div>
 
-              {/* Column 2 - Always visible */}
               <div className="column column-2">
                 <p className="column-text">
                   Experience a unique therapy designed to bring you rapid alignment and incredible personal growth.
                 </p>
               </div>
 
-              {/* Column 3 - Hidden on mobile */}
               <div className="column column-3">
                 <p className="column-text">
                   Login to explore personalized sound therapy for mind-body harmony.
@@ -253,7 +343,6 @@ const HeroBannerTwo = () => {
             /* Content Container */
             .content-container {
               width: 100%;
-              max-width: 1200px;
               margin: 0 auto;
               padding: 0 clamp(1rem, 4vw, 2rem);
             }
