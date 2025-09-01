@@ -1,130 +1,98 @@
 // src/pages/ProfilePage.jsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuthHeader from 'react-auth-kit/hooks/useAuthHeader';
 import useSignOut from 'react-auth-kit/hooks/useSignOut';
 import { motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
-import { useGetSubscriptionsQuery } from '../utils/api';  // ← pull in your RTK‑Query hook
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+  useDeleteProfileMutation,
+  useGetSubscriptionsQuery,
+} from '../utils/api';
 
 export default function ProfilePage() {
-  const authHeader = useAuthHeader();
-  const signOut    = useSignOut();
-  const navigate   = useNavigate();
+  const signOut  = useSignOut();
+  const navigate = useNavigate();
 
-  // load subscription status
+  // RTK Query hooks
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    isError: profileError,
+    error: profileErrObj,
+    refetch: refetchProfile,
+  } = useGetProfileQuery();
+
   const { data: subs = [], isLoading: subsLoading } = useGetSubscriptionsQuery();
 
-  const [profile, setProfile]       = useState(null);
-  const [status,  setStatus]        = useState('loading'); // 'loading' | 'error' | 'ready'
-  const [error,   setError]         = useState(null);
+  const [updateProfile, { isLoading: savingAny }] = useUpdateProfileMutation();
+  const [deleteUser,   { isLoading: deleting }]   = useDeleteProfileMutation();
 
-  const [newName,       setNewName]       = useState('');
-  const [editingName,   setEditingName]   = useState(false);
-  const [savingName,    setSavingName]    = useState(false);
+  // Local UI state
+  const [editingName, setEditingName]       = useState(false);
+  const [editingStatus, setEditingStatus]   = useState(false);
+  const [newName, setNewName]               = useState('');
+  const [newStatus, setNewStatus]           = useState('');
+  const [error, setError]                   = useState(null);
 
-  const [newStatus,     setNewStatus]     = useState('');
-  const [editingStatus, setEditingStatus] = useState(false);
-  const [savingStatus,  setSavingStatus]  = useState(false);
-
-  // shared profile loader
-  const loadProfile = useCallback(async () => {
-    setStatus('loading');
-    try {
-      const res = await fetch(`${API}user/profile`, {
-        headers: { Authorization: authHeader },
-        credentials: 'include'
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setProfile(data);
-      setNewName(data.full_name);
-      setNewStatus(data.status_message || '');
-      setStatus('ready');
-    } catch (err) {
-      setError(err.message);
-      setStatus('error');
-    }
-  }, [authHeader]);
-
+  // Initialize edit fields when profile loads
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    if (profile) {
+      setNewName(profile.full_name || '');
+      setNewStatus(profile.status_message || '');
+    }
+  }, [profile]);
 
-  // save full_name
+  // Save full_name
   const handleSaveName = async () => {
     if (!newName.trim()) return;
-    setSavingName(true);
+    setError(null);
     try {
-      const res = await fetch(`${API}user/update`, {
-        method: 'PUT',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ full_name: newName })
-      });
-      if (!res.ok) throw new Error(`Name update failed (${res.status})`);
-      await loadProfile();
+      await updateProfile({ full_name: newName.trim() }).unwrap();
+      await refetchProfile();
       setEditingName(false);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSavingName(false);
+    } catch (e) {
+      setError(e?.data?.error || e?.error || 'Failed to update name');
     }
   };
 
-  // save status_message
+  // Save status_message
   const handleSaveStatus = async () => {
     if (!newStatus.trim()) return;
-    setSavingStatus(true);
+    setError(null);
     try {
-      const res = await fetch(`${API}user/update`, {
-        method: 'PUT',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ status_message: newStatus })
-      });
-      if (!res.ok) throw new Error(`Status update failed (${res.status})`);
-      await loadProfile();
+      await updateProfile({ status_message: newStatus.trim() }).unwrap();
+      await refetchProfile();
       setEditingStatus(false);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSavingStatus(false);
+    } catch (e) {
+      setError(e?.data?.error || e?.error || 'Failed to update status');
     }
   };
 
-  // delete account
+  // Delete account
   const handleDelete = async () => {
     if (!window.confirm('Really delete your account?')) return;
+    setError(null);
     try {
-      const res = await fetch(`${API}user/delete`, {
-        method: 'DELETE',
-        headers: { Authorization: authHeader },
-        credentials: 'include'
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Delete failed (${res.status})`);
-      }
+      await deleteUser().unwrap();
       signOut();
       navigate('/login', { replace: true });
-    } catch (err) {
-      setError(err.message);
+    } catch (e) {
+      setError(e?.data?.error || e?.error || 'Failed to delete account');
     }
   };
 
-  if (status === 'loading') return <p>Loading profile…</p>;
-  if (status === 'error')   return <p className="text-red-400">Error: {error}</p>;
+  // Loading / error states
+  if (profileLoading) return <p>Loading profile…</p>;
+  if (profileError) {
+    const msg =
+      profileErrObj?.data?.error ||
+      profileErrObj?.error ||
+      'Failed to load profile';
+    return <p className="text-red-400">Error: {msg}</p>;
+  }
 
-  // pick latest subscription (if any)
   const latestSub = subs[0];
 
   return (
@@ -147,60 +115,61 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      
-
       <div className="mx-auto p-6 space-y-8">
-
-      <section>
+        {/* Full Name */}
+        <section>
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Full Name</h2>
             <Pencil
-              onClick={() => setEditingName(v => !v)}
+              onClick={() => setEditingName((v) => !v)}
               className="cursor-pointer hover:text-red-400 transition"
             />
           </div>
+
           {editingName ? (
             <div className="mt-2 flex gap-2">
               <input
                 className="flex-1 p-2 rounded bg-white/10 focus:outline-none"
                 value={newName}
-                onChange={e => setNewName(e.target.value)}
+                onChange={(e) => setNewName(e.target.value)}
               />
               <button
                 onClick={handleSaveName}
-                disabled={savingName}
+                disabled={savingAny}
                 className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
               >
-                {savingName ? 'Saving…' : 'Save Name'}
+                {savingAny ? 'Saving…' : 'Save Name'}
               </button>
             </div>
           ) : (
             <p className="mt-2 text-gray-300">{profile.full_name}</p>
           )}
         </section>
+
         {/* Describe Yourself */}
         <section>
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Describe Yourself</h2>
             <Pencil
-              onClick={() => setEditingStatus(v => !v)}
+              onClick={() => setEditingStatus((v) => !v)}
               className="cursor-pointer hover:text-red-400 transition"
             />
           </div>
+
           {editingStatus ? (
             <div className="mt-2 space-y-2">
               <textarea
                 rows={3}
                 value={newStatus}
-                onChange={e => setNewStatus(e.target.value)}
+                onChange={(e) => setNewStatus(e.target.value)}
                 className="w-full p-3 rounded bg-white/10 focus:outline-none"
               />
               <button
                 onClick={handleSaveStatus}
-                disabled={savingStatus}
+                disabled={savingAny}
                 className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
               >
-                {savingStatus ? 'Saving…' : 'Save Status'}
+                {savingAny ? 'Saving…' : 'Save Status'}
               </button>
             </div>
           ) : (
@@ -210,7 +179,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        {/* Email, Joined & Subscription */}
+        {/* Email, Joined & (optional) Subscription */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <h3 className="font-medium">Email</h3>
@@ -234,26 +203,27 @@ export default function ProfilePage() {
               </p>
             ) : (
               <p className="text-green-300">
-                Subscribed ({latestSub.subscription_type}), next renewal: {' '}
+                Subscribed ({latestSub.subscription_type}), next renewal:{' '}
                 {new Date(latestSub.expires_at).toLocaleDateString()}
               </p>
             )}
-          </div> */}
+          </div>
+          */}
         </section>
 
-
+        {/* Actions / Errors */}
+        {error && <p className="text-red-400">{error}</p>}
         
-
-        {/* Delete Account */}
         {/* <div className="border-t border-white/20 pt-4">
-          {error && <p className="text-red-400 mb-2">{error}</p>}
           <button
             onClick={handleDelete}
-            className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+            disabled={deleting}
+            className="px-4 py-2 bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
           >
-            Delete Account
+            {deleting ? 'Deleting…' : 'Delete Account'}
           </button>
         </div> */}
+       
       </div>
     </motion.div>
   );

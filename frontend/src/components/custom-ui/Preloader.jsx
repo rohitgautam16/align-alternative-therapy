@@ -185,6 +185,7 @@ const Preloader = ({
           overflow: hidden;
           will-change: transform, opacity;
           transform-origin: center center;
+          max-height: 100vh;
         }
 
         /* Centered typing */

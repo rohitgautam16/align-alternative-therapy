@@ -63,6 +63,26 @@ async function getSongById(id) {
   return rows[0];
 }
 
+async function generateUniqueSlug(baseSlug) {
+  let slug = baseSlug;
+  let counter = 0;
+  
+  while (true) {
+    const [existing] = await db.query(
+      'SELECT id FROM audio_metadata WHERE slug = ?', 
+      [slug]
+    );
+    
+    if (existing.length === 0) {
+      return slug;
+    }
+    
+    counter++;
+    slug = `${baseSlug}-${counter}`;
+  }
+}
+
+
 async function createSongAdmin({
   name,
   title,
@@ -74,6 +94,9 @@ async function createSongAdmin({
   artwork_filename,
   cdn_url
 }) {
+
+  const uniqueSlug = await generateUniqueSlug(slug);
+
   const [result] = await db.query(
     `INSERT INTO audio_metadata
        (name, title, slug, artist, tags, category, playlist, artwork_filename, cdn_url)
@@ -81,7 +104,7 @@ async function createSongAdmin({
     [
       name          || null,
       title,
-      slug,
+      uniqueSlug,
       artist        || null,
       tags          || null,
       category      || null,
@@ -142,6 +165,7 @@ async function deleteSongAdmin(id) {
 module.exports = {
   listSongs,
   getSongById,
+  generateUniqueSlug,
   createSongAdmin,
   updateSongAdmin,
   deleteSongAdmin,

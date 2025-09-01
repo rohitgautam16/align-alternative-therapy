@@ -15,6 +15,7 @@ import {
 import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
+import SongBulkUpload from '../../components/admin/SongBulkUpload'
 
 // Custom Image Dropdown Component (kept exactly the same)
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
@@ -126,7 +127,8 @@ export default function AdminPlaylistDetail() {
   const [togglingId, setTogglingId] = useState(null);
   const [showAvailable, setShowAvailable] = useState(false);
 
-  // ✅ UPDATED: Create song state (removed category)
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState({
     title: '',
@@ -142,14 +144,12 @@ export default function AdminPlaylistDetail() {
   const [createArtworkUploadProgress, setCreateArtworkUploadProgress] = useState(0);
   const [createArtworkPresignParams, setCreateArtworkPresignParams] = useState(null);
 
-  // ✅ NEW: Audio upload state
   const [selectedAudioFile, setSelectedAudioFile] = useState(null);
   const [audioKey, setAudioKey] = useState(null);
   const [audioUploading, setAudioUploading] = useState(false);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
 
-  // ✅ FIXED: All query hooks called unconditionally at the same level
   const { 
     data: p, 
     isLoading, 
@@ -173,7 +173,6 @@ export default function AdminPlaylistDetail() {
   const [updateSong] = useUpdateAdminSongMutation();
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   
-  // ✅ NEW: Create song mutation
   const [createSong, { isLoading: creating }] = useCreateAdminSongMutation();
 
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
@@ -185,7 +184,7 @@ export default function AdminPlaylistDetail() {
     { skip: !artworkPresignParams }
   );
 
-  // ✅ NEW: Presigned URL for create form artwork
+
   const { data: createArtworkPresign } = useGetR2PresignUrlQuery(
     createArtworkPresignParams || {
       filename: "",
@@ -195,7 +194,7 @@ export default function AdminPlaylistDetail() {
     { skip: !createArtworkPresignParams }
   );
 
-  // ✅ NEW: Presigned URL for audio files
+
   const { data: audioPresign } = useGetR2PresignUrlQuery(
     audioPresignParams || {
       filename: "",
@@ -205,7 +204,6 @@ export default function AdminPlaylistDetail() {
     { skip: !audioPresignParams }
   );
 
-  // ✅ FIXED: All useEffect hooks called unconditionally
   useEffect(() => {
     if (p) {
       console.debug('⚙️ playlist raw:', p);
@@ -293,7 +291,7 @@ export default function AdminPlaylistDetail() {
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // ✅ NEW: Handle create form artwork upload
+
   useEffect(() => {
     if (!createArtworkPresign || !selectedCreateArtFile || !createArtworkPresignParams) return;
 
@@ -361,7 +359,7 @@ export default function AdminPlaylistDetail() {
     uploadCreateArtwork();
   }, [createArtworkPresign, selectedCreateArtFile, createArtworkPresignParams]);
 
-  // ✅ NEW: Handle audio upload
+
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
 
@@ -429,7 +427,7 @@ export default function AdminPlaylistDetail() {
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
 
-  // ✅ FIXED: All useMemo hooks called unconditionally at the same level
+
   const categories = React.useMemo(() => {
     return Array.isArray(catRaw?.data) ? catRaw.data : [];
   }, [catRaw]);
@@ -438,7 +436,6 @@ export default function AdminPlaylistDetail() {
     return categories.find((c) => c.id === form?.category_id);
   }, [categories, form?.category_id]);
 
-  // ✅ NEW: Get current playlist info for display
   const currentPlaylist = React.useMemo(() => {
     return p;
   }, [p]);
@@ -496,7 +493,6 @@ export default function AdminPlaylistDetail() {
     return sorted;
   }, [available, availableSongsSearch, availableSongsSort]);
 
-  // ✅ Early returns after all hooks are called
   if (isLoading || songsLoading) return <div className="p-6 text-white">Loading…</div>;
   if (isError || !p) {
     return (
@@ -510,7 +506,6 @@ export default function AdminPlaylistDetail() {
   }
   if (!form) return null;
 
-  // ✅ NEW: Auto-generate slug from title for create form
   const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -522,7 +517,6 @@ export default function AdminPlaylistDetail() {
       .replace(/^-|-$/g, '');
   };
 
-  // ✅ All handler functions remain the same
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
@@ -544,7 +538,6 @@ export default function AdminPlaylistDetail() {
     }
   };
 
-  // ✅ NEW: Handle create form artwork upload
   const handleCreateArtworkUpload = async () => {
     if (!selectedCreateArtFile) return;
     
@@ -566,7 +559,6 @@ export default function AdminPlaylistDetail() {
     }
   };
 
-  // ✅ NEW: Handle audio file upload
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
     
@@ -588,7 +580,6 @@ export default function AdminPlaylistDetail() {
     }
   };
 
-  // ✅ UPDATED: Handle create song with fixed playlist (removed category)
   const handleCreateSong = async (e) => {
     e.preventDefault();
     
@@ -954,7 +945,30 @@ export default function AdminPlaylistDetail() {
           >
             <Plus size={16} /> {showCreateForm ? 'Cancel Create' : 'Create New Song'}
           </button>
+
+          <button
+            onClick={() => setShowBulkUpload(v => !v)}
+            className="flex items-center gap-1 px-4 py-2 bg-green-600 rounded hover:bg-green-500 flex-1 sm:flex-none"
+          >
+            <Upload size={16} /> {showBulkUpload ? 'Cancel Bulk' : 'Bulk Upload Songs'}
+          </button>
         </div>
+
+          <AnimatePresence>
+            {showBulkUpload && (
+              <SongBulkUpload
+                playlistId={playlistId}
+                categories={categories}
+                currentPlaylist={currentPlaylist}
+                onComplete={async () => {
+                  setFlash({ txt: 'Bulk upload completed successfully!', ok: true });
+                  await refetchSongs();
+                }}
+                onClose={() => setShowBulkUpload(false)}
+              />
+            )}
+          </AnimatePresence>
+
 
         {/* ✅ UPDATED: Create Song Form (removed category, added audio upload) */}
         <AnimatePresence>

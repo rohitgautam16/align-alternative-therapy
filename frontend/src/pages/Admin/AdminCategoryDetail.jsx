@@ -10,18 +10,18 @@ import {
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
   useGetAdminSongsQuery,
-  useCreatePlaylistMutation, // ✅ NEW: Added for creating playlists
-  useListCategoriesQuery, // ✅ NEW: Added for category dropdown in create form
+  useCreatePlaylistMutation,
+  useListCategoriesQuery, 
 } from '../../utils/api';
 import { ArrowLeft, Edit3, Save, Trash2, Plus, Upload, CheckCircle, Search, Filter, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminPlaylistCard from '../../components/custom-ui/AdminPlaylistCard';
+import SongBulkUpload from '../../components/admin/SongBulkUpload'
 
 export default function AdminCategoryDetail() {
   const { id: categoryId } = useParams();
   const navigate = useNavigate();
 
-  // ✅ FIXED: Move all useState hooks to the top and declare them unconditionally
   const [selectedArtFile, setSelectedArtFile] = useState(null);
   const [artworkKey, setArtworkKey] = useState(null);
   const [artworkUploading, setArtworkUploading] = useState(false);
@@ -35,8 +35,10 @@ export default function AdminCategoryDetail() {
   const [deleting, setDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
   const [showAvailable, setShowAvailable] = useState(false);
+  const [newPlaylistId, setNewPlaylistId] = useState(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
 
-  // ✅ UPDATED: Create playlist state without category_id (it's fixed to current category)
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState({
     title: '',
@@ -51,7 +53,6 @@ export default function AdminCategoryDetail() {
   const [createArtworkUploadProgress, setCreateArtworkUploadProgress] = useState(0);
   const [createArtworkPresignParams, setCreateArtworkPresignParams] = useState(null);
 
-  // ✅ FIXED: All query hooks called unconditionally at the same level
   const { data: cat, isLoading: catL, isError: catE, refetch: refetchCat } =
     useGetAdminCategoryQuery(categoryId);
   
@@ -62,12 +63,12 @@ export default function AdminCategoryDetail() {
     refetch: refetchPLs,
   } = useGetDashboardAllPlaylistsQuery();
 
-  // ✅ ADDED: Fetch all songs for counting
+
   const {
     data: allSongsRaw = { data: [] },
   } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
 
-  // ✅ NEW: Fetch categories for displaying current category info
+
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
     page: 1,
     pageSize: 100,
@@ -78,10 +79,10 @@ export default function AdminCategoryDetail() {
   const [updatePlaylist] = useUpdatePlaylistMutation();
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   
-  // ✅ NEW: Create playlist mutation
+
   const [createPlaylist, { isLoading: creating }] = useCreatePlaylistMutation();
 
-  // ✅ NEW: Use presigned URL hook with conditional skip
+
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
       filename: "",
@@ -91,7 +92,7 @@ export default function AdminCategoryDetail() {
     { skip: !artworkPresignParams }
   );
 
-  // ✅ NEW: Presigned URL for create form artwork
+
   const { data: createArtworkPresign } = useGetR2PresignUrlQuery(
     createArtworkPresignParams || {
       filename: "",
@@ -101,7 +102,7 @@ export default function AdminCategoryDetail() {
     { skip: !createArtworkPresignParams }
   );
 
-  // ✅ FIXED: All useEffect hooks called unconditionally
+
   useEffect(() => {
     if (cat) {
       setForm({
@@ -120,7 +121,7 @@ export default function AdminCategoryDetail() {
     }
   }, [flash]);
 
-  // ✅ NEW: Handle artwork presign response with progress tracking
+
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
 
@@ -135,7 +136,7 @@ export default function AdminCategoryDetail() {
         setFlash({ txt: "Uploading artwork...", ok: true });
         setArtworkUploadProgress(10); // Initial progress
         
-        // Create XMLHttpRequest for progress tracking
+        
         const xhr = new XMLHttpRequest();
         
         // Track upload progress
@@ -196,7 +197,7 @@ export default function AdminCategoryDetail() {
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // ✅ NEW: Handle create form artwork upload
+
   useEffect(() => {
     if (!createArtworkPresign || !selectedCreateArtFile || !createArtworkPresignParams) return;
 
@@ -264,7 +265,7 @@ export default function AdminCategoryDetail() {
     uploadCreateArtwork();
   }, [createArtworkPresign, selectedCreateArtFile, createArtworkPresignParams]);
 
-  // ✅ FIXED: All useMemo hooks called unconditionally at the same level
+
   const assigned = React.useMemo(() => {
     if (!allPLs || !categoryId) return [];
     return allPLs.filter(p => p.categoryId === +categoryId);
@@ -275,23 +276,23 @@ export default function AdminCategoryDetail() {
     return allPLs.filter(p => p.categoryId !== +categoryId);
   }, [allPLs, categoryId]);
 
-  // ✅ ADDED: Process songs data the same way as AdminPlaylistDetail
+
   const allSongs = React.useMemo(() => {
     return Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
   }, [allSongsRaw]);
 
-  // ✅ NEW: Process categories for displaying current category info
+
   const categories = React.useMemo(() => {
     if (!catRaw) return [];
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
 
-  // ✅ NEW: Get current category info for display
+
   const currentCategory = React.useMemo(() => {
     return categories.find(c => c.id === +categoryId);
   }, [categories, categoryId]);
 
-  // ✅ NEW: Filter and sort available playlists
+
   const filteredAndSortedAvailable = React.useMemo(() => {
     let filtered = available;
 
@@ -329,7 +330,7 @@ export default function AdminCategoryDetail() {
     return sorted;
   }, [available, availablePlaylistsSearch, availablePlaylistsSort]);
 
-  // ✅ FIXED: Song count calculation with proper data processing
+
   const songCounts = React.useMemo(() => {
     const counts = {};
     
@@ -353,12 +354,12 @@ export default function AdminCategoryDetail() {
     return counts;
   }, [assigned, filteredAndSortedAvailable, allSongs]);
 
-  // ✅ Early returns after all hooks are called
+
   if (catL || plsL) return <div className="p-6 text-white">Loading…</div>;
   if (catE) return <div className="p-6 text-red-500">Error loading category.</div>;
   if (!form) return null;
 
-  // ✅ NEW: Auto-generate slug from title for create form
+
   const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -370,7 +371,7 @@ export default function AdminCategoryDetail() {
       .replace(/^-|-$/g, '');
   };
 
-  // ✅ ENHANCED: Manual artwork upload handler with presigned URL and progress
+
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
@@ -393,7 +394,7 @@ export default function AdminCategoryDetail() {
     }
   };
 
-  // ✅ NEW: Handle create form artwork upload
+
   const handleCreateArtworkUpload = async () => {
     if (!selectedCreateArtFile) return;
     
@@ -415,7 +416,7 @@ export default function AdminCategoryDetail() {
     }
   };
 
-  // ✅ UPDATED: Handle create playlist with fixed category
+
   const handleCreatePlaylist = async (e) => {
     e.preventDefault();
     
@@ -428,6 +429,9 @@ export default function AdminCategoryDetail() {
       
       const newPlaylist = await createPlaylist(playlistData).unwrap();
       setFlash({ txt: 'Playlist created successfully!', ok: true });
+
+      setNewPlaylistId(newPlaylist.id);
+      setShowBulkUpload(true);
       
       // Reset create form (removed category_id)
       setCreateForm({
@@ -1032,6 +1036,59 @@ export default function AdminCategoryDetail() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Bulk Upload Modal for New Playlist */}
+      <AnimatePresence>
+        {showBulkUpload && newPlaylistId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          >
+            <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">
+                  Add Songs to Your New Playlist
+                </h3>
+                <p className="text-sm text-gray-400">
+                  You can skip this step and add songs later
+                </p>
+              </div>
+              
+              <SongBulkUpload
+                playlistId={newPlaylistId}
+                currentPlaylist={assigned.find(p => p.id === newPlaylistId)}
+                onComplete={async () => {
+                  setFlash({ txt: 'Songs added to playlist successfully!', ok: true });
+                  setShowBulkUpload(false);
+                  setNewPlaylistId(null);
+                  await refetchPLs(); // Refresh to show updated song counts
+                }}
+                onClose={() => {
+                  setShowBulkUpload(false);
+                  setNewPlaylistId(null);
+                }}
+              />
+              
+              {/* Skip Button */}
+              <div className="p-4 border-t border-gray-700 flex justify-center">
+                <button
+                  onClick={() => {
+                    setShowBulkUpload(false);
+                    setNewPlaylistId(null);
+                    setFlash({ txt: 'Playlist created! You can add songs anytime.', ok: true });
+                  }}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white"
+                >
+                  Skip for Now
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
