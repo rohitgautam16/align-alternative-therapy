@@ -513,6 +513,7 @@ const {
   getDashboardFreePlaylistsController,
   getDashboardSongsByPlaylistController,
   getDashboardSongByIdController,
+  getSongBySlugController,
   searchDashboardController,
   getDashboardNewReleasesController,
   getDashboardAllSongsController
@@ -524,6 +525,7 @@ router.get('/dashboard/playlists',     getDashboardAllPlaylistsController);
 router.get('/dashboard/playlists/free', getDashboardFreePlaylistsController);
 router.get('/playlists/:playlistId/songs', getDashboardSongsByPlaylistController);
 router.get('/songs/:id',     getDashboardSongByIdController);
+router.get('/songs/slug/:slug', getSongBySlugController);
 router.get('/search',        searchDashboardController);
 router.get('/dashboard/playlists/new-releases', getDashboardNewReleasesController);
 router.get('/dashboard/songs', requireAuth, getDashboardAllSongsController);

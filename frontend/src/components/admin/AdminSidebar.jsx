@@ -73,13 +73,13 @@ export default function AdminSidebar() {
   ];
 
   const singleItems = [
-    { to: '/admin/upload', label: 'File Manager', icon: Database },
+    // { to: '/admin/upload', label: 'File Manager', icon: Database },
   ];
 
   return (
     <aside
       className={`
-        flex flex-col rounded-lg overflow-hidden bg-black backdrop-blur-sm border border-gray-700/50 text-white
+        flex flex-col rounded-lg overflow-hidden h-full bg-black backdrop-blur-sm border border-gray-700/50 text-white
         transition-all duration-300 ease-in-out
         ${collapsed ? 'w-16' : 'w-64'}
       `}
@@ -225,11 +225,11 @@ export default function AdminSidebar() {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 border-t border-gray-700/50 p-3">
+      {/* <div className="shrink-0 border-t border-gray-700/50 p-3">
         <button
           onClick={() => {
             if (collapsed) toggleSidebar();
-            navigate('/admin/settings');
+            navigate('/profile');
           }}
           className={`
             flex items-center gap-3 py-2.5 rounded-lg hover:bg-gray-700/50 transition-all duration-200 w-full text-gray-300 hover:text-white group
@@ -239,7 +239,7 @@ export default function AdminSidebar() {
           <Settings size={20} className="flex-shrink-0" />
           {!collapsed && <span className="font-medium">Settings</span>}
         </button>
-      </div>
+      </div> */}
 
       {/* Custom Scrollbar Styles */}
       <style jsx>{`

@@ -488,6 +488,10 @@ export const api = createApi({
       providesTags: (result, error, id) => [{ type: 'Songs', id }],
     }),
 
+    getSongBySlug: build.query({
+      query: (slug) => `songs/slug/${slug}`,
+    }),
+
     getDashboardNewReleases: build.query({
       /**
        * @arg {{ playlistLimit?: number, songLimit?: number }}
@@ -1016,6 +1020,7 @@ export const {
   useGetDashboardPlaylistByIdQuery,
   useGetSongsQuery,
   useGetSongByIdQuery,
+  useGetSongBySlugQuery,
   useGetDashboardNewReleasesQuery,
   useGetAllSongsQuery,
   useCreateUserPlaylistMutation,

@@ -7,6 +7,7 @@ const {
   fetchDashboardFreePlaylists,
   fetchDashboardSongsByPlaylist,
   fetchDashboardSongById,
+  fetchDashboardSongBySlug,
   searchDashboardEverything,
   fetchDashboardNewReleases,
   fetchDashboardAllSongs
@@ -74,6 +75,18 @@ async function getDashboardSongByIdController(req, res, next) {
   }
 }
 
+async function getSongBySlugController(req, res) {
+  try {
+    const { slug } = req.params;
+    const row = await fetchDashboardSongBySlug(slug);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(row);
+  } catch (err) {
+    console.error('getSongBySlug error:', err);
+    res.status(400).json({ error: err.message });
+  }
+}
+
 async function searchDashboardController(req, res, next) {
   try {
     const term = (req.query.query || '').trim();
@@ -117,6 +130,7 @@ module.exports = {
   getDashboardFreePlaylistsController,
   getDashboardSongsByPlaylistController,
   getDashboardSongByIdController,
+  getSongBySlugController,
   searchDashboardController,
   getDashboardNewReleasesController,
   getDashboardAllSongsController

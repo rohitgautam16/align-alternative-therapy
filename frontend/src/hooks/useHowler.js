@@ -4,18 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 export function useHowler({ src = [], playing, volume = 1, onEnd }) {
   const soundRef = useRef(null);
   const [duration, setDuration] = useState(0);
-  const [seek, setSeek] = useState(0);
+  // const [seek, setSeek] = useState(0);
 
 
-  useEffect(() => {
-    if (!playing) return;
-    const id = setInterval(() => {
-      if (soundRef.current) {
-        setSeek(soundRef.current.seek());
-      }
-    }, 200);
-    return () => clearInterval(id);
-  }, [playing]);
+  // useEffect(() => {
+  //   if (!playing) return;
+  //   const id = setInterval(() => {
+  //     if (soundRef.current) {
+  //       setSeek(soundRef.current.seek());
+  //     }
+  //   }, 200);
+  //   return () => clearInterval(id);
+  // }, [playing]);
 
 
   const handleLoad = () => {
@@ -37,7 +37,7 @@ export function useHowler({ src = [], playing, volume = 1, onEnd }) {
   return {
     soundRef,
     duration,
-    seek,
+    //seek,
     play,
     pause,
     seekTo,

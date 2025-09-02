@@ -352,7 +352,7 @@ const SongBulkUpload = ({
       {/* Selected Files List */}
       {selectedFiles.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-center justify-between">
             <div>
               <p className="text-sm text-gray-300">
                 {totalFiles} file{totalFiles !== 1 ? 's' : ''} selected • {formatFileSize(totalSize)}
@@ -512,7 +512,6 @@ const SongBulkUpload = ({
             </motion.div>
           )}
 
-          {/* ✅ All Failed Message */}
           {allComplete && completedCount === 0 && failedCount > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}

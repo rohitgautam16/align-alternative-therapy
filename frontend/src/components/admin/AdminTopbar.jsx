@@ -5,8 +5,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Menu, 
   LogOut, 
-  Settings, 
-  Bell, 
   User, 
   X,
   Home,
@@ -23,26 +21,21 @@ export default function AdminTopbar() {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { collapsed, toggleSidebar } = useSidebar();
+  const { collapsed, toggleSidebar, toggleDrawer } = useSidebar();
   const signOut = useSignOut();
   const auth = useAuthUser();
   const user = auth;
   const [logoutUser] = useLogoutUserMutation();
   const menuRef = useRef(null);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get current time
   const [currentTime, setCurrentTime] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -50,14 +43,8 @@ export default function AdminTopbar() {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await logoutUser().unwrap();
-    } catch (e) {
-      console.error('Server‑side logout failed', e);
-    } finally {
-      signOut();
-      navigate('/admin-login', { replace: true });
-    }
+    try { await logoutUser().unwrap(); } catch (e) { console.error('Server-side logout failed', e); }
+    finally { signOut(); navigate('/admin-login', { replace: true }); }
   };
 
   const getGreeting = () => {
@@ -68,16 +55,27 @@ export default function AdminTopbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-black backdrop-blur-xl border-b border-gray-700/50 m-2 rounded-xl text-white flex items-center justify-between px-4 sm:px-6 z-20 shadow-lg">
-      {/* LEFT: Navigation & Branding */}
+    <header className="fixed top-0 left-0 right-0 h-16 bg-black backdrop-blur-xl border-b border-gray-700/50 m-2 rounded-xl text-white flex items-center justify-between px-4 sm:px-6 z-50 shadow-lg">
+      {/* LEFT */}
       <div className="flex items-center space-x-3">
-        {/* Sidebar Toggle with animated hamburger */}
+        {/* Mobile hamburger → drawer (md:hidden) */}
+        <motion.button
+          onClick={toggleDrawer}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label="Open menu"
+          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200 md:hidden"
+        >
+          <Menu size={20} />
+        </motion.button>
+
+        {/* Desktop/tablet toggle → collapse (hidden on mobile) */}
         <motion.button
           onClick={toggleSidebar}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Toggle sidebar"
-          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200"
+          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200 hidden md:inline-flex"
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -92,7 +90,7 @@ export default function AdminTopbar() {
           </AnimatePresence>
         </motion.button>
 
-        {/* Home Button */}
+        {/* Home */}
         <motion.button
           onClick={() => navigate('/admin')}
           whileHover={{ scale: 1.05 }}
@@ -109,7 +107,7 @@ export default function AdminTopbar() {
           <span className="font-semibold text-md">Align Admin Panel</span>
         </div>
 
-        {/* Welcome Message */}
+        {/* Welcome */}
         <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
@@ -117,14 +115,14 @@ export default function AdminTopbar() {
           className="hidden lg:block ml-6"
         >
           <p className="text-sm text-gray-300">
-            {getGreeting()}, <span className="font-medium text-white">{user?.full_name?.split(' ')[0] || 'Admin'}</span> 👋
+            {getGreeting()},{' '}
+            <span className="font-medium text-white">{user?.full_name?.split(' ')[0] || 'Admin'}</span> 👋
           </p>
         </motion.div>
       </div>
 
-      {/* RIGHT: Actions & User */}
+      {/* RIGHT */}
       <div className="flex items-center space-x-2">
-        {/* Time Display (Hidden on mobile) */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-700/30 rounded-lg">
           <Clock size={16} className="text-gray-400" />
           <span className="text-sm text-gray-300">
@@ -132,19 +130,6 @@ export default function AdminTopbar() {
           </span>
         </div>
 
-        {/* Notifications */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label="Notifications"
-          className="p-2 hover:bg-gray-700/50 rounded-lg transition-all duration-200 relative"
-        >
-          {/* <Bell size={20} /> */}
-          {/* Notification dot */}
-          {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
-        </motion.button>
-
-        {/* User Menu */}
         <div className="relative" ref={menuRef}>
           <motion.button
             onClick={() => setShowMenu(!showMenu)}
@@ -170,7 +155,6 @@ export default function AdminTopbar() {
             />
           </motion.button>
 
-          {/* User Dropdown */}
           <AnimatePresence>
             {showMenu && (
               <motion.div
@@ -180,7 +164,6 @@ export default function AdminTopbar() {
                 transition={{ duration: 0.2 }}
                 className="absolute right-0 mt-2 w-56 bg-black/70 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden"
               >
-                {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-gray-700/50">
                   <p className="font-medium text-white">{user?.full_name || 'Admin User'}</p>
                   <p className="text-sm text-gray-400">{user?.email}</p>
@@ -189,25 +172,9 @@ export default function AdminTopbar() {
                   </p>
                 </div>
 
-                {/* Menu Items */}
                 <div className="py-2">
-                  {/* Settings - Commented out for now */}
-                  {/* 
-                  <Link
-                    to="/admin/settings"
-                    onClick={() => setShowMenu(false)}
-                    className="flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all duration-200"
-                  >
-                    <Settings size={18} />
-                    <span>Settings</span>
-                  </Link>
-                  */}
-                  
                   <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      handleLogout();
-                    }}
+                    onClick={() => { setShowMenu(false); handleLogout(); }}
                     className="w-full flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-red-600/20 hover:text-red-400 transition-all duration-200"
                   >
                     <LogOut size={18} />

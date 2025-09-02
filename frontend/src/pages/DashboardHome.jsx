@@ -43,8 +43,15 @@ const DashboardHome = () => {
     ...newSongs.map(s   => ({ type: 'song',     data: s  })),
   ];
 
-  // Recently played
-  const { data: recent = [], isLoading: rpL, isError: rpE } = useGetRecentPlaysQuery(10);
+
+ const { data: rpRaw, isLoading: rpL, isError: rpE } = useGetRecentPlaysQuery(10);
+   // Normalize: supports either ARRAY or { items: [...] }
+ const recentItemsRaw = Array.isArray(rpRaw) ? rpRaw : (rpRaw?.items ?? []);
+   // Optional: ensure a `slug` field exists (fallback to `song_slug`)
+ const recentItems = recentItemsRaw.map(s => ({
+   ...s,
+   slug: s?.slug ?? s?.song_slug ?? s?.id?.toString(),
+ }));
 
   return (
       <div className="space-y-12 rounded-2xl">
@@ -67,13 +74,13 @@ const DashboardHome = () => {
       />
 
       {/* Recently Played */}
-      {!rpL && !rpE && recent.length > 0 && (
+      {!rpL && !rpE && recentItems.length > 0 && (
       <CarouselSection
         title="Recently Played"
-        items={recent}
+        items={recentItems}
         renderItem={(song) => (
           <SongCard
-            key={song.id}
+            key={`s-${song.id}-${song.slug}`}
             song={song}
             onPlay={() => {}}
           />

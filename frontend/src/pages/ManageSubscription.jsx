@@ -118,7 +118,7 @@ export default function ManageSubscription() {
         </div>
         <div className="flex items-center gap-2">
           <StatusPill status={status} />
-          <YesNo yes={isEntitled} label="Access now" />
+          {/* <YesNo yes={isEntitled} label="Access now" /> */}
         </div>
       </div>
 
@@ -212,7 +212,7 @@ export default function ManageSubscription() {
       </Section>
 
       {/* 3) All subscription items (kept for completeness) */}
-      <Section title="All Items on Your Subscription">
+      <Section title="All Your Subscriptions">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -229,7 +229,7 @@ export default function ManageSubscription() {
                 return (
                   <tr key={it.id}>
                     <td className="py-2 pr-4">
-                      <span className={`rounded px-2 py-0.5 text-xs ${isBase ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-zinc-300'}`}>
+                      <span className={`rounded px-2 text-nowrap py-0.5 text-xs ${isBase ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-zinc-300'}`}>
                         {isBase ? 'Plan' : 'Add-on'}
                       </span>
                     </td>

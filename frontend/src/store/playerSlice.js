@@ -10,7 +10,14 @@ const initialState = {
   progress: 0,
   volume: 0.8,
   shuffle: false,       
-  repeat: false,
+  repeatOne: false,
+};
+
+const computeAudioSrc = (track) => {
+  const useCdn = import.meta.env.VITE_USE_CDN === 'true';
+  return useCdn
+    ? (track.audio_src || track.audioUrl)
+    : (track.audioUrl || track.audio_src);
 };
 
 const playerSlice = createSlice({
@@ -48,14 +55,14 @@ const playerSlice = createSlice({
     toggleShuffle(state) {
       state.shuffle = !state.shuffle;
     },
-    toggleRepeat(state) {
-      state.repeat = !state.repeat;
+    toggleRepeatOne(state) {
+      state.repeatOne = !state.repeatOne;
     },
     nextTrack(state) {
       const len = state.queue.length;
       if (len === 0) return;
 
-      if (state.repeat) {
+      if (state.repeatOne) {
         
         state.progress = 0;
         state.isPlaying = true;
@@ -76,6 +83,7 @@ const playerSlice = createSlice({
       }
 
       state.currentTrack = state.queue[state.currentIndex];
+      state.audioSrc = computeAudioSrc(state.currentTrack);
       state.progress = 0;
       state.isPlaying = true;
     },
@@ -103,6 +111,7 @@ const playerSlice = createSlice({
       }
 
       state.currentTrack = state.queue[state.currentIndex];
+      state.audioSrc = computeAudioSrc(state.currentTrack);
       state.progress = 0;
       state.isPlaying = true;
     },
@@ -117,7 +126,7 @@ export const {
   setProgress,
   setVolume,
   toggleShuffle,
-  toggleRepeat,
+  toggleRepeatOne,
   nextTrack,
   prevTrack,
 } = playerSlice.actions;

@@ -114,6 +114,28 @@ async function fetchDashboardSongById(id) {
   return rows[0];
 }
 
+async function fetchDashboardSongBySlug(slug) {
+  const [rows] = await db.query(
+    `SELECT
+       id,
+       name,
+       title,
+       slug,
+       artist,
+       tags,
+       category,
+       playlist    AS playlistId,
+       artwork_filename AS image,
+       cdn_url     AS audioUrl,
+       created     AS createdAt
+     FROM audio_metadata
+     WHERE slug = ?
+     LIMIT 1`,
+    [slug]
+  );
+  return rows[0];
+}
+
 /** GET /search?query=… */
 async function searchDashboardEverything(term) {
   const likeTerm = `%${term.toLowerCase()}%`;
@@ -299,6 +321,7 @@ module.exports = {
   fetchDashboardFreePlaylists,
   fetchDashboardSongsByPlaylist,
   fetchDashboardSongById,
+  fetchDashboardSongBySlug,
   searchDashboardEverything,
   fetchDashboardNewReleases,
   fetchDashboardAllSongs

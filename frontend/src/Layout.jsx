@@ -8,7 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import Header from './components/common/Header';
 import FullScreenMenu from './components/common/FullScreenMenu/FullScreenMenu';
-import MusicPlayer from './components/music/MusicPlayer';
+// import MusicPlayer from './components/music/MusicPlayer';
 import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -83,7 +83,7 @@ export default function Layout() {
 
       {showPlayer && (
         <footer className="border-t border-gray-700">
-          <MusicPlayer />
+          {/* <MusicPlayer /> */}
         </footer>
       )}
     </div>

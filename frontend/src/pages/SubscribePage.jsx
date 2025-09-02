@@ -141,7 +141,7 @@ function AddonGlassBanner({ loading, onStartBundle, onMonthlyOnly }) {
           <div className="relative p-6 sm:p-8">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
               {/* left */}
-              <div className="md:col-span-4 flex items-start gap-4">
+              <div className="md:col-span-4 flex flex-col items-start gap-4">
                 <div className="w-12 h-12 shrink-0 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" width="22" height="22" className="text-white/90">
                     <path
@@ -346,7 +346,7 @@ export default function SubscribePage() {
         </div>
 
         {/* Featured + Plans */}
-        <div className="grid gap-6 md:gap-8 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {/* Featured Card */}
           <motion.div
             variants={cardVariants}
@@ -354,7 +354,7 @@ export default function SubscribePage() {
             whileInView="onscreen"
             viewport={{ once: true, amount: 0.5 }}
             whileHover={{ scale: 1.05, transition: { type: 'spring', stiffness: 300 } }}
-            className="relative bg-white/90 rounded-3xl p-6 overflow-hidden h-full flex flex-col"
+            className="relative bg-white/90 rounded-3xl p-6 py-10 overflow-hidden h-full flex flex-col"
           >
             <div className="aspect-video mb-6">
               <img
@@ -367,7 +367,7 @@ export default function SubscribePage() {
               Discover tranquility through a curated selection of music and experiences.
             </h3>
             <button
-              className="w-full bg-black text-white py-3 rounded-full font-medium hover:bg-gray-800 transition-colors"
+              className="w-full bg-black text-white py-3 cursor-pointer rounded-full font-medium hover:bg-gray-800 transition-colors"
               onClick={handeConatctSales}
             >
               Contact Sales
@@ -409,13 +409,13 @@ export default function SubscribePage() {
           <div className="flex gap-2 flex-col sm:flex-row">
             <button
               onClick={confirmBaseWithAddon}
-              className="flex-1 px-4 py-2 rounded-lg bg-white text-black font-medium hover:bg-gray-100"
+              className="flex-1 px-4 py-2 rounded-lg cursor-pointer bg-white text-black font-medium hover:bg-gray-100"
             >
               Yes, add it
             </button>
             <button
               onClick={confirmBaseNoAddon}
-              className="flex-1 px-4 py-2 rounded-lg bg-transparent border border-gray-700 hover:border-gray-600"
+              className="flex-1 px-4 py-2 rounded-lg cursor-pointer bg-transparent border border-gray-700 hover:border-gray-600"
             >
               No, continue
             </button>
@@ -431,13 +431,13 @@ export default function SubscribePage() {
           <div className="flex gap-2">
             <button
               onClick={proceedToLogin}
-              className="flex-1 px-4 py-2 rounded-lg bg-white text-black font-medium hover:bg-gray-100"
+              className="flex-1 px-4 py-2 rounded-lg cursor-pointer bg-white text-black font-medium hover:bg-gray-100"
             >
               Go to Login
             </button>
             <button
               onClick={() => setLoginPromptOpen(false)}
-              className="flex-1 px-4 py-2 rounded-lg bg-transparent border border-gray-700 hover:border-gray-600"
+              className="flex-1 px-4 py-2 rounded-lg cursor-pointer bg-transparent border border-gray-700 hover:border-gray-600"
             >
               Cancel
             </button>

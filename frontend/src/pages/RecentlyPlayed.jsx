@@ -7,8 +7,11 @@ import SongCard from '../components/custom-ui/SongCard';
 
 export default function RecentlyPlayed() {
   const dispatch = useDispatch();
-  const { data: recent = [], isLoading, isError } = useGetRecentPlaysQuery(10);
+  const { data: recentRaw, isLoading, isError } = useGetRecentPlaysQuery(10);
   const [recordPlay] = useRecordPlayMutation();
+
+  const recent = Array.isArray(recentRaw) ? recentRaw : (recentRaw?.items ?? []);
+  console.log(recent);
 
   const handlePlay = (song) => {
     dispatch(setQueue([song]));
@@ -52,24 +55,18 @@ export default function RecentlyPlayed() {
           You haven’t played anything yet.
         </p>
       ) : (
-        <div
-          className="
-            grid gap-6
-            grid-cols-1
-            sm:grid-cols-1
-            md:grid-cols-2
-            lg:grid-cols-3
-            xl:grid-cols-3
-          "
-        >
-          {recent.map(song => (
-            <SongCard
-              key={song.id}
-              song={song}
-              onPlay={() => handlePlay(song)}
-            />
-          ))}
+        <div className="flex flex-wrap gap-6 justify-center sm:justify-center md:justify-center lg:justify-start">
+          {recent.map((song) => {
+            const slug = song?.slug ?? song?.song_slug ?? null;
+            const key  = slug ? `${song.id}-${slug}` : `id-${song.id}`;
+            return (
+              <div key={key} className="flex-none">
+                <SongCard song={song} onPlay={() => handlePlay(song)} />
+              </div>
+            );
+          })}
         </div>
+
       )}
     </section>
   );

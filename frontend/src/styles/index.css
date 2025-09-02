@@ -149,3 +149,22 @@ transform-origin: top;
   from { opacity: 0; transform: translateY(4px) scale(0.995); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 2px;   
+  height: 2px;  
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(79, 75, 75, 0.75);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 104, 104, 0.38) transparent; 
+}

@@ -14,6 +14,7 @@ const FALLBACK_IMAGE =
 export default function SongCard({ song }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const slug = song?.slug ?? song?.song_slug ?? null;
 
   // Use latest entitlement flags
   const { baseEntitled } = useSubscription();
@@ -62,8 +63,9 @@ export default function SongCard({ song }) {
 
   const handleCardClick = () => {
     if (locked) return;
-    navigate(`/dashboard/song/${song.id}`);
-  };
+    if (!slug) return;
+     navigate(`/dashboard/song/${slug}`);
+    };
 
   return (
     <div className="flex flex-col items-start">
@@ -110,7 +112,7 @@ export default function SongCard({ song }) {
                      truncate max-w-[calc(100%-4rem)]"
           title={song?.title}
         >
-          {song?.title}
+          {song?.name}
         </h3>
       </div>
     </div>

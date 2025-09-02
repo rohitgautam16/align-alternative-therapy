@@ -109,7 +109,7 @@ export default function App() {
           <Route path="manage-subscription" element={<ManageSubscription />} />
           <Route path="category/:slug" element={<CategoryView />} />
           <Route path="playlist/:slug" element={<PlaylistView />} />
-          <Route path="song/:id" element={<SongView />} />
+          <Route path="song/:slug" element={<SongView />} />
           <Route path="search" element={<Search />} />
           <Route path="user-playlists" element={<MyPlaylists />} />
           <Route path="user-playlists/:slug" element={<UserPlaylistView />} />

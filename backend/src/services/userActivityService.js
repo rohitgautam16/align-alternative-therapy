@@ -4,29 +4,40 @@ const db = require('../db');
 /**
  * Record or update a recent play timestamp.
  */
+/**
+ * Record a user's recent play.
+ * - Inserts if new
+ * - Updates `played_at` if already exists (ensures "most recent" is accurate)
+ */
 async function recordRecentPlay(userId, songId) {
   await db.query(
     `INSERT INTO song_plays (user_id, song_id, played_at)
-     VALUES (?, ?, CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE played_at = CURRENT_TIMESTAMP`,
+       VALUES (?, ?, CURRENT_TIMESTAMP)
+     ON DUPLICATE KEY UPDATE played_at = VALUES(played_at)`,
     [userId, songId]
   );
 }
 
 /**
  * Fetch a user’s recent plays.
+ * - Includes song slug for clean frontend routing
+ * - Returns songs ordered by most recent play
+ * - Supports limit (default = 20)
  */
 async function fetchRecentPlays(userId, limit = 20) {
   const [rows] = await db.query(
     `SELECT
        s.id,
+       s.slug              AS song_slug,   
        s.title,
+       s.name,
        s.artist,
-       s.artwork_filename   AS image,
-       s.cdn_url            AS audioUrl,
+       s.artwork_filename  AS image,
+       s.cdn_url           AS audioUrl,
        sp.played_at
      FROM song_plays sp
-     JOIN audio_metadata s ON s.id = sp.song_id
+     JOIN audio_metadata s 
+       ON s.id = sp.song_id
      WHERE sp.user_id = ?
      ORDER BY sp.played_at DESC
      LIMIT ?`,

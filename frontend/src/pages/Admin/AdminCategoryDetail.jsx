@@ -1046,12 +1046,12 @@ export default function AdminCategoryDetail() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-4 flex flex-col md:flex-row items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">
                   Add Songs to Your New Playlist
                 </h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-xs text-gray-400">
                   You can skip this step and add songs later
                 </p>
               </div>
@@ -1072,7 +1072,7 @@ export default function AdminCategoryDetail() {
               />
               
               {/* Skip Button */}
-              <div className="p-4 border-t border-gray-700 flex justify-center">
+              <div className="p-4 flex justify-center">
                 <button
                   onClick={() => {
                     setShowBulkUpload(false);

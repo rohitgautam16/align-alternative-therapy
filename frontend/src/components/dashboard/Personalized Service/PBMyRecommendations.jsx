@@ -14,11 +14,13 @@ export default function PBMyRecommendations() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl bg-[#0b0f19] ring-1 ring-white/10 p-5">
-        <div className="h-4 w-40 bg-white/10 rounded animate-pulse mb-4" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {Array.from({ length: 6 }).map((_, k) => (
-            <div key={k} className="h-36 bg-white/10 rounded animate-pulse" />
+      <div className="rounded-xl p-5 m-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, k) => (
+            <div key={k} className="flex flex-col space-y-2">
+              <div className="h-46 w-full bg-white/10 rounded animate-pulse" />
+              <div className="h-4 w-full bg-white/10 rounded animate-pulse" />
+            </div>
           ))}
         </div>
       </div>

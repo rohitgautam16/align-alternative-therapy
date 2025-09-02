@@ -56,7 +56,7 @@ export default function CreatePlaylistForm() {
 
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-secondary text-white px-4 py-2 rounded disabled:opacity-50"
           disabled={isLoading}
         >
           {isLoading ? 'Creating…' : 'Create Playlist'}
