@@ -115,7 +115,8 @@ const SongBulkUpload = ({
       updateFileStatus(fileData.id, { status: 'uploading', progress: 10 });
 
       // Get presigned URL
-      const presignUrl = `http://localhost:3001/api/admin/r2/presign?filename=${encodeURIComponent(fileData.file.name)}&contentType=${encodeURIComponent(fileData.file.type)}&folder=audio%2Fsongs`;
+      const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const presignUrl = `${API_BASE_URL}/api/admin/r2/presign?filename=${encodeURIComponent(fileData.file.name)}&contentType=${encodeURIComponent(fileData.file.type)}&folder=audio%2Fsongs`;
       
       const presignResponse = await fetch(presignUrl, {
         method: 'GET',
@@ -143,7 +144,7 @@ const SongBulkUpload = ({
         audioUrl 
       });
 
-      // ✅ Create song record (backend handles slug uniqueness)
+     
       const songData = {
         title: fileData.title,
         name: fileData.title,

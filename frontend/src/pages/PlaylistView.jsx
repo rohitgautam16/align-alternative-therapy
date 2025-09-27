@@ -245,7 +245,7 @@ export default function PlaylistView() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/dashboard/song/${song.id}`);
+                    navigate(`/dashboard/song/${song.slug}`);
                   }}
                   aria-label="View details"
                   className="inline-flex items-center justify-center w-8 h-8 transition"
@@ -259,11 +259,11 @@ export default function PlaylistView() {
               <span className="hidden md:block text-gray-400">{durationText}</span>
 
               {/* Details button: visible on md, hover-only on lg+ */}
-              <div className="hidden md:flex justify-end">
+              <div className="hidden md:flex justify-start">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/dashboard/song/${song.id}`);
+                    navigate(`/dashboard/song/${song.slug}`);
                   }}
                   className="md:opacity-100 flex flex-row gap-1 lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
                 >
