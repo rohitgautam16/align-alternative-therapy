@@ -110,74 +110,78 @@ const SongBulkUpload = ({
   };
 
   // Process individual file upload
-  const processFileUpload = async (fileData) => {
-    try {
-      updateFileStatus(fileData.id, { status: 'uploading', progress: 10 });
+const processFileUpload = async (fileData) => {
+  try {
+    updateFileStatus(fileData.id, { status: 'uploading', progress: 10 });
 
-      // Get presigned URL
-      const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const presignUrl = `${API_BASE_URL}/api/admin/r2/presign?filename=${encodeURIComponent(fileData.file.name)}&contentType=${encodeURIComponent(fileData.file.type)}&folder=audio%2Fsongs`;
-      
-      const presignResponse = await fetch(presignUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+    const presignUrl = `${API_BASE_URL}/admin/r2/presign?filename=${encodeURIComponent(fileData.file.name)}&contentType=${encodeURIComponent(fileData.file.type)}&folder=audio%2Fsongs`;
+    
+    const presignResponse = await fetch(presignUrl, {
+      method: 'GET',
+      headers: { 
+        'Content-Type': 'application/json',
+        // Add any auth headers you need
+        // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      }
+    });
 
-      if (!presignResponse.ok) throw new Error('Failed to get upload URL');
-      
-      const presignData = await presignResponse.json();
-      updateFileStatus(fileData.id, { progress: 20 });
+    if (!presignResponse.ok) throw new Error('Failed to get upload URL');
+    
+    const presignData = await presignResponse.json();
+    updateFileStatus(fileData.id, { progress: 20 });
 
-      // Upload audio file to R2
-      const uploadResponse = await uploadFileWithProgress(
-        fileData.file, 
-        presignData.url,
-        (progress) => updateFileStatus(fileData.id, { progress: 20 + (progress * 0.6) })
-      );
+    // Upload audio file to R2
+    const uploadResponse = await uploadFileWithProgress(
+      fileData.file, 
+      presignData.url,
+      (progress) => updateFileStatus(fileData.id, { progress: 20 + (progress * 0.6) })
+    );
 
-      if (!uploadResponse.ok) throw new Error('Audio upload failed');
-      
-      const audioUrl = `https://cdn.align-alternativetherapy.com/${presignData.key}`;
-      updateFileStatus(fileData.id, { 
-        status: 'creating', 
-        progress: 85, 
-        audioUrl 
-      });
+    if (!uploadResponse.ok) throw new Error('Audio upload failed');
+    
+    const audioUrl = `https://cdn.align-alternativetherapy.com/${presignData.key}`;
+    updateFileStatus(fileData.id, { 
+      status: 'creating', 
+      progress: 85, 
+      audioUrl 
+    });
 
-     
-      const songData = {
-        title: fileData.title,
-        name: fileData.title,
-        slug: fileData.slug, // Backend will make it unique
-        artist: 'Align Alternative Therapy',
-        tags: '',
-        playlist: playlistId,
-        category: null,
-        artwork_filename: '',
-        cdn_url: audioUrl,
-      };
+    // ✅ Create song record (backend handles slug uniqueness)
+    const songData = {
+      title: fileData.title,
+      name: fileData.title,
+      slug: fileData.slug, // Backend will make it unique
+      artist: 'Align Alternative Therapy',
+      tags: '',
+      playlist: playlistId,
+      category: null,
+      artwork_filename: '',
+      cdn_url: audioUrl,
+    };
 
-      const newSong = await createSong(songData).unwrap();
-      
-      // Mark as completed
-      updateFileStatus(fileData.id, { 
-        status: 'completed', 
-        progress: 100, 
-        songData: newSong 
-      });
+    const newSong = await createSong(songData).unwrap();
+    
+    // Mark as completed
+    updateFileStatus(fileData.id, { 
+      status: 'completed', 
+      progress: 100, 
+      songData: newSong 
+    });
 
-      setCompletedUploads(prev => [...prev, { ...fileData, songData: newSong }]);
+    setCompletedUploads(prev => [...prev, { ...fileData, songData: newSong }]);
 
-    } catch (error) {
-      console.error('Upload error:', error);
-      updateFileStatus(fileData.id, { 
-        status: 'error', 
-        error: error.message 
-      });
+  } catch (error) {
+    console.error('Upload error:', error);
+    updateFileStatus(fileData.id, { 
+      status: 'error', 
+      error: error.message 
+    });
 
-      setFailedUploads(prev => [...prev, { ...fileData, error: error.message }]);
-    }
-  };
+    setFailedUploads(prev => [...prev, { ...fileData, error: error.message }]);
+  }
+};
+
 
   // Upload file with progress tracking
   const uploadFileWithProgress = (file, uploadUrl, onProgress) => {

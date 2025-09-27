@@ -112,7 +112,6 @@ export default function AdminPlaylistDetail() {
   const { id: playlistId } = useParams();
   const navigate = useNavigate();
 
-  // ✅ FIXED: Move all useState hooks to the top and declare them unconditionally
   const [selectedArtFile, setSelectedArtFile] = useState(null);
   const [artworkKey, setArtworkKey] = useState(null);
   const [artworkUploading, setArtworkUploading] = useState(false);
