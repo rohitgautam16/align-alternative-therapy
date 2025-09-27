@@ -34,7 +34,6 @@ dist-ssr
 .env.local
 .env.*.local
 .env.development
-.env.production
 
 # IDE config
 .vscode/
