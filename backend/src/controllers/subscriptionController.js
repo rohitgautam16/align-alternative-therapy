@@ -66,11 +66,13 @@ async function checkoutAddonController(req, res) {
  * NOTE: route must use express.raw({ type: 'application/json' }) middleware so req.body is Buffer
  */
 async function webhookController(req, res) {
+   console.log('⚡ Webhook hit at', new Date().toISOString());
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    console.log('✅ Constructed Stripe event:', event.type);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -356,9 +358,9 @@ async function subscriptionSummaryController(req, res) {
   try {
     const userId = req.user.id;
 
-    // Find the most recent subscription row for this user
+    // 1️⃣ — get latest subscription row
     const [[row]] = await db.query(
-      `SELECT stripe_subscription_id, status, cancel_at
+      `SELECT id, stripe_subscription_id, status, cancel_at
          FROM subscriptions
         WHERE user_id = ?
         ORDER BY 
@@ -368,14 +370,14 @@ async function subscriptionSummaryController(req, res) {
       [userId]
     );
 
-    // Apply no-store headers on every response
+    // apply cache headers
     res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     res.set('Vary', 'Cookie');
 
+    // 2️⃣ — no subscription found
     if (!row || !row.stripe_subscription_id) {
-      // No subscription found (or all fully canceled/expired)
       return res.json({
         hasSubscription: false,
         status: 'none',
@@ -388,38 +390,62 @@ async function subscriptionSummaryController(req, res) {
       });
     }
 
-    // Map of base + addon price IDs
+    // 3️⃣ — Prepare base/addon maps
     const priceMap = await getProductPriceMap();
-    const basePriceIds  = new Set(Object.values(priceMap.base.prices).filter(Boolean));
+    const basePriceIds = new Set(Object.values(priceMap.base.prices).filter(Boolean));
     const addonPriceIds = new Set(Object.values(priceMap.addon.prices).filter(Boolean));
 
-    // Retrieve the live subscription from Stripe
-    const sub = await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
-      expand: ['items.data.price.product']
-    });
+    let sub;
+    try {
+      // 4️⃣ — try fetching live subscription
+      sub = await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
+        expand: ['items.data.price.product'],
+      });
+    } catch (err) {
+      // 5️⃣ — handle invalid subscription IDs cleanly
+      if (err.code === 'resource_missing' || err.statusCode === 404) {
+        console.warn(
+          `⚠️ subscriptionSummaryController: Missing Stripe sub ${row.stripe_subscription_id}, cleaning up DB`
+        );
 
-    // Items
+        await db.query(
+          `UPDATE subscriptions SET status = 'deleted', stripe_subscription_id = NULL, updated_at = NOW() WHERE id = ?`,
+          [row.id]
+        );
+
+        return res.json({
+          hasSubscription: false,
+          status: 'none',
+          plan: null,
+          hasAddon: false,
+          subscriptionId: null,
+          isEntitled: false,
+          baseEntitled: false,
+          addonEntitled: false,
+        });
+      }
+      throw err;
+    }
+
+    // 6️⃣ — valid subscription
     const items = Array.isArray(sub.items?.data) ? sub.items.data : [];
-    const hasAddon = items.some(i => addonPriceIds.has(i.price?.id));
-    const baseItem = items.find(i => basePriceIds.has(i.price?.id));
+    const hasAddon = items.some((i) => addonPriceIds.has(i.price?.id));
+    const baseItem = items.find((i) => basePriceIds.has(i.price?.id));
 
-    // Plan (monthly/annual) if base item present
     const plan =
       baseItem?.price?.recurring?.interval === 'month'
         ? 'monthly'
-        : (baseItem?.price?.recurring?.interval === 'year' ? 'annual' : null);
+        : baseItem?.price?.recurring?.interval === 'year'
+        ? 'annual'
+        : null;
 
-    // Totals
     const currency = items[0]?.price?.currency?.toUpperCase?.() || 'USD';
     const totalUnit = items.reduce((sum, i) => sum + (i.price?.unit_amount ?? 0), 0);
 
-    // ----- Entitlement logic (fixed) -----
-    // Treat canceled as entitled until the current period actually ends.
+    // entitlement logic
     const nowSec = Math.floor(Date.now() / 1000);
     const entitledStatuses = new Set(['active', 'trialing', 'past_due']);
     const stripeCPE = Number(sub.current_period_end) || null;
-
-    // Fallback to DB cancel_at if Stripe doesn't provide current_period_end
     const dbCancelAtSec = row.cancel_at ? Math.floor(new Date(row.cancel_at).getTime() / 1000) : null;
 
     const stillWithinPaidPeriod =
@@ -427,45 +453,42 @@ async function subscriptionSummaryController(req, res) {
       (typeof dbCancelAtSec === 'number' && dbCancelAtSec > nowSec);
 
     const isEntitled =
-      entitledStatuses.has(sub.status) ||
-      (sub.status === 'canceled' && stillWithinPaidPeriod);
+      entitledStatuses.has(sub.status) || (sub.status === 'canceled' && stillWithinPaidPeriod);
 
-    const baseEntitled  = Boolean(isEntitled && baseItem);
+    const baseEntitled = Boolean(isEntitled && baseItem);
     const addonEntitled = Boolean(isEntitled && hasAddon);
 
-    // Response
+    // 7️⃣ — response
     res.json({
       hasSubscription: true,
       subscriptionId: sub.id,
-      status: sub.status,        // e.g. active | trialing | past_due | canceled | unpaid | ...
-      plan,                      // monthly | annual | null
+      status: sub.status,
+      plan,
       hasAddon,
-
-      // ✅ Explicit entitlement flags
       isEntitled,
       baseEntitled,
       addonEntitled,
-
       cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
-      // Stripe timestamps are seconds; convert to ISO (ms)
-      cancelAt: sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : (row.cancel_at || null),
-      currentPeriodEnd: stripeCPE ? new Date(stripeCPE * 1000).toISOString() : (row.cancel_at || null),
-
-      // Pricing display
+      cancelAt: sub.cancel_at
+        ? new Date(sub.cancel_at * 1000).toISOString()
+        : row.cancel_at || null,
+      currentPeriodEnd: stripeCPE
+        ? new Date(stripeCPE * 1000).toISOString()
+        : row.cancel_at || null,
       currency,
-      totalUnitAmount: totalUnit, // in minor units (e.g. cents)
+      totalUnitAmount: totalUnit,
       totalFormatted: `${(totalUnit / 100).toFixed(2)} ${currency}`,
-      lineItems: items.map(i => ({
+      lineItems: items.map((i) => ({
         id: i.id,
         priceId: i.price?.id,
         product: i.price?.product,
         product_name:
-          (i.price?.product && typeof i.price.product === 'object')
+          i.price?.product && typeof i.price.product === 'object'
             ? i.price.product.name
             : null,
         nickname: i.price?.nickname,
         interval: i.price?.recurring?.interval,
-        amount: i.price?.unit_amount
+        amount: i.price?.unit_amount,
       })),
     });
   } catch (err) {
@@ -473,8 +496,6 @@ async function subscriptionSummaryController(req, res) {
     res.status(500).json({ error: err.message || 'Failed to load subscription summary' });
   }
 }
-
-module.exports = { subscriptionSummaryController };
 
 
 async function createBillingPortalSession(req, res) {
@@ -517,6 +538,95 @@ async function createBillingPortalSession(req, res) {
 }
 
 
+async function repairStripeLinksController(req, res) {
+  try {
+    // 1) Optional: admin-only guard (if you have user roles)
+    if (!req.user || req.user.user_roles !== 1) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const [subs] = await db.query(`
+      SELECT id, user_id, stripe_subscription_id, status
+      FROM subscriptions
+      WHERE stripe_subscription_id IS NOT NULL
+    `);
+
+    let repaired = 0;
+    let markedInactive = 0;
+    let customerFixed = 0;
+    const report = [];
+
+    for (const sub of subs) {
+      const { id, user_id, stripe_subscription_id } = sub;
+
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(stripe_subscription_id);
+        const stripeCustomer = stripeSub.customer;
+
+        // Ensure customer is linked to user table
+        const [[user]] = await db.query(
+          `SELECT stripe_customer_id FROM users WHERE id = ?`,
+          [user_id]
+        );
+        if (!user?.stripe_customer_id && stripeCustomer) {
+          await db.query(
+            `UPDATE users SET stripe_customer_id = ? WHERE id = ?`,
+            [stripeCustomer, user_id]
+          );
+          customerFixed++;
+        }
+
+        // Ensure subscription status matches Stripe
+        await db.query(
+          `UPDATE subscriptions SET status = ?, cancel_at = ?, updated_at = NOW() WHERE id = ?`,
+          [
+            stripeSub.status,
+            stripeSub.cancel_at ? new Date(stripeSub.cancel_at * 1000) : null,
+            id
+          ]
+        );
+
+        repaired++;
+      } catch (err) {
+        if (err.code === 'resource_missing') {
+          // Subscription no longer exists on Stripe — mark inactive
+          await db.query(
+            `UPDATE subscriptions SET status = 'deleted', updated_at = NOW() WHERE id = ?`,
+            [id]
+          );
+          markedInactive++;
+          report.push({
+            user_id,
+            stripe_subscription_id,
+            reason: 'Not found on Stripe (resource_missing)'
+          });
+        } else {
+          console.error('Stripe API error:', err);
+          report.push({
+            user_id,
+            stripe_subscription_id,
+            reason: err.message
+          });
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      summary: {
+        totalChecked: subs.length,
+        repaired,
+        markedInactive,
+        customerFixed,
+      },
+      report
+    });
+  } catch (err) {
+    console.error('repairStripeLinksController error:', err);
+    res.status(500).json({ error: 'Repair operation failed' });
+  }
+}
+
 module.exports = {
   checkoutController,
   checkoutAddonController,
@@ -525,5 +635,6 @@ module.exports = {
   cancelAddonController,
   removeBaseController,
   subscriptionSummaryController,
-  createBillingPortalSession
+  createBillingPortalSession,
+  repairStripeLinksController
 };

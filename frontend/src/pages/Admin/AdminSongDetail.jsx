@@ -183,6 +183,7 @@ export default function AdminSongDetail() {
         name: song.name || '',
         title: song.title || '',
         slug: song.slug || '',
+        description: song.description || '',
         artist: song.artist || '',
         tags: song.tags || '',
         category: song.category || '',
@@ -517,6 +518,19 @@ export default function AdminSongDetail() {
                 />
               ) : (
                 <p>{song.slug || '—'}</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-gray-400 mb-1">Description</label>
+              {editMode ? (
+                <input
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full p-2 bg-gray-700 rounded text-white"
+                />
+              ) : (
+                <p>{song.description || '—'}</p>
               )}
             </div>
 

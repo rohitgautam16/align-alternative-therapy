@@ -14,18 +14,21 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const { webhookController } = require('./controllers/subscriptionController');
 
 
+
 const app = express();
 
 console.log('Starting server with config:', { NODE_ENV, PORT, CORS_ORIGIN });
 
-app.use(helmet());
-app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
-app.use(cookieParser());
 app.post(
   '/api/webhooks/stripe',
   express.raw({ type: 'application/json' }),
   webhookController
 );
+
+app.use(helmet());
+app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
+app.use(cookieParser());
+
 app.use(express.json());
 
 if (NODE_ENV !== 'test') {

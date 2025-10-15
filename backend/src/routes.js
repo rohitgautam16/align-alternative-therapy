@@ -280,7 +280,7 @@ router.delete ('/user-playlists/:id',                requireAuth, pc.deletePlayl
 router.post   ('/user-playlists/:id/songs',          requireAuth, pc.addSong);
 router.delete ('/user-playlists/:id/songs/:songId',  requireAuth, pc.removeSong);
 
-const { checkoutController, checkoutAddonController, cancelSubscriptionController, cancelAddonController, removeBaseController, subscriptionSummaryController, createBillingPortalSession } = require('./controllers/subscriptionController');
+const { checkoutController, checkoutAddonController, cancelSubscriptionController, cancelAddonController, removeBaseController, subscriptionSummaryController, createBillingPortalSession, repairStripeLinksController } = require('./controllers/subscriptionController');
 
 console.log('requireAuth:', typeof requireAuth);
 console.log('checkoutController:', typeof checkoutController);
@@ -291,6 +291,7 @@ router.post('/subscribe/cancel-addon', requireAuth, cancelAddonController);
 router.post('/subscribe/remove-base', requireAuth, removeBaseController);
 router.get('/subscribe/summary', requireAuth, subscriptionSummaryController);
 router.post('/billing/portal', requireAuth, createBillingPortalSession);
+router.post('/admin/repair-stripe-links', requireAuth, repairStripeLinksController);
 
 // Add-on Personalized Service
 const personalize = require('./controllers/personalizeController');
@@ -354,6 +355,7 @@ router.get(    '/user/favorites/playlists',    requireAuth, getFavPlaylists);
 const {
   listAdminsController,
   listUsersController,
+  listRecommendationUsersController,
   getUserController,
   createUserController,
   updateUserController,
@@ -362,6 +364,7 @@ const {
 
 router.get('/admin/users/admins',      requireAuth, requireAdmin, listAdminsController);
 router.get(   '/admin/users',          requireAuth, requireAdmin, listUsersController);
+router.get('/admin/personalize/users-with-recommendations', listRecommendationUsersController);
 router.get(   '/admin/users/:id',      requireAuth, requireAdmin, getUserController);
 router.post(  '/admin/users',          requireAuth, requireAdmin, createUserController);
 router.put(   '/admin/users/:id',      requireAuth, requireAdmin, updateUserController);
@@ -554,12 +557,28 @@ router.get ('/admin/pb/recommendations/:id', requireAuth, requireAdmin, pb.getOn
 router.post('/admin/pb/recommendations/:id/items', requireAuth, requireAdmin, pb.addItem);
 router.put ('/admin/pb/recommendations/items/:itemId', requireAuth, requireAdmin, pb.updateItem);
 router.delete('/admin/pb/recommendations/items/:itemId', requireAuth, requireAdmin, pb.deleteItem);
+router.delete('/admin/pb/recommendations/:id',   requireAuth, requireAdmin, pb.deleteRecommendation);
+router.get('/admin/pb/recommendations/deleted/:userId', requireAuth, requireAdmin, pb.listDeletedForUser);
+router.delete('/admin/pb/recommendations/:id/hard', requireAuth, requireAdmin, pb.hardDeleteRecommendation);
+router.post('/admin/pb/recommendations/:id/restore', requireAuth, requireAdmin, pb.restoreRecommendation);
 router.put ('/admin/pb/recommendations/:id/status', requireAuth, requireAdmin, pb.updateStatus);
 router.post('/admin/pb/recommendations/:id/send',   requireAuth, requireAdmin, pb.sendNow);
 
 
+
 // ---------- User PB (isolated) ----------
 router.get('/pb/my-recommendations', requireAuth, pb.listMineForCurrentUser);
+
+
+
+const {
+  createPaymentLink,
+  getRecommendationPaymentStatus,
+} = require('./controllers/pbPaymentController');
+
+router.post('/pb-payment/admin/create-link', requireAuth, requireAdmin, createPaymentLink);
+router.get('/pb-payment/status/:id', requireAuth, getRecommendationPaymentStatus);
+
 
 
 // router.get('/categories', async (_req, res) => {

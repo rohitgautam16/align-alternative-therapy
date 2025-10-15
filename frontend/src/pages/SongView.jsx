@@ -9,6 +9,7 @@ import { useDispatch } from 'react-redux';
 import { useGetSongBySlugQuery, useRecordPlayMutation } from '../utils/api';
 import { setQueue, setTrack, setIsPlaying } from '../store/playerSlice';
 import { AnimatePresence, motion } from 'framer-motion';
+import { buildImageUrl } from '../utils/imageHelpers';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 const FALLBACK_DESC = 'No description available for this track.';
@@ -46,17 +47,17 @@ export default function SongView() {
   const timeText = fmt(durationSec);
 
   // ✅ robust image fallback (handles 404s)
-  const [heroImg, setHeroImg] = useState(FALLBACK_IMG);
-  useEffect(() => {
-    const url = song?.image;
-    if (!url) { setHeroImg(FALLBACK_IMG); return; }
-    let cancelled = false;
-    const img = new Image();
-    img.onload = () => { if (!cancelled) setHeroImg(url); };
-    img.onerror = () => { if (!cancelled) setHeroImg(FALLBACK_IMG); };
-    img.src = url;
-    return () => { cancelled = true; };
-  }, [song?.image]);
+  // const [heroImg, setHeroImg] = useState(FALLBACK_IMG);
+  // useEffect(() => {
+  //   const url = song?.image;
+  //   if (!url) { setHeroImg(FALLBACK_IMG); return; }
+  //   let cancelled = false;
+  //   const img = new Image();
+  //   img.onload = () => { if (!cancelled) setHeroImg(url); };
+  //   img.onerror = () => { if (!cancelled) setHeroImg(FALLBACK_IMG); };
+  //   img.src = url;
+  //   return () => { cancelled = true; };
+  // }, [song?.image]);
 
   const handlePlay = () => {
     if (!song) return;
@@ -74,6 +75,28 @@ export default function SongView() {
 
   if (isLoading) return <div className="text-white text-center py-20">Loading song…</div>;
   if (isError || !song) return <div className="text-red-500 text-center py-20">Error loading song.</div>;
+
+// const heroImg = song?.image
+//   ? song.image.startsWith('http')
+//     ? song.image.includes('%20')
+//       ? song.image // already encoded → leave as-is
+//       : song.image.replace(/ /g, '%20') // encode spaces
+//     : `https://cdn.align-alternativetherapy.com/align-images/categories/${encodeURIComponent(song.image)}`
+//   : song?.artwork_filename
+//   ? `https://cdn.align-alternativetherapy.com/align-images/categories/${encodeURIComponent(song.artwork_filename)}`
+//   : undefined;
+
+const heroImg = buildImageUrl(
+  'https://cdn.align-alternativetherapy.com/align-images/categories',
+  song?.image,
+  song?.artwork_filename,
+  FALLBACK_IMG
+);
+
+
+const bgUrl = heroImg
+  ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${heroImg})`
+  : 'transparent';
 
   return (
     <div
@@ -108,10 +131,11 @@ export default function SongView() {
           </h1>
           <p className="mt-2 text-gray-400 text-sm sm:text-base">{song.artist}</p>
           <p className="mt-3 max-w-none sm:max-w-xl text-gray-300 text-base sm:text-lg">
-            {song.tags || FALLBACK_DESC}
+            {song.description || FALLBACK_DESC}
           </p>
           <p className="mt-2 text-sm sm:text-base text-gray-400">
-            • Released: {new Date(song.createdAt).toLocaleDateString()} • {song.category || 'Uncategorized'}
+            • Released: {new Date(song.createdAt).toLocaleDateString()} 
+            • {song.category || 'Uncategorized'}
           </p>
         </div>
       </div>

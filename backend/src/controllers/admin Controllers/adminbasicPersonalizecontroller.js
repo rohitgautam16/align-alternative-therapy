@@ -325,6 +325,124 @@ exports.deleteItem = async (req, res) => {
   }
 };
 
+/** Soft-delete a recommendation (admin) */
+exports.deleteRecommendation = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const cascade = req.query.cascade === 'true'; // optional query param
+
+    if (!id) return bad(res, 400, 'id required');
+
+    // Step 1: Soft delete the recommendation
+    const [result] = await db.query(
+      `UPDATE pb_recommendations SET deleted_at = NOW(), updated_at = NOW() WHERE id = ? AND deleted_at IS NULL`,
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return bad(res, 404, 'Recommendation not found or already deleted');
+    }
+
+    // Step 2: Optional cascade delete its items
+    if (cascade) {
+      await db.query(
+        `UPDATE pb_recommendation_items SET deleted_at = NOW(), updated_at = NOW() WHERE recommendation_id = ? AND deleted_at IS NULL`,
+        [id]
+      );
+    }
+
+    ok(res, { ok: true, deleted: id, cascade });
+  } catch (e) {
+    console.error('pb deleteRecommendation', e);
+    bad(res, 500, 'Failed to delete recommendation');
+  }
+};
+
+
+/** Restore a soft-deleted recommendation (admin) */
+exports.restoreRecommendation = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return bad(res, 400, 'id required');
+
+    // Step 1: Check if record exists and is deleted
+    const [[rec]] = await db.query(
+      `SELECT id FROM pb_recommendations WHERE id = ? AND deleted_at IS NOT NULL`,
+      [id]
+    );
+    if (!rec) return bad(res, 404, 'Recommendation not found or not deleted');
+
+    // Step 2: Restore recommendation
+    await db.query(
+      `UPDATE pb_recommendations SET deleted_at = NULL, updated_at = NOW() WHERE id = ?`,
+      [id]
+    );
+
+    // Step 3 (optional): restore items if cascade restore requested
+    if (req.query.cascade === 'true') {
+      await db.query(
+        `UPDATE pb_recommendation_items SET deleted_at = NULL, updated_at = NOW() WHERE recommendation_id = ?`,
+        [id]
+      );
+    }
+
+    ok(res, { ok: true, restored: id, cascade: req.query.cascade === 'true' });
+  } catch (e) {
+    console.error('pb restoreRecommendation', e);
+    bad(res, 500, 'Failed to restore recommendation');
+  }
+};
+
+/** List deleted recommendations for a specific user (admin view) */
+exports.listDeletedForUser = async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!userId) return bad(res, 400, 'userId required');
+
+    const [rows] = await db.query(
+      `
+      SELECT *
+      FROM pb_recommendations
+      WHERE user_id = ? AND deleted_at IS NOT NULL
+      ORDER BY deleted_at DESC
+      `,
+      [userId]
+    );
+
+    ok(res, rows);
+  } catch (e) {
+    console.error('pb listDeletedForUser', e);
+    bad(res, 500, 'Failed to list deleted recommendations');
+  }
+};
+
+
+exports.hardDeleteRecommendation = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return bad(res, 400, 'id required');
+
+    // Fetch first
+    const [[rec]] = await db.query(
+      `SELECT id, deleted_at FROM pb_recommendations WHERE id = ?`,
+      [id]
+    );
+    if (!rec) return bad(res, 404, 'Recommendation not found');
+    if (!rec.deleted_at)
+      return bad(res, 400, 'Recommendation must be soft-deleted first');
+
+    await db.query(`DELETE FROM pb_recommendation_items WHERE recommendation_id = ?`, [id]);
+    await db.query(`DELETE FROM pb_recommendations WHERE id = ?`, [id]);
+
+    ok(res, { ok: true, permanently_deleted: id });
+  } catch (e) {
+    console.error('pb hardDeleteRecommendation', e);
+    bad(res, 500, 'Failed to permanently delete recommendation');
+  }
+};
+
+
+
 /** Update rec status (admin) */
 exports.updateStatus = async (req, res) => {
   try {
@@ -392,15 +510,19 @@ exports.listMineForCurrentUser = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return bad(res, 401, 'Unauthorized');
 
+    // ✅ Only fetch active recommendations (exclude withdrawn & drafts)
     const [recs] = await db.query(
       `
       SELECT *
       FROM pb_recommendations
-      WHERE user_id = ? AND deleted_at IS NULL
+      WHERE user_id = ?
+        AND deleted_at IS NULL
+        AND status IN ('sent', 'updated')
       ORDER BY created_at DESC
       `,
       [userId]
     );
+
     if (!recs.length) return ok(res, []);
 
     const ids = recs.map(r => r.id);
@@ -409,69 +531,83 @@ exports.listMineForCurrentUser = async (req, res) => {
       SELECT *
       FROM pb_recommendation_items
       WHERE deleted_at IS NULL
-        AND recommendation_id IN (${ids.map(()=>'?').join(',')})
+        AND recommendation_id IN (${ids.map(() => '?').join(',')})
       ORDER BY recommendation_id ASC, COALESCE(display_order, id) ASC
       `,
       ids
     );
 
-    // Enrich (same as admin)
-    const trackIds = items.filter(i => i.item_type === 'track' && i.track_id).map(i => Number(i.track_id));
-    const playlistIds = items.filter(i => i.item_type === 'playlist' && i.playlist_id).map(i => Number(i.playlist_id));
+    // Build maps for track and playlist enrichment
+    const trackIds = items
+      .filter(i => i.item_type === 'track' && i.track_id)
+      .map(i => Number(i.track_id));
+    const playlistIds = items
+      .filter(i => i.item_type === 'playlist' && i.playlist_id)
+      .map(i => Number(i.playlist_id));
 
-// Build maps like in getOne
-let trackMap = new Map();
-if (trackIds.length) {
-  const [srows] = await db.query(
-    `
-    SELECT
-      id,
-      title,
-      name,
-      artist       AS artist,
-      artwork_filename AS image,
-      cdn_url      AS audio_url,
-      slug
-    FROM audio_metadata
-    WHERE id IN (${trackIds.map(()=>'?').join(',')})
-    `,
-    trackIds
-  );
-  trackMap = new Map(srows.map(s => [Number(s.id), s]));
-}
+    let trackMap = new Map();
+    if (trackIds.length) {
+      const [srows] = await db.query(
+        `
+        SELECT
+          id,
+          title,
+          name,
+          artist,
+          artwork_filename AS image,
+          cdn_url AS audio_url,
+          slug
+        FROM audio_metadata
+        WHERE id IN (${trackIds.map(() => '?').join(',')})
+        `,
+        trackIds
+      );
+      trackMap = new Map(srows.map(s => [Number(s.id), s]));
+    }
 
-let playlistMap = new Map();
-if (playlistIds.length) {
-  const [prows] = await db.query(
-    `
-    SELECT
-      id,
-      title,
-      slug,
-      artwork_filename AS image,
-      paid,
-      COALESCE(NULLIF(title, ''), slug) AS display_title
-    FROM playlists
-    WHERE id IN (${playlistIds.map(()=>'?').join(',')})
-    `,
-    playlistIds
-  );
-  playlistMap = new Map(prows.map(p => [Number(p.id), p]));
-}
+    let playlistMap = new Map();
+    if (playlistIds.length) {
+      const [prows] = await db.query(
+        `
+        SELECT
+          id,
+          title,
+          slug,
+          artwork_filename AS image,
+          paid,
+          COALESCE(NULLIF(title, ''), slug) AS display_title
+        FROM playlists
+        WHERE id IN (${playlistIds.map(() => '?').join(',')})
+        `,
+        playlistIds
+      );
+      playlistMap = new Map(prows.map(p => [Number(p.id), p]));
+    }
 
-const byRec = new Map();
-for (const it of items) {
-  const enriched = it.item_type === 'track'
-    ? { ...it, track: trackMap.get(Number(it.track_id)) || null }
-    : { ...it, playlist: playlistMap.get(Number(it.playlist_id)) || null };
-  if (!byRec.has(it.recommendation_id)) byRec.set(it.recommendation_id, []);
-  byRec.get(it.recommendation_id).push(enriched);
-}
+    // Group items by recommendation
+    const byRec = new Map();
+    for (const it of items) {
+      const enriched =
+        it.item_type === 'track'
+          ? { ...it, track: trackMap.get(Number(it.track_id)) || null }
+          : { ...it, playlist: playlistMap.get(Number(it.playlist_id)) || null };
+      if (!byRec.has(it.recommendation_id)) byRec.set(it.recommendation_id, []);
+      byRec.get(it.recommendation_id).push(enriched);
+    }
 
-
-    ok(res, recs.map(r => ({ recommendation: r, items: byRec.get(r.id) || [] })));
+    // ✅ Return newest first
+    ok(
+      res,
+      recs.map(r => ({
+        recommendation: r,
+        items: byRec.get(r.id) || [],
+      }))
+    );
   } catch (e) {
     console.error('pb listMineForCurrentUser', e);
     bad(res, 500, 'Failed to list your recommendations');
   }
 };
+
+
+

@@ -43,6 +43,7 @@ export default function AdminCategoryDetail() {
   const [createForm, setCreateForm] = useState({
     title: '',
     slug: '',
+    description: '',
     tags: '',
     artwork_filename: '',
     paid: 0,
@@ -108,6 +109,7 @@ export default function AdminCategoryDetail() {
       setForm({
         title: cat.title,
         slug: cat.slug,
+        description: cat.description || '',
         tags: cat.tags || '',
         artwork_filename: cat.image || '',
       });
@@ -349,7 +351,7 @@ export default function AdminCategoryDetail() {
       });
     }
     
-    console.log('🔍 CategoryDetail song counts:', counts);
+   //console.log('🔍 CategoryDetail song counts:', counts);
     
     return counts;
   }, [assigned, filteredAndSortedAvailable, allSongs]);
@@ -437,6 +439,7 @@ export default function AdminCategoryDetail() {
       setCreateForm({
         title: '',
         slug: '',
+        description: '',
         tags: '',
         artwork_filename: '',
         paid: 0,
@@ -489,6 +492,7 @@ export default function AdminCategoryDetail() {
         id: pl.id,
         title: pl.name,
         slug: pl.slug,
+        description: pl.description,
         tags: pl.tags ?? '',
         artwork_filename: pl.image ?? '',
         category_id: toAssign ? categoryId : null,
@@ -583,6 +587,16 @@ export default function AdminCategoryDetail() {
                 />
               ) : (
                 <p>{cat.tags || '—'}</p>
+              )}
+              <label className="block text-gray-400 mb-1">Description</label>
+              {editMode ? (
+                <input
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full p-2 bg-gray-700 rounded text-white"
+                />
+              ) : (
+                <p>{cat.description || '—'}</p>
               )}
             </div>
 
@@ -781,6 +795,16 @@ export default function AdminCategoryDetail() {
                     value={createForm.slug}
                     onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
                     required
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Description</label>
+                  <input
+                    placeholder="playlist-description"
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                     className="w-full p-2 bg-gray-700 rounded text-white text-sm"
                   />
                 </div>

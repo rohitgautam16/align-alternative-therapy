@@ -18,6 +18,7 @@ const inputCx =
 const labelCx = 'text-xs text-gray-200';
 const errText = 'text-xs text-rose-300 mt-1';
 
+/* ===== Status Banner ===== */
 function StatusBanner({ type = 'success', message = '', onClose }) {
   if (!message) return null;
   const isSuccess = type === 'success';
@@ -35,9 +36,7 @@ function StatusBanner({ type = 'success', message = '', onClose }) {
       aria-live="polite"
     >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5">
-          {isSuccess ? '✅' : '⚠️'}
-        </div>
+        <div className="mt-0.5">{isSuccess ? '✅' : '⚠️'}</div>
         <div className="text-sm leading-relaxed">{message}</div>
         <button
           type="button"
@@ -52,7 +51,7 @@ function StatusBanner({ type = 'success', message = '', onClose }) {
   );
 }
 
-/* ===== Modal with reliable open/close + glassmorphism ===== */
+/* ===== Modal with glassmorphism animation ===== */
 function Modal({ open, onClose, title, children }) {
   const [visible, setVisible] = React.useState(open);
   const [show, setShow] = React.useState(open);
@@ -80,23 +79,20 @@ function Modal({ open, onClose, title, children }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
       />
-
-      {/* Dialog wrapper */}
       <div
         className={`
           relative w-full max-w-xl rounded-2xl overflow-hidden
           transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]
-          will-change-transform will-change-opacity
           ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}
         `}
-        role="dialog" aria-modal="true" aria-label={title}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
       >
-        {/* Subtle glass/shine layers */}
         <div className="absolute inset-0 backdrop-blur-2xl bg-transparent" />
         <div className="absolute inset-0">
           <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20" />
@@ -105,10 +101,7 @@ function Modal({ open, onClose, title, children }) {
         <div className="pointer-events-none absolute inset-0 rounded-2xl">
           <div className="h-full w-full rounded-2xl bg-black/10" />
         </div>
-
-        {/* CONTENT */}
         <div className="relative text-white">
-          {/* Header */}
           <div className="flex items-center justify-between px-5 py-4">
             <div className="flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-cyan-400/70 shadow-[0_0_12px_2px_rgba(34,211,238,0.5)]" />
@@ -116,14 +109,12 @@ function Modal({ open, onClose, title, children }) {
             </div>
             <button
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center cursor-pointer rounded-lg bg-white/10 hover:bg-white/15 ring-1 ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 hover:bg-white/15 ring-1 ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
               aria-label="Close"
             >
               ✕
             </button>
           </div>
-
-          {/* Body */}
           <div className="px-5 py-4 max-h-[70vh] overflow-auto">{children}</div>
         </div>
       </div>
@@ -131,48 +122,43 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
+/* ===== Main Component ===== */
 export default function PersonalizeCTA() {
   const navigate = useNavigate();
   const user = useAuthUser();
   const userId = user?.id ?? 'anon';
 
-  // Authoritative subscription summary (server), with cookie fallback & refetch hook preserved
   const { data: subSummary, refetch } = useGetSubscriptionSummaryQuery(userId, {
     refetchOnFocus: true,
     refetchOnReconnect: true,
-    pollingInterval: 0,
   });
-
-  // Prefer server entitlement when present; fallback to your previous logic
-  const hasAddonFromSummary = subSummary?.hasAddon;
-  const hasAddonFromCookie = Number(user?.has_addon) === 1;
 
   const status = subSummary?.status;
   const entitledStatuses = new Set(['active', 'trialing', 'past_due']);
 
-  // NEW: prefer server-computed addonEntitled when available
-  const hasPersonalizeAddon =
-    typeof subSummary?.addonEntitled === 'boolean'
-      ? subSummary.addonEntitled
-      : (entitledStatuses.has(status) &&
-         (typeof hasAddonFromSummary === 'boolean' ? hasAddonFromSummary : hasAddonFromCookie));
-
-  // CTA state
   const [openForm, setOpenForm] = React.useState(false);
   const [openLearn, setOpenLearn] = React.useState(false);
   const [okMsg, setOkMsg] = React.useState('');
   const [errMsg, setErrMsg] = React.useState('');
 
-  const [form, setForm] = React.useState({ name: '', email: '', mobile: '', notes: '', hp_field: '' });
+  const [form, setForm] = React.useState({
+    name: '',
+    email: '',
+    mobile: '',
+    notes: '',
+    hp_field: '',
+  });
   const [errors, setErrors] = React.useState({});
 
-  const [createReq, { isLoading: submitting }] = useCreatePersonalizeBasicRequestMutation();
+  const [createReq, { isLoading: submitting }] =
+    useCreatePersonalizeBasicRequestMutation();
 
   function validate() {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
     if (!form.email.trim()) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      e.email = 'Invalid email';
     if (!form.mobile.trim()) e.mobile = 'Mobile is required';
     if (!form.notes.trim()) e.notes = 'Notes are required';
     if (form.hp_field?.trim()) e.hp_field = 'Bot detected';
@@ -202,7 +188,6 @@ export default function PersonalizeCTA() {
     }
   }
 
-  // Optional: refresh sub after returning from Stripe (if you set a flag)
   React.useEffect(() => {
     const flag = sessionStorage.getItem('shouldRefetchSub');
     if (flag) {
@@ -211,20 +196,19 @@ export default function PersonalizeCTA() {
     }
   }, [refetch]);
 
-  const heroImg = 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1600&q=80';
-  const onBuyAddon = () => navigate('/pricing');
+  const heroImg =
+    'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1600&q=80';
 
   return (
     <>
       <section className="relative rounded-3xl overflow-hidden ring-1 ring-white/10 py-20 m-6">
-        {/* Background image + overlays */}
+        {/* Background */}
         <div className="absolute inset-0">
           <img src={heroImg} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-black/65" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/60" />
           </div>
-          {/* Soft vignette */}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-white/10" />
         </div>
 
@@ -235,18 +219,19 @@ export default function PersonalizeCTA() {
               Get a Personalized Music Plan
             </h3>
             <p className="text-sm sm:text-base text-gray-200">
-              Talk to a specialist. We’ll understand your needs and craft a focused set of playlists &amp; tracks.
+              Talk to a specialist. We’ll understand your needs and craft a
+              focused set of playlists &amp; tracks.
             </p>
 
             {/* Actions */}
             <div className="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-3">
-              {hasPersonalizeAddon ? (
+              {entitledStatuses.has(status) ? (
                 <button className={btnGlass} onClick={() => setOpenForm(true)}>
                   Request Personalization
                 </button>
               ) : (
-                <button className={btnGlass} onClick={onBuyAddon}>
-                  Buy Add-On Personalized Plan
+                <button className={btnGlass} onClick={() => navigate('/pricing')}>
+                  Buy Premium Plan to Request
                 </button>
               )}
 
@@ -259,18 +244,14 @@ export default function PersonalizeCTA() {
       </section>
 
       {/* Form Modal */}
-      <Modal open={openForm} onClose={() => setOpenForm(false)} title="Request Personalized Support">
+      <Modal
+        open={openForm}
+        onClose={() => setOpenForm(false)}
+        title="Request Personalized Support"
+      >
         <form onSubmit={submit} className="space-y-5" aria-describedby="form-help">
-          <StatusBanner
-            type="success"
-            message={okMsg}
-            onClose={() => setOkMsg('')}
-          />
-          <StatusBanner
-            type="error"
-            message={errMsg}
-            onClose={() => setErrMsg('')}
-          />
+          <StatusBanner type="success" message={okMsg} onClose={() => setOkMsg('')} />
+          <StatusBanner type="error" message={errMsg} onClose={() => setErrMsg('')} />
 
           {/* Honeypot */}
           <input
@@ -286,52 +267,40 @@ export default function PersonalizeCTA() {
           {/* Name */}
           <div className="space-y-1.5">
             <label className={labelCx} htmlFor="pb-name">Your name *</label>
-            <div className="relative">
-              <input
-                id="pb-name"
-                className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
-                placeholder=""
-                value={form.name}
-                onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                aria-invalid={Boolean(errors.name)}
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/5" />
-            </div>
+            <input
+              id="pb-name"
+              className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
+              value={form.name}
+              onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              aria-invalid={Boolean(errors.name)}
+            />
             {errors.name && <div className={errText}>{errors.name}</div>}
           </div>
 
           {/* Email */}
           <div className="space-y-1.5">
             <label className={labelCx} htmlFor="pb-email">Email *</label>
-            <div className="relative">
-              <input
-                id="pb-email"
-                className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
-                placeholder=""
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                aria-invalid={Boolean(errors.email)}
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/5" />
-            </div>
+            <input
+              id="pb-email"
+              className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              aria-invalid={Boolean(errors.email)}
+            />
             {errors.email && <div className={errText}>{errors.email}</div>}
           </div>
 
           {/* Mobile */}
           <div className="space-y-1.5">
             <label className={labelCx} htmlFor="pb-mobile">Mobile *</label>
-            <div className="relative">
-              <input
-                id="pb-mobile"
-                className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
-                placeholder=""
-                value={form.mobile}
-                onChange={(e) => setForm((s) => ({ ...s, mobile: e.target.value }))}
-                aria-invalid={Boolean(errors.mobile)}
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/5" />
-            </div>
+            <input
+              id="pb-mobile"
+              className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
+              value={form.mobile}
+              onChange={(e) => setForm((s) => ({ ...s, mobile: e.target.value }))}
+              aria-invalid={Boolean(errors.mobile)}
+            />
             {errors.mobile && <div className={errText}>{errors.mobile}</div>}
             <p id="form-help" className="text-[11px] text-gray-300/80">
               We’ll only use this to contact you about your personalized plan.
@@ -341,21 +310,14 @@ export default function PersonalizeCTA() {
           {/* Notes */}
           <div className="space-y-1.5">
             <label className={labelCx} htmlFor="pb-notes">Notes *</label>
-            <div className="relative">
-              <textarea
-                id="pb-notes"
-                className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
-                rows={4}
-                placeholder="Share a bit about your goals (focus, stress relief, sleep, etc.)"
-                value={form.notes}
-                onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))}
-                aria-invalid={Boolean(errors.notes)}
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/5" />
-              <div className="absolute bottom-2 right-3 text-[11px] text-gray-300/70">
-                {form.notes.length}/500
-              </div>
-            </div>
+            <textarea
+              id="pb-notes"
+              className={`${inputCx} ring-white/15 focus:ring-cyan-500/70`}
+              rows={4}
+              value={form.notes}
+              onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))}
+              aria-invalid={Boolean(errors.notes)}
+            />
             {errors.notes && <div className={errText}>{errors.notes}</div>}
           </div>
 
@@ -379,8 +341,8 @@ export default function PersonalizeCTA() {
         <div className="space-y-3">
           <h4 className="text-lg font-semibold">Why Personalized Plans?</h4>
           <p className="text-sm text-gray-200">
-            Our specialists analyze your preferences and recommend tracks and playlists tailored for your goals—whether
-            it’s focus, relaxation, or better sleep. Ask questions, iterate, and refine quickly to get exactly what you need.
+            Our specialists analyze your preferences and recommend tracks and playlists tailored for your goals—
+            whether it’s focus, relaxation, or better sleep. Ask questions, iterate, and refine quickly to get exactly what you need.
           </p>
         </div>
       </Modal>

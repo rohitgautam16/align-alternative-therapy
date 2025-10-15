@@ -54,7 +54,7 @@ const DashboardHome = () => {
  }));
 
   return (
-      <div className="space-y-12 rounded-2xl">
+      <div className="space-y-1 sm:space-y-6 rounded-2xl">
       <CategorySection />
 
       {/* <PersonalizeBanner /> */}

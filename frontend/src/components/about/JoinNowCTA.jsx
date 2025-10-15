@@ -207,7 +207,7 @@ const AnimatedCTA = () => {
   return (
     <section
       ref={bannerRef}
-      className="relative bg-black text-white py-16 lg:py-24 overflow-hidden"
+      className="relative bg-black text-white py-16 lg:py-24 px-16 overflow-hidden"
       style={{ willChange: 'transform' }}
     >
       {/* Background decorative elements */}

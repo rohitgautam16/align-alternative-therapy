@@ -1,5 +1,7 @@
 // src/components/dashboard/Personalized Service/PBMyRecommendations.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useListMyPbRecommendationsQuery } from '../../../utils/api';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import CarouselSection from '../../dashboard/CarouselSection';
@@ -7,10 +9,19 @@ import PlaylistCard from '../../custom-ui/PlaylistCard';
 import SongCard from '../../custom-ui/SongCard';
 
 export default function PBMyRecommendations() {
-  const { data, isLoading, isError } = useListMyPbRecommendationsQuery();
+  const location = useLocation();
+  const { data, isLoading, isError, refetch } = useListMyPbRecommendationsQuery();
 
-  // Entitlement from context (server-driven when available)
-  const { baseEntitled, addonEntitled } = useSubscription();
+    useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('pb') === 'success') {
+      refetch(); 
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [location, refetch]);
+
+  // Subscription entitlement (still valid, but not gating PB content anymore)
+  const { baseEntitled } = useSubscription();
 
   if (isLoading) {
     return (
@@ -27,29 +38,45 @@ export default function PBMyRecommendations() {
     );
   }
 
-  // If endpoint fails or nothing to show, don't render the section
   if (isError || !Array.isArray(data) || data.length === 0) return null;
 
-  // Build a single unified carousel list across all recommendations.
   const unified = [];
   for (const entry of data) {
     const rec = entry?.recommendation;
-    const recTitle = rec?.title?.trim() || 'Personalized Pack';
-    const recId = rec?.id;
+    if (!rec) continue;
+
+    const recTitle = rec.title?.trim() || 'Personalized Pack';
+    const recId = rec.id;
+    const paymentStatus = rec.payment_status || 'pending'; // 'pending' | 'paid' | etc.
+    const paymentLinkUrl = rec.payment_link_url || null;
+
     const items = Array.isArray(entry?.items) ? entry.items : [];
+
     for (const it of items) {
       if (it.item_type === 'track' && it.track) {
         unified.push({
           type: 'song',
           data: it.track,
-          meta: { recId, recTitle, prescription: it.prescription_note || '' },
+          meta: {
+            recId,
+            recTitle,
+            paymentStatus,
+            paymentLinkUrl,
+            prescription: it.prescription_note || '',
+          },
           key: `rec-${recId}-song-${it.track.id}-${it.id}`,
         });
       } else if (it.item_type === 'playlist' && it.playlist) {
         unified.push({
           type: 'playlist',
           data: it.playlist,
-          meta: { recId, recTitle, prescription: it.prescription_note || '' },
+          meta: {
+            recId,
+            recTitle,
+            paymentStatus,
+            paymentLinkUrl,
+            prescription: it.prescription_note || '',
+          },
           key: `rec-${recId}-pl-${it.playlist.id}-${it.id}`,
         });
       }
@@ -58,61 +85,61 @@ export default function PBMyRecommendations() {
 
   if (unified.length === 0) return null;
 
-  // Single card renderer with overlays
+  // 🧠 Single card renderer with payment lock overlay
   function CardWithMeta({ kind, item, meta, k }) {
-    // Consider paid playlists as requiring base entitlement
-    const requiresBase = kind === 'playlist' ? Boolean(item?.paid) : false;
-    const locked = requiresBase && !baseEntitled;
+    const locked = meta.paymentStatus !== 'paid';
 
     return (
-      <div key={k} className="relative">
-        {/* Core card (unchanged logic) */}
+      <div key={k} className="relative group">
+        {/* Core card */}
         {kind === 'playlist'
           ? <PlaylistCard playlist={item} />
           : <SongCard song={item} />
         }
 
-        {/* Rec title badge (top-left) with blur background for legibility */}
+        {/* Recommendation title badge */}
         <div className="absolute top-2 left-2">
           <span
-            className="
-              inline-flex items-center px-2 py-1 rounded-full text-[11px]
-              bg-transparent backdrop-blur-sm text-gray-100
-              ring-1 ring-white/15
-            "
+            className="inline-flex items-center px-2 py-1 rounded-full text-[11px]
+              bg-transparent backdrop-blur-sm text-gray-100 ring-1 ring-white/15"
             title={meta.recTitle}
           >
             {meta.recTitle}
           </span>
         </div>
 
-        {/* Lock overlay if user not entitled for paid content */}
-        {/* {locked && (
-          <div className="absolute inset-0 rounded-md bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
-            <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-white/10 ring-1 ring-white/15 text-white">
-              Subscribe to play
-            </span>
+        {/* 🔒 Payment lock overlay */}
+        {locked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-md
+                          bg-black/60 backdrop-blur-[2px] text-center space-y-2 opacity-100">
+            <span className="text-white text-md font-medium">Unlock this Recommendation</span>
+            {meta.paymentLinkUrl ? (
+              <a
+                href={meta.paymentLinkUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-transparent border border-white hover:bg-secondary hover:border-secondary rounded-full text-white text-sm transition"
+              >
+                Pay to Unlock
+              </a>
+            ) : (
+              <span className="text-xs text-gray-300 italic">Link not available</span>
+            )}
           </div>
-        )} */}
+        )}
 
-        {/* Prescription note (caption) with same blur treatment */}
-        {meta.prescription?.trim() ? (
+        {/* Optional prescription caption */}
+        {meta.prescription?.trim() && (
           <div
-            className="
-              mt-2 px-2 py-1 text-xs text-gray-100 line-clamp-2
-              backdrop-blur-sm
-            "
+            className="mt-2 px-2 py-1 text-xs text-gray-100 line-clamp-2 backdrop-blur-sm"
             title={meta.prescription}
           >
             Note — {meta.prescription}
           </div>
-        ) : null}
+        )}
       </div>
     );
   }
-
-  // Optionally: if you want to hide the whole section for users without add-on entitlement:
-  // if (!addonEntitled) return null;
 
   return (
     <CarouselSection

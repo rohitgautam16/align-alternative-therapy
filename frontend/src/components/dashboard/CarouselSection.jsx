@@ -38,7 +38,7 @@ export default function CarouselSection({
 
   if (isLoading) {
     return (
-      <section className="space-y-2 p-6">
+      <section className="space-y-2 px-6 py-2">
         <h2 className="text-2xl font-semibold text-gray-400 animate-pulse">
           Loading {title}…
         </h2>
@@ -56,7 +56,7 @@ export default function CarouselSection({
   }
 
   return (
-    <section className="space-y-2 p-6">
+    <section className="space-y-4 px-6 py-2">
       <h2 className="text-2xl font-semibold">{title}</h2>
       <div className="flex space-x-4 overflow-x-auto pb-2 snap-x snap-mandatory custom-scrollbar">
         {data.map(item => {

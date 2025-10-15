@@ -233,49 +233,68 @@ export default function UserPlaylistView() {
         </div>
       </div>
 
-      {/* Add‑Song Dropdown */}
-      <div className="px-6 py-4">
-        <div className="relative">
-          <input
-            readOnly
-            onClick={()=>setAddOpen(o=>!o)}
-            placeholder="Search & add songs… "
-            className="w-fit p-2 bg-secondary/50 rounded text-white cursor-pointer"
-          />
-          {addOpen && (
-            <div className="absolute top-full left-0 right-0 max-h-64 overflow-y-auto bg-gray-800 rounded mt-1 z-10">
-              <input
-                type="text"
-                value={search}
-                onChange={e=>setSearch(e.target.value)}
-                placeholder="Filter songs..."
-                className="w-full p-2 bg-secondary/30 text-white rounded-t"
-              />
-              {filtered.map(s => {
-                const locked = paidById[s.playlistId] && !isSub;
-                return (
-                  <div key={s.id} className="flex items-center justify-between p-2 bg-secondary/30 hover:bg-secondary/50">
-                    <div className="flex items-center gap-2">
-                      {locked && <Lock size={14} className="text-white"/>}
-                      <span className={locked?'text-white truncate':'truncate'}>
-                        {s.title}
-                      </span>
-                    </div>
-                    <button
-                      onClick={()=>!locked && doAdd(s.id)}
-                      disabled={locked}
-                      className={`p-1 rounded ${locked?'opacity-50':'bg-red-600 hover:bg-red-700'}`}
-                    >
-                      <Plus size={14}/>
-                    </button>
+      {/* Add-Song Dropdown */}
+<div className="px-6 py-4">
+  <div className="relative">
+    <input
+      readOnly
+      onClick={() => setAddOpen(o => !o)}
+      placeholder="Search & add songs… "
+      className="w-fit p-2 bg-secondary/50 rounded text-white cursor-pointer"
+    />
+    {addOpen && (
+      <div className="absolute top-full left-0 right-0 max-h-64 overflow-y-auto bg-gray-800 rounded mt-1 z-10">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Filter songs..."
+          className="w-full p-2 bg-secondary/30 text-white rounded-t"
+        />
+        {filtered.map(s => {
+          const locked = paidById[s.playlistId] && !isSub;
+          const imgSrc = s.image || FALLBACK_BG;
+
+          return (
+            <div
+              key={s.id}
+              onClick={() => !locked && doAdd(s.id)} // Make entire row clickable
+              className={`flex items-center justify-between p-2 bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition ${
+                locked ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3 w-full">
+                <img
+                  src={imgSrc}
+                  alt={s.title}
+                  onError={e => (e.target.src = FALLBACK_BG)} // fallback image
+                  className="w-10 h-10 object-cover rounded"
+                />
+                <div className="flex flex-col flex-1">
+                  <div className="flex items-center gap-1">
+                    {locked && <Lock size={14} className="text-white" />}
+                    <span className="truncate text-white">{s.title}</span>
                   </div>
-                );
-              })}
-              {filtered.length===0 && <div className="p-2 text-gray-400">No songs found.</div>}
+                  <span className="text-xs text-gray-400 truncate">{s.artist}</span>
+                </div>
+                {!locked && (
+                  <Plus
+                    size={16}
+                    className="text-white opacity-70 hover:opacity-100"
+                  />
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="p-2 text-gray-400">No songs found.</div>
+        )}
       </div>
+    )}
+  </div>
+</div>
+
 
       {/* Songs Table */}
       <div className="px-8 pb-12">
@@ -292,6 +311,7 @@ export default function UserPlaylistView() {
             <span className="text-gray-400">{i+1}</span>
             <div className="flex items-center gap-4">
               <img src={s.image||FALLBACK_BG} alt={s.title}
+                   onError={e => (e.target.src = FALLBACK_BG)}
                    className="w-12 h-12 rounded-md object-cover"/>
               <p className="font-semibold">{s.title}</p>
             </div>

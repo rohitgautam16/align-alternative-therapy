@@ -50,6 +50,7 @@ export default function AdminCategoriesOverview() {
   const [form, setForm] = useState({
     title: '',
     slug: '',
+    description: '',
     tags: '',
     artwork_filename: '',
   });
@@ -246,6 +247,7 @@ export default function AdminCategoriesOverview() {
       setForm({
         title: '',
         slug: '',
+        description: '',
         tags: '',
         artwork_filename: '',
       });
@@ -379,6 +381,17 @@ export default function AdminCategoriesOverview() {
                   placeholder="category-slug"
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  required
+                  className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">description</label>
+                <input
+                  placeholder="category-description"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
                   required
                   className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
                 />

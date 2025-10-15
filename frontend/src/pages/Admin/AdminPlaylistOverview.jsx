@@ -142,15 +142,15 @@ export default function AdminPlaylistsOverview() {
   const [form, setForm] = useState({
     title: '',
     slug: '',
+    description: '',
     tags: '',
     artwork_filename: '',
     category_id: '',
-    paid: 0,
+    paid: 1,
   });
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // ✅ NEW: Use presigned URL hook with conditional skip
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
       filename: "",
@@ -377,10 +377,11 @@ export default function AdminPlaylistsOverview() {
       setForm({
         title: '',
         slug: '',
+        description: '',
         tags: '',
         artwork_filename: '',
         category_id: '',
-        paid: 0,
+        paid: 1,
       });
       setSelectedArtFile(null);
       
@@ -543,6 +544,16 @@ export default function AdminPlaylistsOverview() {
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
                   required
+                  className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Description</label>
+                <input
+                  placeholder="playlist-description"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
                 />
               </div>

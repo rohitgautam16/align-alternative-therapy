@@ -192,7 +192,7 @@ const BottomIconsSection = () => {
           <div className="w-full lg:w-2/5 flex flex-col items-center lg:items-start space-y-6 sm:space-y-8">
             <h3 
               ref={headingRef}
-              className="text-xl sm:text-2xl md:text-3xl md:text-center font-bold text-white leading-tight overflow-hidden"
+              className="text-xl sm:text-2xl md:text-3xl md:text-left font-bold text-white leading-tight overflow-hidden"
             >
               <div className="heading-line block">ABOUT ALIGN</div>
               <div className="heading-line block">ALTERNATIVE THERAPY</div>
@@ -225,7 +225,7 @@ const BottomIconsSection = () => {
       
       <h2 
         ref={bottomHeadingRef}
-        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.5rem] tracking-wide text-white text-center uppercase mt-10 sm:mt-14 md:mt-22 lg:mt-30 mx-auto leading-tight px-4 sm:px-6 md:px-8"
+        className="text-stroke text-outline text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.5rem] tracking-wide text-center uppercase mt-10 sm:mt-14 md:mt-22 lg:mt-30 mx-auto leading-tight px-4 sm:px-6 md:px-8"
       >
         <span className="left-part inline-block">We tap into the transformative power</span>
         <br />

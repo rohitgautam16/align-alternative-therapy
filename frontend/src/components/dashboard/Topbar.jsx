@@ -105,10 +105,11 @@ export default function Topbar() {
             <button
               onClick={() => navigate('/')}
               aria-label="Home"
-              className="ml-1 p-2 hover:bg-secondary rounded-full transition"
+              className="hidden sm:inline-flex ml-1 p-2 hover:bg-secondary rounded-full transition"
             >
               <Home size={20} />
             </button>
+
           </>
         )}
       </div>

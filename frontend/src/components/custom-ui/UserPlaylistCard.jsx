@@ -36,9 +36,9 @@ export default function UserPlaylistCard({ playlist }) {
         {/* Play Button (non-functional for now) */}
         <button
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-4 right-4 w-12 h-12 bg-red-500 rounded-full flex 
+          className="absolute bottom-4 right-4 w-12 h-12 bg-secondary rounded-full flex 
                      items-center justify-center opacity-0 group-hover/item:opacity-100
-                     transition-all duration-300 hover:bg-red-600 hover:scale-110"
+                     transition-all duration-300 hover:bg-secondary hover:scale-110"
         >
           <Play className="w-6 h-6 text-gray-800" />
         </button>

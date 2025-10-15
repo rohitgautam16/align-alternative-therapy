@@ -21,7 +21,7 @@ export const api = createApi({
       return headers;
     }
   }),
-  tagTypes: ['User', 'Categories', 'Playlists', 'Songs', 'PQ', 'REC', 'FU', 'PB', 'PB_REC', 'PB_ITEM'],
+  tagTypes: ['User', 'Categories', 'Playlists', 'Songs', 'PQ', 'REC', 'FU', 'PB', 'PB_REC', 'PB_ITEM', 'PersonalizeUser'],
   endpoints: (build) => ({
 
     getR2PresignUrl: build.query({
@@ -40,24 +40,35 @@ export const api = createApi({
     }),
 
     listUsers: build.query({
-      query: ({ page = 1, pageSize = 20 } = {}) => ({
-        url: '/admin/users',
-        params: { page, pageSize },
-      }),
+      query: ({ page = 1, pageSize = 20, search = '' } = {}) => {
+        // Build params object
+        const params = { page, pageSize };
+        
+        // Only add search if it has a value
+        if (search && search.trim()) {
+          params.search = search.trim();
+        }
+        
+        return {
+          url: '/admin/users',
+          params,
+        };
+      },
       transformResponse: (response) => ({
         data: response.data || [],
-        total: response.total || 0,
+        total: response.total || 0, // This is returning 0 - backend issue!
         page: response.page || 1,
         pageSize: response.pageSize || 20,
       }),
       providesTags: (result) =>
-        result.data
+        result?.data
           ? [
               ...result.data.map((u) => ({ type: 'User', id: u.id })),
               { type: 'User', id: 'LIST' },
             ]
           : [{ type: 'User', id: 'LIST' }],
     }),
+
 
     getAdmins: build.query({
       query: ({ page = 1, pageSize = 6 }) =>
@@ -931,6 +942,37 @@ export const api = createApi({
           method: 'DELETE',
         }),
       }),
+
+      // --- Admin PB Recommendations ---
+      deletePbRecommendation: build.mutation({
+        query: ({ id, cascade = true }) => ({
+          url: `/admin/pb/recommendations/${id}?cascade=${cascade}`,
+          method: 'DELETE',
+        }),
+        invalidatesTags: ['AdminPBRecommendations'], // optional, depends on how you tag caching
+      }),
+
+      restorePbRecommendation: build.mutation({
+        query: ({ id, cascade = true }) => ({
+          url: `/admin/pb/recommendations/${id}/restore?cascade=${cascade}`,
+          method: 'POST',
+        }),
+        invalidatesTags: ['AdminPBRecommendations'],
+      }),
+
+      adminPbListDeletedForUser: build.query({
+        query: (userId) => `/admin/pb/recommendations/deleted/${userId}`,
+        providesTags: ['AdminPBRecommendations'],
+      }),
+
+      hardDeletePbRecommendation: build.mutation({
+        query: (id) => ({
+          url: `/admin/pb/recommendations/${id}/hard`,
+          method: 'DELETE',
+        }),
+        invalidatesTags: ['AdminPBRecommendations'],
+      }),
+
       adminPbUpdateStatus: build.mutation({
         query: ({ recId, status }) => ({
           url: `/admin/pb/recommendations/${recId}/status`,
@@ -962,6 +1004,36 @@ export const api = createApi({
               : [{ type: 'PB', id: 'MINE' }],
         }),
 
+        adminPbGetAllUsersWithRecommendations: build.query({
+              query: ({ page = 1, pageSize = 20 } = {}) => ({
+                url: '/admin/personalize/users-with-recommendations',
+                params: { page, pageSize },
+              }),
+              transformResponse: (response) => ({
+                data: response.data || [],
+                total: response.total || 0,
+                page: response.page || 1,
+                pageSize: response.pageSize || 20,
+              }),
+              providesTags: (result) =>
+                result?.data
+                  ? [
+                      ...result.data.map((u) => ({ type: 'PersonalizeUser', id: u.id })),
+                      { type: 'PersonalizeUser', id: 'LIST' },
+                    ]
+                  : [{ type: 'PersonalizeUser', id: 'LIST' }],
+            }),
+
+             createPbPaymentLink: build.mutation({
+                query: ({ recommendationId, price }) => ({
+                  url: '/pb-payment/admin/create-link',
+                  method: 'POST',
+                  body: { recommendationId, price },
+                }),
+              }),
+              getPbPaymentStatus: build.query({
+                query: (id) => `/pb-payment/status/${id}`,
+              }),
 
 
   }),
@@ -1085,11 +1157,18 @@ export const {
   useAdminPbAddItemMutation,
   useAdminPbUpdateItemMutation,
   useAdminPbDeleteItemMutation,
+  useDeletePbRecommendationMutation,
+  useRestorePbRecommendationMutation,
+  useAdminPbListDeletedForUserQuery,
+  useHardDeletePbRecommendationMutation,
   useAdminPbUpdateStatusMutation,
   useAdminPbSendNowMutation,
 
   // PB User
   useListMyPbRecommendationsQuery,
+  useAdminPbGetAllUsersWithRecommendationsQuery,
+  useCreatePbPaymentLinkMutation,
+  useGetPbPaymentStatusQuery,
 } = api;
 
 

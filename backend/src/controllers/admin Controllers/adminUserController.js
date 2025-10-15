@@ -1,6 +1,7 @@
 // src/controllers/adminUserController.js
 const {
   listUsers,
+  listRecommendedUsers,
   getUserById,
   createUserAdmin,
   updateUserAdmin,
@@ -24,17 +25,44 @@ async function listAdminsController(req, res, next) {
  */
 async function listUsersController(req, res, next) {
   try {
-    // Pull pagination params from query (will be strings)
     const page     = req.query.page;
     const pageSize = req.query.pageSize;
+    const search   = req.query.search || ''; // Add search parameter
 
-    // Service now returns { data, total, page, pageSize }
-    const result = await listUsers({ page, pageSize });
+    console.log('📥 Received params:', { page, pageSize, search }); // Debug
+
+    const result = await listUsers({ page, pageSize, search });
+    
+    console.log('📤 Sending response:', {
+      dataCount: result.data.length,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize
+    }); // Debug
+    
+    res.json(result);
+  } catch (err) {
+    console.error('❌ Error in listUsersController:', err);
+    next(err);
+  }
+}
+
+
+
+async function listRecommendationUsersController(req, res, next) {
+  try {
+    const page = req.query.page;
+    const pageSize = req.query.pageSize;
+
+    const result = await listRecommendedUsers({ page, pageSize });
     res.json(result);
   } catch (err) {
     next(err);
   }
 }
+
+module.exports = { listRecommendationUsersController };
+
 
 async function getUserController(req, res, next) {
   try {
@@ -83,6 +111,7 @@ async function deleteUserController(req, res, next) {
 module.exports = {
   listAdminsController,
   listUsersController,
+  listRecommendationUsersController,
   getUserController,
   createUserController,
   updateUserController,

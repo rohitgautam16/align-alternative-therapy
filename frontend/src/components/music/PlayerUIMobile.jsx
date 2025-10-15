@@ -12,6 +12,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
 const FULL = '100vh';
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7'; // <-- fallback
 
 function fmt(sec = 0) {
   const s = Math.max(0, Math.floor(sec));
@@ -20,12 +21,6 @@ function fmt(sec = 0) {
   return `${m}:${r}`;
 }
 
-/**
- * Mobile player (collapsed bar + fullscreen).
- * - Center-mode Slick with gaps + 3D-ish focus (center pops, sides recede).
- * - Background: solid black base + stronger blur + black overlay + bottom→top gradient.
- * - Controls (fullscreen + compact bar): glassmorphism (semi-transparent, blur, ring, shadow).
- */
 export default function PlayerUIMobile(props) {
   const {
     currentTrack,
@@ -53,11 +48,27 @@ export default function PlayerUIMobile(props) {
   const sliderRef = useRef(null);
   const volumePct = Math.round((volume ?? 0) * 100);
 
-  // Keep slider and background aligned with the active slide
+  // --- handle shuffle ---
+  const [shuffledQueue, setShuffledQueue] = useState(queue);
+  useEffect(() => {
+    if (shuffle) {
+      // simple shuffle using Fisher–Yates algorithm
+      const shuffled = [...queue];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      setShuffledQueue(shuffled);
+    } else {
+      setShuffledQueue(queue);
+    }
+  }, [shuffle, queue]);
+
   const currentIndex = useMemo(
-    () => (currentTrack ? queue.findIndex(t => t.id === currentTrack.id) : -1),
-    [queue, currentTrack]
+    () => (currentTrack ? shuffledQueue.findIndex(t => t.id === currentTrack.id) : -1),
+    [shuffledQueue, currentTrack]
   );
+
   const [activeIdx, setActiveIdx] = useState(Math.max(0, currentIndex));
   useEffect(() => {
     if (currentIndex >= 0 && sliderRef.current) {
@@ -69,8 +80,8 @@ export default function PlayerUIMobile(props) {
   const sliderSettings = {
     className: 'center slider-3d',
     centerMode: true,
-    infinite: queue.length > 1,
-    centerPadding: '48px',   // gap/peek around the centered card
+    infinite: shuffledQueue.length > 1,
+    centerPadding: '48px',
     slidesToShow: 1,
     speed: 500,
     cssEase: 'ease-out',
@@ -80,23 +91,35 @@ export default function PlayerUIMobile(props) {
     dots: false,
     adaptiveHeight: false,
     initialSlide: Math.max(0, currentIndex),
-    beforeChange: (_oldIdx, newIdx) => setActiveIdx(newIdx), // background tracks the moving slide
+    beforeChange: (_oldIdx, newIdx) => setActiveIdx(newIdx),
     afterChange: (idx) => {
-      const t = queue[idx];
+      const t = shuffledQueue[idx];
       if (t && t.id !== currentTrack.id) onSelectTrack?.(t);
     },
   };
 
-  const bgImage = (queue[activeIdx] || currentTrack).image;
+  // --- fallback handling for background ---
+  const [bgSrc, setBgSrc] = useState(currentTrack.image || FALLBACK_IMAGE);
+  useEffect(() => {
+    if (!currentTrack?.image) {
+      setBgSrc(FALLBACK_IMAGE);
+      return;
+    }
+    const img = new Image();
+    img.src = currentTrack.image;
+    img.onload = () => setBgSrc(currentTrack.image);
+    img.onerror = () => setBgSrc(FALLBACK_IMAGE);
+  }, [currentTrack]);
+
+  const bgImage = (shuffledQueue[activeIdx] || currentTrack).image || FALLBACK_IMAGE;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
-      {/* 3D focus + gaps styles for Slick */}
       <style>{`
         .slider-3d .slick-list { overflow: visible; }
         .slider-3d .slick-track { display: flex; align-items: center; }
         .slider-3d .slick-slide {
-          padding: 0 10px;
+          padding: 0 4px;
           transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease;
           transform: translateZ(0) scale(0.86);
           opacity: 0.65;
@@ -109,7 +132,7 @@ export default function PlayerUIMobile(props) {
         }
       `}</style>
 
-      {/* Compact bar — GLASS */}
+      {/* Compact bar */}
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
@@ -120,51 +143,47 @@ export default function PlayerUIMobile(props) {
             transition={{ type: 'tween', duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="
               pointer-events-auto mx-4 mb-4
-              rounded-2xl
-              bg-white/10 backdrop-blur-xl
-              ring-1 ring-white/15
-              shadow-[0_8px_24px_rgba(0,0,0,0.35)]
-              text-white
-              p-3 flex items-center justify-between
+              rounded-2xl bg-white/10 backdrop-blur-xl
+              ring-1 ring-white/15 shadow-[0_8px_24px_rgba(0,0,0,0.35)]
+              text-white p-3 flex items-center justify-between
             "
             onClick={onToggleExpanded}
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="h-20 rounded-xl overflow-hidden ring-1 ring-white/10">
                 <img
-                  src={currentTrack.image}
+                  src={currentTrack.image || FALLBACK_IMAGE}
                   alt=""
                   className="w-full h-full object-cover"
-                  onError={(e) => (e.currentTarget.src = '/fallback-image.png')}
+                  onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                 />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{currentTrack.title}</p>
+                <p className="text-sm font-semibold truncate">{currentTrack.name}</p>
                 <p className="text-xs text-gray-200/90 truncate">{currentTrack.artist}</p>
               </div>
             </div>
-      
+
             <div className="flex items-center gap-2">
-                <button
+              <button
                 className="w-9 h-9 rounded-full grid place-items-center bg-white/10 ring-1 ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
                 onClick={(e) => { e.stopPropagation(); onToggleExpanded(); }}
                 aria-label="Expand player"
               >
                 <ChevronUp size={18} />
               </button>
-            <button
-              className="
-                shrink-0 w-10 h-10 rounded-full grid place-items-center
-                bg-secondary/80 text-black ring-1 ring-white/40 backdrop-blur-md
-                hover:scale-[1.03] transition
-              "
-              onClick={(e) => { e.stopPropagation(); onTogglePlay(); }}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? <PauseCircle size={24} /> : <PlayCircle size={24} />}
-            </button>
+              <button
+                className="
+                  shrink-0 w-10 h-10 rounded-full grid place-items-center
+                  bg-secondary/80 text-black ring-1 ring-white/40 backdrop-blur-md
+                  hover:scale-[1.03] transition
+                "
+                onClick={(e) => { e.stopPropagation(); onTogglePlay(); }}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? <PauseCircle size={24} /> : <PlayCircle size={24} />}
+              </button>
             </div>
-            
           </motion.div>
         )}
       </AnimatePresence>
@@ -178,22 +197,21 @@ export default function PlayerUIMobile(props) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            className="pointer-events-auto text-white max-h-screen pb-10 pt-2"
+            className="pointer-events-auto text-white h-svh pb-10 pt-5"
             style={{ height: FULL }}
           >
-            {/* Background: black base + STRONG blur + black overlay + bottom→top gradient */}
+            {/* Background with fallback */}
             <div className="absolute inset-0">
               <div className="absolute inset-0 bg-black" />
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{
-                  backgroundImage: `url(${bgImage})`,
-                  filter: 'blur(16px)',          // stronger blur
-                  transform: 'scale(1.12)',      // avoid blur-edge gaps
+                  backgroundImage: `url(${bgSrc})`,
+                  filter: 'blur(16px)',
+                  transform: 'scale(1.12)',
                   willChange: 'transform'
                 }}
               />
-              {/* <div className="absolute inset-0 bg-black/40" /> */}
               <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
             </div>
 
@@ -214,33 +232,32 @@ export default function PlayerUIMobile(props) {
 
             {/* Foreground */}
             <div className="relative h-full flex flex-col">
-              {/* Center-mode card slider */}
+              {/* Slider */}
               <div className="flex-1 flex items-center justify-center px-0">
                 <div className="w-full max-w-sm mx-auto">
                   <Slider ref={sliderRef} {...sliderSettings}>
-                    {(queue.length ? queue : [currentTrack]).map((t) => (
+                    {(shuffledQueue.length ? shuffledQueue : [currentTrack]).map((t) => (
                       <div key={t.id || t.title} className="px-0">
                         <div className="flex flex-col justify-center">
                           <div className="w-64 h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
                             <img
-                              src={t.image}
+                              src={t.image || FALLBACK_IMAGE}
                               alt={t.title}
                               className="w-full h-full object-cover block"
-                              onError={(e) => (e.currentTarget.src = '/fallback-image.png')}
+                              onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                             />
                           </div>
                           <div className="relative text-center mt-2 mb-1 px-6">
-                            <p className="text-xs text-gray-200 truncate">{currentTrack.artist}</p>
-                        </div>
+                            <p className="text-xs text-gray-200 truncate">{t.artist}</p>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </Slider>
                 </div>
               </div>
-              
 
-              {/* GLASS control card (semi-transparent, blur, ring, shadow), with bottom margin */}
+              {/* Controls */}
               <div className="relative p-3 mb-[calc(env(safe-area-inset-bottom,0px)+56px)]">
                 <div
                   className="
@@ -251,12 +268,10 @@ export default function PlayerUIMobile(props) {
                     shadow-[0_10px_30px_rgba(0,0,0,0.35)]
                   "
                 >
-                  {/* Title above progress */}
                   <div className="text-center px-2 mb-2 mt-1.5">
                     <h3 className="text-md font-medium truncate">{currentTrack.name}</h3>
                   </div>
 
-                  {/* Progress */}
                   <div className="mb-3">
                     <input
                       type="range"
@@ -272,12 +287,11 @@ export default function PlayerUIMobile(props) {
                     </div>
                   </div>
 
-                  {/* Main controls — glass buttons */}
                   <div className="mt-2 flex items-center justify-between px-1">
                     <button
                       onClick={onToggleRepeatOne}
                       aria-label="Repeat one"
-                      className="p-2 rounded-full bg-white/10 ring-1  hover:text-secondary ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
+                      className="p-2 rounded-full bg-white/10 ring-1 hover:text-secondary ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
                     >
                       <Repeat size={20} className={repeatOne ? 'text-secondary' : 'text-white'} />
                     </button>
@@ -286,7 +300,7 @@ export default function PlayerUIMobile(props) {
                       <button
                         onClick={() => sliderRef.current?.slickPrev()}
                         aria-label="Previous"
-                        className="p-2 rounded-full bg-white/10 ring-1 ring-white/15  hover:text-secondary backdrop-blur-md hover:bg-white/15 transition"
+                        className="p-2 rounded-full bg-white/10 ring-1 ring-white/15 hover:text-secondary backdrop-blur-md hover:bg-white/15 transition"
                       >
                         <SkipBack size={24} />
                       </button>
@@ -307,7 +321,7 @@ export default function PlayerUIMobile(props) {
                       <button
                         onClick={() => sliderRef.current?.slickNext()}
                         aria-label="Next"
-                        className="p-2 rounded-full bg-white/10 ring-1  hover:text-secondary ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
+                        className="p-2 rounded-full bg-white/10 ring-1 hover:text-secondary ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
                       >
                         <SkipForward size={24} />
                       </button>
@@ -316,15 +330,14 @@ export default function PlayerUIMobile(props) {
                     <button
                       onClick={onToggleShuffle}
                       aria-label="Shuffle"
-                      className="p-2 rounded-full bg-white/10 ring-1  hover:text-secondary ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
+                      className="p-2 rounded-full bg-white/10 ring-1 hover:text-secondary ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
                     >
                       <Shuffle size={20} className={shuffle ? 'text-secondary' : 'text-white'} />
                     </button>
                   </div>
 
-                  {/* Volume — glass row */}
                   <div className="mt-4 flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-white/10 ring-1  hover:text-secondary ring-white/15 backdrop-blur-md">
+                    <div className="p-2 rounded-full bg-white/10 ring-1 hover:text-secondary ring-white/15 backdrop-blur-md">
                       <Volume2 size={18} className="text-white/90" />
                     </div>
                     <input

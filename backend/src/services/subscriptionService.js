@@ -580,8 +580,36 @@ async function handleStripeWebhook(event) {
   console.log('▶︎ Stripe event:', event.type);
 
   switch (event.type) {
+    // -------------------------------------------------------
+    // 🎟️ PB Recommendation Payment Success (via Payment Link)
+    // -------------------------------------------------------
     case 'checkout.session.completed': {
       const sess = event.data.object;
+
+      // --- PB recommendation payment detection ---
+      // If metadata contains a recommendation_id, it's our PB payment
+      const recId = sess.metadata?.recommendation_id;
+      if (recId) {
+        console.log(`PB Recommendation payment success for rec_id=${recId}`);
+
+        try {
+          await db.query(
+            `UPDATE pb_recommendations
+             SET payment_status = 'paid',
+                 paid_at = NOW()
+             WHERE id = ?`,
+            [recId]
+          );
+
+          console.log(`✅ Marked recommendation #${recId} as paid`);
+        } catch (dbErr) {
+          console.error(`❌ Failed to mark PB recommendation #${recId} paid:`, dbErr);
+        }
+
+        return;
+      }
+
+      // --- Subscription checkout flow (existing logic) ---
       const subId = sess.subscription;
       const plan  = sess.metadata?.plan;
       const includeAddon = sess.metadata?.includeAddon === '1';
@@ -621,6 +649,9 @@ async function handleStripeWebhook(event) {
       return;
     }
 
+    // -------------------------------------------------------
+    // 🧾 Standard subscription invoice handling
+    // -------------------------------------------------------
     case 'invoice.paid': {
       const inv   = event.data.object;
       const subId = inv.subscription;
@@ -649,6 +680,9 @@ async function handleStripeWebhook(event) {
       return;
     }
 
+    // -------------------------------------------------------
+    // 🔁 Subscription Lifecycle events
+    // -------------------------------------------------------
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
       await handleSubscriptionUpsert(event.data.object);
@@ -662,11 +696,35 @@ async function handleStripeWebhook(event) {
       await handlePaymentFailed(event.data.object);
       return;
 
+    // -------------------------------------------------------
+    // 🧾 Optional: Payment Link events (redundant safety net)
+    // -------------------------------------------------------
+    case 'payment_link.completed':
+    case 'checkout.session.async_payment_succeeded': {
+      const recId = event.data.object?.metadata?.recommendation_id;
+      if (recId) {
+        try {
+          await db.query(
+            `UPDATE pb_recommendations
+             SET payment_status = 'paid',
+                 paid_at = NOW()
+             WHERE id = ?`,
+            [recId]
+          );
+          console.log(`✅ (async) marked recommendation #${recId} as paid`);
+        } catch (err) {
+          console.error(`❌ Failed async update for rec_id=${recId}:`, err);
+        }
+      }
+      return;
+    }
+
     default:
       console.log('Ignored Stripe event type:', event.type);
       return;
   }
 }
+
 
 
 module.exports = {

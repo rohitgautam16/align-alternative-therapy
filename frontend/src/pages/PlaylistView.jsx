@@ -34,6 +34,7 @@ export default function PlaylistView() {
 
   const { data: allPlaylists = [], isLoading: plLoading, isError: plError } = useGetDashboardAllPlaylistsQuery();
   const playlist = allPlaylists.find(p => p.slug === slug);
+  console.log(allPlaylists);
 
   const [recordPlay] = useRecordPlayMutation();
 
@@ -96,14 +97,26 @@ export default function PlaylistView() {
     setSelectedIds([]);
   };
 
+  
+const bgImage = playlist?.image
+  ? playlist.image.startsWith('http')
+    ? playlist.image.includes('%20')
+      ? playlist.image // already encoded → leave as-is
+      : playlist.image.replace(/ /g, '%20') // encode only spaces
+    : `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.image)}`
+  : playlist?.artwork_filename
+  ? `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.artwork_filename)}`
+  : undefined;
+
+
+const bgUrl = bgImage
+  ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${bgImage})`
+  : 'transparent';
+
   return (
     <div
       className="min-h-screen text-white"
-      style={{
-        background: `linear-gradient(to bottom, rgba(0,0,0,0.7), black), url(${playlist.image || FALLBACK_BG})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
-      }}
+      style={{ background: bgUrl, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       {/* Top nav */}
       <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3 sm:py-4">
@@ -129,7 +142,8 @@ export default function PlaylistView() {
             {playlist.description || FALLBACK_DESC}
           </p>
           <p className="mt-2 text-sm sm:text-base text-gray-400">
-            • {playlist.saveCount?.toLocaleString()||0} saves • {songs.length} songs
+            {/* • {playlist.saveCount?.toLocaleString()||0} saves  */}
+            • {songs.length} songs
           </p>
         </div>
       </div>
@@ -220,6 +234,7 @@ export default function PlaylistView() {
               <div className="flex items-start md:items-center gap-3 md:gap-4 min-w-0">
                 <img
                   src={song.image || FALLBACK_SONG_IMG}
+                  onError={(e) => { e.currentTarget.src = FALLBACK_SONG_IMG; }}
                   alt={song.name || song.title}
                   className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover flex-none mt-0.5"
                 />

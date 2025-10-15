@@ -1,4 +1,3 @@
-// src/components/music/PlayerUIDesktop.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Slider from 'react-slick';
@@ -23,6 +22,9 @@ import "slick-carousel/slick/slick-theme.css";
 export const PLAYER_HEIGHT = 72;
 export const HANDLE_HEIGHT = 4;
 
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7';
+
 function fmt(sec = 0) {
   const s = Math.max(0, Math.floor(sec));
   const m = Math.floor(s / 60);
@@ -31,10 +33,8 @@ function fmt(sec = 0) {
 }
 
 /**
- * Desktop/Tablet player chrome.
- * Props must match the headless PlayerShell contract:
- * currentTrack, queue, isPlaying, progress, duration, volume, shuffle, repeatOne, expanded
- * onTogglePlay, onNext, onPrev, onSeek, onVolume, onToggleShuffle, onToggleRepeatOne, onToggleExpanded, onSelectTrack
+ * Desktop/Tablet Player UI
+ * Matches PlayerShell contract
  */
 export default function PlayerUIDesktop(props) {
   const {
@@ -60,7 +60,20 @@ export default function PlayerUIDesktop(props) {
   } = props;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [bgImage, setBgImage] = useState(currentTrack?.image || FALLBACK_IMAGE);
   const sliderRef = useRef(null);
+
+  // Keep fallback-safe background
+  useEffect(() => {
+    if (currentTrack?.image) {
+      const img = new Image();
+      img.src = currentTrack.image;
+      img.onload = () => setBgImage(currentTrack.image);
+      img.onerror = () => setBgImage(FALLBACK_IMAGE);
+    } else {
+      setBgImage(FALLBACK_IMAGE);
+    }
+  }, [currentTrack]);
 
   const currentIndex = useMemo(
     () => (currentTrack ? queue.findIndex(t => t.id === currentTrack.id) : -1),
@@ -68,7 +81,6 @@ export default function PlayerUIDesktop(props) {
   );
   const initialSlide = currentIndex >= 0 ? currentIndex : 0;
 
-  // Keep slider in sync with selected track; optionally expand like your original
   useEffect(() => {
     if (!currentTrack) return;
     if (!expanded) onToggleExpanded?.();
@@ -132,13 +144,13 @@ export default function PlayerUIDesktop(props) {
       {isFullscreen ? (
         /* ── Fullscreen Layout ── */
         <div className="relative h-screen w-full overflow-hidden">
-          {/* Cross-fading blurred background */}
+          {/* ✅ Fallback-safe background */}
           <AnimatePresence initial={false} mode="wait">
             <motion.div
-              key={currentTrack.id}
+              key={bgImage}
               className="absolute inset-0 bg-cover bg-center"
               style={{
-                backgroundImage: `url(${currentTrack.image})`,
+                backgroundImage: `url(${bgImage})`,
                 filter: 'blur(8px)'
               }}
               initial={{ opacity: 0.7 }}
@@ -176,13 +188,20 @@ export default function PlayerUIDesktop(props) {
                           }}
                         >
                           <img
-                            src={track.image}
+                            src={track.image || FALLBACK_IMAGE}
                             alt={track.title}
                             className="w-full h-full object-cover rounded-lg shadow-2xl cursor-pointer"
-                            onError={e => (e.currentTarget.src = '/fallback-image.png')}
+                            onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                           />
                           {track.id === currentTrack.id && (
                             <div className="absolute inset-0 bg-black/20 rounded-lg" />
+                          )}
+                          {track.id === currentTrack.id && (
+                            <div className="min-w-0 mt-2">
+                              <p className="text-gray-300 text-center text-sm truncate pt-2">
+                                {track.artist}
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -191,10 +210,10 @@ export default function PlayerUIDesktop(props) {
                     <div className="px-2">
                       <div className="w-56 h-56 mx-auto relative">
                         <img
-                          src={currentTrack.image}
+                          src={currentTrack.image || FALLBACK_IMAGE}
                           alt={currentTrack.title}
                           className="w-full h-full object-cover rounded-lg shadow-2xl"
-                          onError={e => (e.currentTarget.src = '/fallback-image.png')}
+                          onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                         />
                       </div>
                     </div>
@@ -221,23 +240,23 @@ export default function PlayerUIDesktop(props) {
                 </div>
               </div>
 
-              {/* Controls Row: three equal segments */}
+              {/* Controls Row */}
               <div className="flex">
                 {/* Left (1/3): Album art + Title/Artist */}
                 <div className="flex items-center gap-1 w-1/3 px-4">
                   <img
-                    src={currentTrack.image}
+                    src={currentTrack.image || FALLBACK_IMAGE}
                     alt={currentTrack.title}
                     className="w-12 h-12 rounded-lg"
-                    onError={(e) => (e.currentTarget.src = '/fallback-image.png')}
+                    onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                   />
                   <div className="min-w-0">
-                    <h3 className="text-white font-semibold text-sm truncate">{currentTrack.title}</h3>
+                    <h3 className="text-white font-semibold text-sm truncate">{currentTrack.name}</h3>
                     <p className="text-gray-300 text-xs truncate">{currentTrack.artist}</p>
                   </div>
                 </div>
 
-                {/* Center (1/3): Player Controls */}
+                {/* Center (1/3): Controls */}
                 <div className="flex items-center justify-center space-x-6 w-1/3">
                   <Shuffle
                     size={20}
@@ -278,7 +297,7 @@ export default function PlayerUIDesktop(props) {
                   />
                 </div>
 
-                {/* Right (1/3): Volume Control */}
+                {/* Right (1/3): Volume */}
                 <div className="flex items-center space-x-3 w-1/3 px-4 justify-end">
                   <Volume2
                     size={20}
@@ -299,7 +318,7 @@ export default function PlayerUIDesktop(props) {
           </div>
         </div>
       ) : (
-        /* ── Normal (Compact) Player Bar ── */
+        /* ── Normal Compact Player Bar ── */
         <div
           className="flex items-center bg-black/70 mx-1.5 rounded-lg text-white px-6 py-2"
           style={{ height: PLAYER_HEIGHT }}
@@ -307,13 +326,13 @@ export default function PlayerUIDesktop(props) {
           {/* Left: artwork + info */}
           <div className="flex items-center space-x-4 w-1/4">
             <img
-              src={currentTrack.image}
+              src={currentTrack.image || FALLBACK_IMAGE}
               alt={currentTrack.title}
               className="h-12 w-12 rounded"
-              onError={(e) => (e.currentTarget.src = '/fallback-image.png')}
+              onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
             />
             <div className="truncate">
-              <p className="font-semibold truncate">{currentTrack.title}</p>
+              <p className="font-semibold truncate">{currentTrack.name}</p>
               <p className="text-sm text-gray-400 truncate">{currentTrack.artist}</p>
             </div>
           </div>

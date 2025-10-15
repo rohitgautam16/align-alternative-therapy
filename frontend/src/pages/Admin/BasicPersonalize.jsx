@@ -12,7 +12,16 @@ import {
   useAdminPbDeleteItemMutation,
   useAdminPbUpdateStatusMutation,
   useAdminPbSendNowMutation,
+  // Payment hooks
+  useCreatePbPaymentLinkMutation,
+  useGetPbPaymentStatusQuery,
+  // Delete/Restore hooks
+  useDeletePbRecommendationMutation,
+  useRestorePbRecommendationMutation,
+  useAdminPbListDeletedForUserQuery,
+  useHardDeletePbRecommendationMutation,
 } from '../../utils/api';
+import { useLocation } from 'react-router-dom';
 
 // ========= utilities =========
 const cx = (...s) => s.filter(Boolean).join(' ');
@@ -23,7 +32,9 @@ const BTN_BASE =
 const BTN_PRIMARY = 'bg-blue-600 hover:bg-blue-500 text-white focus-visible:ring-blue-400/60';
 const BTN_GHOST = 'bg-gray-700 hover:bg-gray-600 text-gray-100 focus-visible:ring-blue-400/60';
 const BTN_DANGER = 'bg-red-600 hover:bg-red-500 text-white focus-visible:ring-red-400/60';
+const BTN_SUCCESS = 'bg-green-600 hover:bg-green-500 text-white focus-visible:ring-green-400/60';
 const BTN_LINK = 'text-gray-300 hover:text-white transition-colors';
+const BTN_WARNING = 'bg-orange-600 hover:bg-orange-500 text-white focus-visible:ring-orange-400/60';
 const INPUT =
   'w-full px-3 py-2 rounded bg-[#0b1220] text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600';
 const TEXTAREA = INPUT;
@@ -60,6 +71,357 @@ const Field = ({ label, hint, error, children }) => (
     {error && <span className="text-[11px] text-red-300">{error}</span>}
   </label>
 );
+
+// Delete Confirmation Modal
+function DeleteConfirmModal({ isOpen, onClose, onConfirm, title, isLoading }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-[#0b0f19] rounded-lg p-6 ring-1 ring-white/10 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold mb-3">Delete Recommendation</h3>
+        <p className="text-gray-300 mb-6">
+          Are you sure you want to delete "{title}"? This will also delete all items in this recommendation.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            className={cx(BTN_BASE, BTN_GHOST)}
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className={cx(BTN_BASE, BTN_DANGER)}
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Hard Delete Confirmation Modal
+function HardDeleteConfirmModal({ isOpen, onClose, onConfirm, title, isLoading }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-51 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-[#0b0f19] rounded-lg p-6 ring-1 ring-white/10 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold mb-3 text-red-400">Permanent Delete</h3>
+        <p className="text-gray-300 mb-4">
+          Are you sure you want to <strong>permanently delete</strong> "{title}"?
+        </p>
+        <div className="bg-red-900/20 border border-red-600/30 rounded p-3 mb-6">
+          <p className="text-red-300 text-sm">
+            ⚠️ This action cannot be undone. The recommendation and all its items will be permanently removed from the database.
+          </p>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            className={cx(BTN_BASE, BTN_GHOST)}
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className={cx(BTN_BASE, BTN_DANGER)}
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Deleting Forever...' : 'Delete Forever'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Updated Deleted Recommendations Modal with hard delete
+function DeletedRecommendationsModal({ isOpen, onClose, userId, onRestore, onHardDelete }) {
+  const { data: deletedRecs = [], refetch } = useAdminPbListDeletedForUserQuery(
+    userId || '__skip__',
+    { skip: !userId || !isOpen }
+  );
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-[#0b0f19] rounded-lg ring-1 ring-white/10 max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col">
+        <div className="p-5 border-b border-white/10">
+          <h3 className="text-lg font-semibold">Deleted Recommendations</h3>
+          <p className="text-xs text-gray-400 mt-1">
+            {deletedRecs.length} deleted recommendation{deletedRecs.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-5">
+          {deletedRecs.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              No deleted recommendations found
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {deletedRecs.map((rec) => (
+                <div key={rec.id} className="p-4 rounded-lg bg-white/5 ring-1 ring-white/10">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate text-base mb-1">
+                        {rec.title?.trim() || '(Untitled)'}
+                      </div>
+                      <div className="text-xs text-gray-400 mb-2">
+                        Deleted: {rec.deleted_at ? new Date(rec.deleted_at).toLocaleString() : 'Unknown'}
+                      </div>
+                      {rec.summary_note && (
+                        <div className="text-sm text-gray-300 line-clamp-2">
+                          {rec.summary_note}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                        <span>ID: #{rec.id}</span>
+                        {rec.payment_status && rec.payment_status !== 'free' && (
+                          <span className="px-2 py-1 rounded bg-yellow-600/20 text-yellow-300">
+                            {rec.payment_status} • {rec.currency || 'CAD'} {rec.price_cents ? (rec.price_cents / 100) : '0'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        className={cx(BTN_BASE, BTN_SUCCESS, 'text-xs')}
+                        onClick={() => onRestore(rec.id, rec.title)}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                          <path d="M3 3v5h5"/>
+                        </svg>
+                        Restore
+                      </button>
+                      <button
+                        className={cx(BTN_BASE, BTN_WARNING, 'text-xs')}
+                        onClick={() => onHardDelete(rec.id, rec.title)}
+                        title="Permanently delete - cannot be undone"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                          <path d="M10 11v6M14 11v6"/>
+                        </svg>
+                        Delete Forever
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="p-5 border-t border-white/10">
+          <button
+            className={cx(BTN_BASE, BTN_GHOST, 'w-full')}
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Payment status badge component - now handles dynamic currency
+function PaymentStatusBadge({ status, price, currency }) {
+  if (!status || status === 'free') return null;
+  
+  const badgeClasses = {
+    pending: 'bg-yellow-600/30 text-yellow-200',
+    paid: 'bg-green-600/30 text-green-200',
+  };
+
+  const displayPrice = price ? `${currency || 'CAD'} ${price}` : '';
+  const label = status === 'paid' ? `Paid ${displayPrice}` : `Pending ${displayPrice}`;
+
+  return (
+    <span className={cx('inline-flex items-center px-2 py-1 rounded-full text-[11px]', badgeClasses[status] || 'bg-gray-600/30')}>
+      {label}
+    </span>
+  );
+}
+
+// Updated Payment link creation component with improved styling
+function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess }) {
+  const [price, setPrice] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+  const [createLink, { isLoading, error }] = useCreatePbPaymentLinkMutation();
+
+  const handleCreate = async () => {
+    if (!price.trim()) return;
+    try {
+      const result = await createLink({
+        recommendationId,
+        price: parseFloat(price),
+      }).unwrap();
+      onSuccess(result);
+      setPrice('');
+    } catch (err) {
+      console.error('Payment link creation failed:', err);
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(currentPaymentData.paymentLinkUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+  };
+
+  // Get currency from current payment data or default to CAD
+  const displayCurrency = currentPaymentData?.currency || 'CAD';
+
+  // If payment link already exists and is pending/paid
+  if (currentPaymentData?.paymentLinkUrl) {
+    return (
+      <div className="rounded-xl bg-gradient-to-r from-green-600/10 to-green-500/10 border border-green-600/30 p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-600/20 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-400">
+                <path d="M9 12l2 2 4-4"/>
+                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/>
+              </svg>
+            </div>
+            <div>
+              <span className="text-base font-medium text-green-200">Payment Link Generated</span>
+              <div className="text-sm text-gray-300">
+                Amount: {currentPaymentData.currency || 'CAD'} {currentPaymentData.price}
+              </div>
+            </div>
+          </div>
+          <PaymentStatusBadge 
+            status={currentPaymentData.status} 
+            price={currentPaymentData.price}
+            currency={currentPaymentData.currency}
+          />
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 min-w-0">
+            <input
+              className={cx(INPUT, 'text-xs font-mono bg-green-950/30 border border-green-600/20')}
+              readOnly
+              value={currentPaymentData.paymentLinkUrl}
+              onClick={(e) => e.target.select()}
+            />
+          </div>
+          <button
+            className={cx(
+              BTN_BASE, 
+              copied ? BTN_SUCCESS : BTN_SUCCESS,
+              'transition-all duration-200'
+            )}
+            onClick={handleCopyLink}
+          >
+            {copied ? (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+                Copy Link
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-600/20 p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
+            <rect width="20" height="14" x="2" y="5" rx="2"/>
+            <line x1="2" x2="22" y1="10" y2="10"/>
+          </svg>
+        </div>
+        <div>
+          <div className="text-base font-medium">Create Payment Link</div>
+          <div className="text-sm text-gray-400">Generate a Stripe payment link for this recommendation</div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+        <div className="sm:col-span-7">
+          <Field 
+            label={`Price (${displayCurrency})`} 
+            hint={`Amount user will pay in ${displayCurrency}`}
+          >
+            <input
+              className={cx(INPUT, 'bg-blue-950/30 border border-blue-600/20')}
+              type="number"
+              step="0.01"
+              min="1"
+              placeholder={`e.g., ${displayCurrency === 'CAD' ? '29.99' : '299.00'}`}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-5 flex items-center">
+          <button
+            className={cx(BTN_BASE, BTN_PRIMARY, 'w-full h-[42px]')}
+            onClick={handleCreate}
+            disabled={isLoading || !price.trim()}
+          >
+            {isLoading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/>
+                  <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Creating...
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                Generate Payment Link
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+      
+      {error && (
+        <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-600/30">
+          <div className="text-sm text-red-300">
+            {error?.data?.error || 'Failed to create payment link'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Guarded search
 function useGuardedSearchList(hook, query) {
@@ -104,7 +466,6 @@ function PopoverPicker({
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => {
-            // small delay so click can register
             setTimeout(() => setOpen(false), 120);
           }}
         />
@@ -130,7 +491,7 @@ function PopoverPicker({
                   onClick={() => {
                     onPick(it);
                     setQ('');
-                    setOpen(false); // ← hide after select
+                    setOpen(false);
                   }}
                   className="w-full p-3 flex items-center gap-3 hover:bg-white/5 transition text-left"
                 >
@@ -246,13 +607,29 @@ function ItemRow({ it, onSave, onDelete }) {
 }
 
 export default function BasicPersonalize() {
+  const location = useLocation();
   const { Toast, show } = useToast();
+
+  const preSelectedUser = location.state?.selectedUser;
 
   // user search
   const [userQuery, setUserQuery] = React.useState('');
   const { list: users, isFetching: usersLoading, skip: skipUsers, q: normalizedUserQ } =
     useGuardedSearchList(useAdminPbSearchUsersQuery, userQuery);
-  const [user, setUser] = React.useState(null);
+  const [user, setUser] = React.useState(preSelectedUser || null);
+
+  // Delete/Restore states
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [showHardDeleteModal, setShowHardDeleteModal] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState(null);
+  const [hardDeleteTarget, setHardDeleteTarget] = React.useState(null);
+  const [showDeletedModal, setShowDeletedModal] = React.useState(false);
+
+  React.useEffect(() => {
+    if (preSelectedUser) {
+      window.history.replaceState({}, '');
+    }
+  }, [preSelectedUser]);
 
   // recs
   const { data: listRes, refetch: refetchList } = useAdminPbListForUserQuery(
@@ -268,6 +645,12 @@ export default function BasicPersonalize() {
     { skip: !recId }
   );
 
+  // Payment status query for selected recommendation
+  const { data: paymentStatus, refetch: refetchPayment } = useGetPbPaymentStatusQuery(
+    recId || '__skip__',
+    { skip: !recId }
+  );
+
   // mutations
   const [createRec, { isLoading: creating }] = useAdminPbCreateMutation();
   const [addItem, { isLoading: adding }] = useAdminPbAddItemMutation();
@@ -275,6 +658,11 @@ export default function BasicPersonalize() {
   const [deleteItem] = useAdminPbDeleteItemMutation();
   const [updateStatus, { isLoading: statusing }] = useAdminPbUpdateStatusMutation();
   const [sendNow, { isLoading: sending }] = useAdminPbSendNowMutation();
+  
+  // Delete/Restore mutations
+  const [deleteRec, { isLoading: deleting }] = useDeletePbRecommendationMutation();
+  const [restoreRec, { isLoading: restoring }] = useRestorePbRecommendationMutation();
+  const [hardDeleteRec, { isLoading: hardDeleting }] = useHardDeletePbRecommendationMutation();
 
   // create draft inputs
   const [newTitle, setNewTitle] = React.useState('');
@@ -379,6 +767,64 @@ export default function BasicPersonalize() {
     }
   }
 
+  // Delete recommendation handlers
+  function onDeleteRecommendation(rec) {
+    setDeleteTarget(rec);
+    setShowDeleteModal(true);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await deleteRec({ id: deleteTarget.id, cascade: true }).unwrap();
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
+      if (recId === deleteTarget.id) {
+        setRecId(null); // Clear selection if current rec is deleted
+      }
+      await refetchList();
+      show('Recommendation deleted');
+    } catch (e) {
+      alert(e?.data?.error || 'Failed to delete recommendation');
+    }
+  }
+
+  // Hard delete handlers
+  function onHardDeleteRecommendation(recId, recTitle) {
+    setHardDeleteTarget({ id: recId, title: recTitle });
+    setShowHardDeleteModal(true);
+  }
+
+  async function confirmHardDelete() {
+    if (!hardDeleteTarget) return;
+    try {
+      await hardDeleteRec(hardDeleteTarget.id).unwrap();
+      setShowHardDeleteModal(false);
+      setHardDeleteTarget(null);
+      show('Recommendation permanently deleted');
+    } catch (e) {
+      alert(e?.data?.error || 'Failed to permanently delete recommendation');
+    }
+  }
+
+  // Restore recommendation handler
+  async function onRestoreRecommendation(recId, recTitle) {
+    try {
+      await restoreRec({ id: recId, cascade: true }).unwrap();
+      await refetchList();
+      show(`Restored: ${recTitle || 'Recommendation'}`);
+    } catch (e) {
+      alert(e?.data?.error || 'Failed to restore recommendation');
+    }
+  }
+
+  // Payment link success handler
+  function onPaymentLinkSuccess(result) {
+    show(`Payment link created: ${result.currency} ${result.amount}`);
+    refetchPayment();
+    refetchRec();
+  }
+
   React.useEffect(() => {
     setRecId(null);
   }, [user?.id]);
@@ -392,10 +838,9 @@ export default function BasicPersonalize() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      {/* Header bar (colors from your snippet) — optional */}
+      {/* Header bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <button className={BTN_LINK} onClick={() => window.history.back()}>
-          {/* Back icon substitute */}
           <span className="inline-flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" className="text-gray-300">
               <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -404,19 +849,6 @@ export default function BasicPersonalize() {
             <span className="sm:hidden">Back</span>
           </span>
         </button>
-
-        {/* <div className="flex items-center gap-2 w-full sm:w-auto">
-          
-          <button className={cx(BTN_BASE, BTN_GHOST)} onClick={() => {}}>
-            <span>Edit</span>
-          </button>
-          <button className={cx(BTN_BASE, BTN_PRIMARY)} onClick={() => {}}>
-            <span>Save</span>
-          </button>
-          <button className={cx(BTN_BASE, BTN_DANGER)} onClick={() => {}}>
-            <span>Delete</span>
-          </button>
-        </div> */}
       </div>
 
       {/* 1) User search */}
@@ -521,44 +953,93 @@ export default function BasicPersonalize() {
                   const when = r.sent_at || r.updated_at || r.created_at;
                   const cardTitle = r.title?.trim() ? r.title : '(Untitled)';
                   const hasSummary = !!(r.summary_note && r.summary_note.trim());
+                  
+                  // Extract payment info from recommendation data - currency is now dynamic
+                  const hasPayment = r.payment_status && r.payment_status !== 'free';
+                  const paymentPrice = r.price_cents ? r.price_cents / 100 : 0;
+                  const paymentCurrency = r.currency || 'CAD';
+
                   return (
-                    <button
+                    <div
                       key={r.id}
-                      onClick={() => setRecId(r.id)}
                       className={cx(
-                        'p-3 rounded-xl bg-white/5 ring-1 ring-white/10 text-left hover:bg-white/10 transition',
+                        'p-3 rounded-xl bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition relative',
                         recId === r.id && 'outline-2 outline-blue-500/60'
                       )}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-medium truncate">{cardTitle}</div>
-                        <span
-                          className={cx(
-                            'inline-flex items-center px-2 py-1 rounded-full text-[11px]',
-                            r.status === 'draft' && 'bg-gray-700 text-gray-100',
-                            r.status === 'sent' && 'bg-blue-600/30',
-                            r.status === 'updated' && 'bg-purple-600/30',
-                            r.status === 'withdrawn' && 'bg-red-600/30'
-                          )}
-                        >
-                          {r.status}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">{when ? new Date(when).toLocaleString() : ''}</div>
-                      {hasSummary ? (
-                        <div className="text-sm text-gray-300 mt-2 line-clamp-3">{r.summary_note}</div>
-                      ) : (
-                        <div className="text-xs text-gray-400 mt-2 italic">No summary</div>
-                      )}
-                    </button>
+                      {/* Delete button */}
+                      <button
+                        className="absolute top-2 right-2 p-1 hover:bg-red-600/20 rounded text-red-400 hover:text-red-300"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteRecommendation(r);
+                        }}
+                        title="Delete recommendation"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                        </svg>
+                      </button>
+
+                      {/* Card content */}
+                      <button
+                        onClick={() => setRecId(r.id)}
+                        className="w-full text-left pr-6"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="font-medium truncate">{cardTitle}</div>
+                          <div className="flex items-center gap-2">
+                            {hasPayment && (
+                              <PaymentStatusBadge 
+                                status={r.payment_status} 
+                                price={paymentPrice}
+                                currency={paymentCurrency}
+                              />
+                            )}
+                            <span
+                              className={cx(
+                                'inline-flex items-center px-2 py-1 rounded-full text-[11px]',
+                                r.status === 'draft' && 'bg-gray-700 text-gray-100',
+                                r.status === 'sent' && 'bg-blue-600/30',
+                                r.status === 'updated' && 'bg-purple-600/30',
+                                r.status === 'withdrawn' && 'bg-red-600/30'
+                              )}
+                            >
+                              {r.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400 mb-1">{when ? new Date(when).toLocaleString() : ''}</div>
+                        {hasSummary ? (
+                          <div className="text-sm text-gray-300 line-clamp-3">{r.summary_note}</div>
+                        ) : (
+                          <div className="text-xs text-gray-400 italic">No summary</div>
+                        )}
+                      </button>
+                    </div>
                   );
                 })}
                 {userRecs.length === 0 && (
                   <div className="rounded-lg bg-white/5 p-6 text-center text-sm text-gray-300">
-                    No drafts yet. Enter Title & Summary above and click “Create Draft”.
+                    No drafts yet. Enter Title & Summary above and click "Create Draft".
                   </div>
                 )}
               </div>
+
+              {/* View deleted recommendations button */}
+              {user && (
+                <div className="flex justify-end mt-4">
+                  <button
+                    className={cx(BTN_BASE, BTN_GHOST, 'text-xs')}
+                    onClick={() => setShowDeletedModal(true)}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                    View Deleted
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -582,9 +1063,23 @@ export default function BasicPersonalize() {
                   </option>
                 ))}
               </select>
-              <button className={cx(BTN_BASE, BTN_PRIMARY, 'w-full sm:w-auto')} onClick={onSend} disabled={sending}>
-                {sending ? 'Sending…' : 'Send to user'}
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button 
+                  className={cx(BTN_BASE, BTN_PRIMARY, 'flex-1 sm:flex-none')} 
+                  onClick={onSend} 
+                  disabled={sending}
+                >
+                  {sending ? 'Sending…' : 'Send to user'}
+                </button>
+                <button 
+                  className={cx(BTN_BASE, BTN_DANGER, 'flex-1 sm:flex-none')} 
+                  onClick={() => onDeleteRecommendation(recData?.recommendation)}
+                  disabled={deleting}
+                  title="Delete this recommendation"
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
             </div>
           </header>
 
@@ -599,10 +1094,19 @@ export default function BasicPersonalize() {
             ) : (
               <>
                 {recData.recommendation?.summary_note && (
-                  <div className="mb-4 p-3 rounded-lg bg-white/5 text-sm text-gray-300 whitespace-pre-wrap">
+                  <div className="mb-6 p-4 rounded-lg bg-white/5 text-sm text-gray-300 whitespace-pre-wrap">
                     {recData.recommendation.summary_note}
                   </div>
                 )}
+
+                {/* Payment Link Section - Enhanced styling */}
+                <div className="mb-6">
+                  <PaymentLinkCreator
+                    recommendationId={recId}
+                    currentPaymentData={paymentStatus}
+                    onSuccess={onPaymentLinkSuccess}
+                  />
+                </div>
 
                 {/* Add item */}
                 <div className="rounded-lg bg-white/[0.04] p-4 mb-4 ring-1 ring-white/10">
@@ -652,6 +1156,39 @@ export default function BasicPersonalize() {
           </div>
         </section>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeleteTarget(null);
+        }}
+        onConfirm={confirmDelete}
+        title={deleteTarget?.title || '(Untitled)'}
+        isLoading={deleting}
+      />
+
+      {/* Hard Delete Confirmation Modal */}
+      <HardDeleteConfirmModal
+        isOpen={showHardDeleteModal}
+        onClose={() => {
+          setShowHardDeleteModal(false);
+          setHardDeleteTarget(null);
+        }}
+        onConfirm={confirmHardDelete}
+        title={hardDeleteTarget?.title || '(Untitled)'}
+        isLoading={hardDeleting}
+      />
+
+      {/* Deleted Recommendations Modal */}
+      <DeletedRecommendationsModal
+        isOpen={showDeletedModal}
+        onClose={() => setShowDeletedModal(false)}
+        userId={user?.id}
+        onRestore={onRestoreRecommendation}
+        onHardDelete={onHardDeleteRecommendation}
+      />
 
       <Toast />
     </div>

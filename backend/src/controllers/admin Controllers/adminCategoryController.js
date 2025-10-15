@@ -32,11 +32,11 @@ async function getCategoryController(req, res, next) {
 
 async function createCategoryController(req, res, next) {
   try {
-    const { title, slug, tags, artwork_filename } = req.body;
+    const { title, slug, description, tags, artwork_filename } = req.body;
     if (!title || !slug) {
       return res.status(400).json({ error: 'title and slug required' });
     }
-    const newCat = await createCategoryAdmin({ title, slug, tags, artwork_filename });
+    const newCat = await createCategoryAdmin({ title, slug, description, tags, artwork_filename });
     res.status(201).json(newCat);
   } catch (err) {
     next(err);
@@ -45,8 +45,8 @@ async function createCategoryController(req, res, next) {
 
 async function updateCategoryController(req, res, next) {
   try {
-    const { title, slug, tags, artwork_filename } = req.body;
-    const updated = await updateCategoryAdmin(req.params.id, { title, slug, tags, artwork_filename });
+    const { title, slug, description, tags, artwork_filename } = req.body;
+    const updated = await updateCategoryAdmin(req.params.id, { title, slug, description, tags, artwork_filename });
     res.json(updated);
   } catch (err) {
     next(err);

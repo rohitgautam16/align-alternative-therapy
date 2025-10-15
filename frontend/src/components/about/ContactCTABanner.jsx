@@ -109,7 +109,7 @@ const ContactCTABanner = () => {
   }, [navigate]);
   
   return (
-    <section className="relative h-fit bg-black overflow-hidden py-8 sm:py-10 lg:py-20">
+    <section className="relative h-fit bg-black overflow-hidden py-8 px-16 sm:py-10 lg:py-20">
       {/* Background grid pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--luxury-surface))_1px,transparent_1px)] bg-[length:20px_20px] sm:bg-[length:32px_32px] opacity-20"></div>
       

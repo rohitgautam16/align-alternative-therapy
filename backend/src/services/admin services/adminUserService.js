@@ -35,30 +35,96 @@ async function listAdmins({ page = 1, pageSize = 20 } = {}) {
 /**
  * List all users
  */
-async function listUsers({ page = 1, pageSize = 20 } = {}) {
+async function listUsers({ page = 1, pageSize = 20, search = '' } = {}) {
   page     = Math.max(1, parseInt(page, 10) || 1);
   pageSize = Math.max(1, parseInt(pageSize, 10) || 20);
   const offset = (page - 1) * pageSize;
 
-  const countPromise = db.query(
-    `SELECT COUNT(*) AS total
-       FROM users
-      WHERE deleted_at IS NULL`
-  );
+  // Build search condition
+  let whereClause = 'WHERE deleted_at IS NULL';
+  const queryParams = [];
+  
+  if (search && search.trim()) {
+    whereClause += ` AND (full_name LIKE ? OR email LIKE ?)`;
+    const searchPattern = `%${search.trim()}%`;
+    queryParams.push(searchPattern, searchPattern);
+  }
+
+  // Count query - THIS IS RETURNING 0 IN YOUR CASE
+  const countQuery = `SELECT COUNT(*) AS total FROM users ${whereClause}`;
+  console.log('Count Query:', countQuery, 'Params:', queryParams); // Debug
+  
+  const countPromise = db.query(countQuery, queryParams);
+  
   const dataPromise = db.query(
     `SELECT
        id, email, full_name, user_roles, active, status_message,
        created_at, updated_at, is_subscribed
      FROM users
-     WHERE deleted_at IS NULL
+     ${whereClause}
      ORDER BY created_at DESC
      LIMIT ? OFFSET ?`,
+    [...queryParams, pageSize, offset]
+  );
+
+  const [countResult, dataResult] = await Promise.all([countPromise, dataPromise]);
+  
+  // Debug: Check what count returns
+  console.log('Count Result:', countResult);
+  
+  // Handle different MySQL driver response formats
+  const total = countResult[0]?.[0]?.total || countResult[0]?.total || 0;
+  const rows = dataResult[0] || dataResult;
+  
+  console.log('Final total:', total, 'Rows:', rows.length); // Debug
+  
+  return { data: rows, total, page, pageSize };
+}
+
+
+async function listRecommendedUsers({ page = 1, pageSize = 20 } = {}) {
+  page = Math.max(1, parseInt(page, 10) || 1);
+  pageSize = Math.max(1, parseInt(pageSize, 10) || 20);
+  const offset = (page - 1) * pageSize;
+
+  // Count total unique users in pb_recommendations
+  const countPromise = db.query(
+    `SELECT COUNT(DISTINCT user_id) AS total
+       FROM pb_recommendations
+      WHERE user_id IS NOT NULL`
+  );
+
+  // Fetch distinct users with their details and recommendation counts
+  const dataPromise = db.query(
+    `SELECT 
+       u.id,
+       u.email,
+       u.full_name,
+       u.user_roles,
+       u.active,
+       u.status_message,
+       u.created_at,
+       u.updated_at,
+       u.is_subscribed,
+       COALESCE(r.recommendation_count, 0) AS recommendation_count
+     FROM users u
+     INNER JOIN (
+       SELECT user_id, COUNT(*) AS recommendation_count
+         FROM pb_recommendations
+        WHERE user_id IS NOT NULL
+        GROUP BY user_id
+        ORDER BY MAX(created_at) DESC
+        LIMIT ? OFFSET ?
+     ) r ON u.id = r.user_id
+     WHERE u.deleted_at IS NULL
+     ORDER BY u.created_at DESC`,
     [pageSize, offset]
   );
 
   const [[{ total }], [rows]] = await Promise.all([countPromise, dataPromise]);
   return { data: rows, total, page, pageSize };
 }
+
 
 /**
  * Fetch one user by ID
@@ -131,6 +197,7 @@ async function deleteUserAdmin(id, requestIp) {
 module.exports = {
   listAdmins,
   listUsers,
+  listRecommendedUsers,
   getUserById,
   createUserAdmin,
   updateUserAdmin,

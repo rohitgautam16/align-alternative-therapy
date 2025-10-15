@@ -25,6 +25,7 @@ async function listSongs({ page = 1, pageSize = 20 } = {}) {
        name,
        title,
        slug,
+       description,
        artist,
        tags,
        category,
@@ -49,6 +50,7 @@ async function getSongById(id) {
        name,
        title,
        slug,
+       description,
        artist,
        tags,
        category,
@@ -87,6 +89,7 @@ async function createSongAdmin({
   name,
   title,
   slug,
+  description,
   artist,
   tags,
   category,
@@ -99,12 +102,13 @@ async function createSongAdmin({
 
   const [result] = await db.query(
     `INSERT INTO audio_metadata
-       (name, title, slug, artist, tags, category, playlist, artwork_filename, cdn_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, title, slug, description, artist, tags, category, playlist, artwork_filename, cdn_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       name          || null,
       title,
       uniqueSlug,
+      description   || '',
       artist        || null,
       tags          || null,
       category      || null,
@@ -122,6 +126,7 @@ async function updateSongAdmin(id, fields) {
     name,
     title,
     slug,
+    description,
     artist,
     tags,
     category,
@@ -135,6 +140,7 @@ async function updateSongAdmin(id, fields) {
         SET name             = ?,
             title            = ?,
             slug             = ?,
+            description      = ?,
             artist           = ?,
             tags             = ?,
             category         = ?,
@@ -146,6 +152,7 @@ async function updateSongAdmin(id, fields) {
       name          || null,
       title,
       slug,
+      description   || '',
       artist        || null,
       tags          || null,
       category      || null,

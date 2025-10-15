@@ -168,3 +168,19 @@ transform-origin: top;
   scrollbar-width: thin;
   scrollbar-color: rgba(107, 104, 104, 0.38) transparent; 
 }
+
+.text-stroke {
+  color: transparent;
+  -webkit-text-stroke: 1px white; /* thicker stroke */
+  paint-order: stroke fill;       /* draws stroke outside the fill area */
+  letter-spacing: 1px;            /* increase gaps between letters */
+}
+
+.text-outline {
+  color: black; /* or background color */
+  text-shadow:
+     2px 0 0 white,
+    -2px 0 0 white,
+     0 2px 0 white,
+     0 -2px 0 white;
+}

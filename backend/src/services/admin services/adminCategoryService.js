@@ -17,7 +17,7 @@ async function listCategories({ page = 1, pageSize = 20 } = {}) {
   // paged data
   const dataPromise = db.query(
     `SELECT
-       id, title, slug, tags, artwork_filename AS image, created_at
+       id, title, slug, description, tags, artwork_filename AS image, created_at
      FROM categories
      ORDER BY created_at DESC
      LIMIT ? OFFSET ?`,
@@ -31,7 +31,7 @@ async function listCategories({ page = 1, pageSize = 20 } = {}) {
 
 async function getCategoryById(id) {
   const [rows] = await db.query(
-    `SELECT id, title, slug, tags, artwork_filename AS image, created_at
+    `SELECT id, title, slug, description, tags, artwork_filename AS image, created_at
        FROM categories
       WHERE id = ?`,
     [id]
@@ -39,24 +39,25 @@ async function getCategoryById(id) {
   return rows[0];
 }
 
-async function createCategoryAdmin({ title, slug, tags, artwork_filename }) {
+async function createCategoryAdmin({ title, slug, description, tags, artwork_filename }) {
   const [result] = await db.query(
-    `INSERT INTO categories (title, slug, tags, artwork_filename)
-     VALUES (?, ?, ?, ?)`,
-    [title, slug, tags || null, artwork_filename || null]
+    `INSERT INTO categories (title, slug, description, tags, artwork_filename)
+     VALUES (?, ?, ?, ?, ?)`,
+    [title, slug, description || '', tags || null, artwork_filename || null]
   );
   return getCategoryById(result.insertId);
 }
 
-async function updateCategoryAdmin(id, { title, slug, tags, artwork_filename }) {
+async function updateCategoryAdmin(id, { title, slug, description, tags, artwork_filename }) {
   await db.query(
     `UPDATE categories
         SET title            = ?,
             slug             = ?,
+            description      = ?,
             tags             = ?,
             artwork_filename = ?
       WHERE id = ?`,
-    [title, slug, tags || null, artwork_filename || null, id]
+    [title, slug, description || '', tags || null, artwork_filename || null, id]
   );
   return getCategoryById(id);
 }

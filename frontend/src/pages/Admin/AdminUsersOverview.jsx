@@ -5,24 +5,30 @@ import { useNavigate } from 'react-router-dom';
 import { Grid3X3, List, Eye, Plus, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+
 export default function AdminUsersOverview() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [viewType, setViewType] = useState('grid');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const pageSize = 6;
 
-  // Search functionality
-  const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch paginated users
-  const { data, isLoading, isError, error, refetch } =
-    useListUsersQuery({ page, pageSize });
+  // Fetch paginated users with search - RTK Query automatically refetches when params change
+  const { data, isLoading, isError, error, refetch } = useListUsersQuery({ 
+    page, 
+    pageSize,
+    search: searchTerm // Backend handles search now
+  });
+
+  console.log('📊 API Response:', data);
 
   // Create new user mutation
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
 
-  // New user form state (kept exactly the same)
+
+  // New user form state
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -32,23 +38,24 @@ export default function AdminUsersOverview() {
     status_message: ''
   });
 
+
   // Flash messages state
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // Normalize response (kept exactly the same)
+
+  // Normalize response - NO MORE CLIENT-SIDE FILTERING
   const users = Array.isArray(data?.data) ? data.data : [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
-  // Filter users based on search (client-side)
-  const filteredUsers = React.useMemo(() => {
-    if (!searchTerm) return users;
-    
-    return users.filter(user => 
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [users, searchTerm]);
+
+  // Reset page to 1 when search term changes
+  useEffect(() => {
+    if (searchTerm !== '') {
+      setPage(1);
+    }
+  }, [searchTerm]);
+
 
   // Auto-clear flash messages
   useEffect(() => {
@@ -58,7 +65,8 @@ export default function AdminUsersOverview() {
     }
   }, [flash]);
 
-  // Handlers (kept exactly the same logic)
+
+  // Create user handler
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -80,9 +88,11 @@ export default function AdminUsersOverview() {
     }
   };
 
+
   const toggleView = () => {
     setViewType((v) => (v === 'grid' ? 'list' : 'grid'));
   };
+
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -90,9 +100,12 @@ export default function AdminUsersOverview() {
     }
   };
 
+
   const clearSearch = () => {
     setSearchTerm('');
+    setPage(1); // Reset to first page
   };
+
 
   return (
     <div className="p-4 sm:p-6 text-white space-y-6">
@@ -110,14 +123,14 @@ export default function AdminUsersOverview() {
         )}
       </AnimatePresence>
 
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold">Users Overview</h2>
-          {/* <p className="text-gray-400 text-sm">
-            {total} user{total !== 1 ? 's' : ''} total
-            {searchTerm && `, ${filteredUsers.length} shown (filtered)`}
-          </p> */}
+          <p className="text-gray-400 text-sm">
+            {total} user{total !== 1 ? 's' : ''} {searchTerm && 'found'}
+          </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
@@ -137,6 +150,7 @@ export default function AdminUsersOverview() {
           </button>
         </div>
       </div>
+
 
       {/* Search */}
       <div className="bg-gray-800 p-3 sm:p-4 rounded-lg">
@@ -160,7 +174,17 @@ export default function AdminUsersOverview() {
             </button>
           )}
         </div>
+        {/* Show search results indicator */}
+        {searchTerm && !isLoading && (
+          <p className="text-gray-400 text-xs sm:text-sm mt-2">
+            {total > 0 
+              ? `Showing ${users.length} of ${total} result${total !== 1 ? 's' : ''} for "${searchTerm}"`
+              : `No results for "${searchTerm}"`
+            }
+          </p>
+        )}
       </div>
+
 
       {/* Create Form */}
       <AnimatePresence>
@@ -176,6 +200,7 @@ export default function AdminUsersOverview() {
               <Plus size={20} /> Create New User
             </h3>
 
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Email *</label>
@@ -189,6 +214,7 @@ export default function AdminUsersOverview() {
                 />
               </div>
 
+
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Password *</label>
                 <input
@@ -201,6 +227,7 @@ export default function AdminUsersOverview() {
                 />
               </div>
 
+
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Full Name</label>
                 <input
@@ -211,6 +238,7 @@ export default function AdminUsersOverview() {
                   className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
                 />
               </div>
+
 
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Role</label>
@@ -224,6 +252,7 @@ export default function AdminUsersOverview() {
                 </select>
               </div>
 
+
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Status</label>
                 <select
@@ -236,6 +265,7 @@ export default function AdminUsersOverview() {
                 </select>
               </div>
 
+
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Status Message</label>
                 <input
@@ -247,6 +277,7 @@ export default function AdminUsersOverview() {
                 />
               </div>
             </div>
+
 
             <div className="flex flex-col sm:flex-row justify-end gap-2">
               <button
@@ -268,12 +299,14 @@ export default function AdminUsersOverview() {
         )}
       </AnimatePresence>
 
+
       {/* Loading/Error */}
       {isLoading && (
         <div className="flex justify-center items-center py-12">
           <div className="text-gray-400">Loading users...</div>
         </div>
       )}
+
 
       {isError && (
         <div className="bg-red-900/20 border border-red-600 p-4 rounded">
@@ -283,12 +316,16 @@ export default function AdminUsersOverview() {
         </div>
       )}
 
-      {/* Users Flex Layout - 2 Column */}
+
+      {/* Users Display - Using 'users' directly (backend filtered) */}
       {!isLoading && !isError && (
         <>
-          {filteredUsers.length === 0 ? (
+          {users.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
-              {users.length === 0 ? 'No users found' : 'No users match your search'}
+              {searchTerm 
+                ? `No users found matching "${searchTerm}"` 
+                : 'No users found'
+              }
             </div>
           ) : (
             <div className={`
@@ -297,7 +334,7 @@ export default function AdminUsersOverview() {
                 : 'flex flex-col gap-3 sm:gap-4'
               }
             `}>
-              {filteredUsers.map((user) => (
+              {users.map((user) => (
                 <motion.div
                   key={user.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -352,6 +389,7 @@ export default function AdminUsersOverview() {
                     </div>
                   </div>
 
+
                   {/* Right pane (avatar placeholder) */}
                   <div className="flex-shrink-0 w-full md:w-48 h-48 md:h-full">
                     <div className="w-full h-full bg-gray-700 rounded-t-lg md:rounded-t-none md:rounded-r-lg flex items-center justify-center">
@@ -366,6 +404,7 @@ export default function AdminUsersOverview() {
               ))}
             </div>
           )}
+
 
           {/* Pagination */}
           {totalPages > 1 && (

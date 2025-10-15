@@ -55,9 +55,9 @@ export default function CategoryBanner({ category }) {
                          drop-shadow-lg line-clamp-2">
             {category.title || 'Untitled Category'}
           </h3>
-          <p className="text-sm sm:text-base text-white/90 drop-shadow-lg line-clamp-2">
+          {/* <p className="text-sm sm:text-base text-white/90 drop-shadow-lg line-clamp-2">
             {category.description || FALLBACK_DESC}
-          </p>
+          </p> */}
         </div>
 
         <button

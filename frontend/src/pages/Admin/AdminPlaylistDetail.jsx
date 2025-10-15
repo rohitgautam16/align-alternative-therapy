@@ -132,6 +132,7 @@ export default function AdminPlaylistDetail() {
   const [createForm, setCreateForm] = useState({
     title: '',
     slug: '',
+    description: '',
     artist: '',
     tags: '',
     artwork_filename: '',
@@ -209,9 +210,11 @@ export default function AdminPlaylistDetail() {
       setForm({
         title:            p.title,
         slug:             p.slug,
+        description:      p.description,
         tags:             p.tags ?? '',
         artwork_filename: p.image ?? p.artwork_filename ?? '',
-        category_id:      p.categoryId ?? p.category_id ?? ''
+        category_id:      p.categoryId ?? p.category_id ?? '',
+        paid:             Number(p.paid) || 1
       });
     }
   }, [p]);
@@ -598,6 +601,7 @@ export default function AdminPlaylistDetail() {
       setCreateForm({
         title: '',
         slug: '',
+        description: '',
         artist: '',
         tags: '',
         artwork_filename: '',
@@ -639,6 +643,7 @@ export default function AdminPlaylistDetail() {
           ?.toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)/g, '') || `song-${song.id}`,
+        description: song.description || '',
         artist: song.artist || '',
         tags: song.tags || '',
         category: song.category || null,
@@ -662,6 +667,7 @@ export default function AdminPlaylistDetail() {
 
   const handleSave = async () => {
     try {
+      console.log('💾 Saving playlist with data:', { id: playlistId, ...form });
       await updatePlaylist({ id: playlistId, ...form }).unwrap();
       setFlash({ txt: 'Playlist updated.', ok: true });
       setEditMode(false);
@@ -767,6 +773,19 @@ export default function AdminPlaylistDetail() {
               )}
             </div>
 
+            <div className="md:col-span-2">
+              <label className="block text-gray-400 mb-1">Description</label>
+              {editMode ? (
+                <input
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full p-2 bg-gray-700 rounded text-white"
+                />
+              ) : (
+                <p>{p.description || '—'}</p>
+              )}
+            </div>
+
             {/* Tags */}
             <div className="md:col-span-2">
               <label className="block text-gray-400 mb-1">Tags</label>
@@ -780,6 +799,30 @@ export default function AdminPlaylistDetail() {
                 <p>{p.tags || '—'}</p>
               )}
             </div>
+
+            <div>
+        <label className="block text-gray-400 mb-1">Type</label>
+        {editMode ? (
+          <select
+            value={form.paid !== undefined ? form.paid : 1}
+            onChange={(e) => setForm((f) => ({ ...f, paid: Number(e.target.value) }))}
+            className="w-full p-2 bg-gray-700 rounded text-white"
+          >
+            <option value={0}>Free</option>
+            <option value={1}>Paid</option>
+          </select>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center py-1 font-medium ${
+              p.paid === 1 
+                ? '' 
+                : ''
+            }`}>
+              <p>{p.paid === 1 ? 'Paid' : 'Free'}</p>
+            </span>
+          </div>
+        )}
+      </div>
 
             {/* Category Dropdown with Images */}
             <div className="md:col-span-2">
@@ -1023,6 +1066,16 @@ export default function AdminPlaylistDetail() {
                     className="w-full p-2 bg-gray-700 rounded text-white text-sm"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Description</label>
+                  <input
+                    placeholder="song-description"
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                    className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                  />
+                </div>
                 
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Artist</label>
@@ -1043,6 +1096,7 @@ export default function AdminPlaylistDetail() {
                     className="w-full p-2 bg-gray-700 rounded text-white text-sm"
                   />
                 </div>
+
                 
                 {/* ✅ Read-Only Playlist Field */}
                 <div className="sm:col-span-2">

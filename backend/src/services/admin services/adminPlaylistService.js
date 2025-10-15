@@ -23,6 +23,7 @@ async function listPlaylists({ page = 1, pageSize = 20 } = {}) {
        id,
        title,
        slug,
+       description,
        tags,
        artwork_filename    AS artwork_filename,
        category_id         AS category_id,
@@ -43,6 +44,7 @@ async function getPlaylistById(id) {
        id,
        title,
        slug,
+       description,
        tags,
        artwork_filename AS image,
        category_id AS categoryId,
@@ -58,36 +60,49 @@ async function getPlaylistById(id) {
 async function createPlaylistAdmin({
   title,
   slug,
+  description,
   tags,
   artwork_filename,
-  category_id
+  category_id,
+  paid
 }) {
   const [result] = await db.query(
     `INSERT INTO playlists
-       (title, slug, tags, artwork_filename, category_id, paid)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [title, slug, tags || null, artwork_filename || null, category_id || null, 0]
+       (title, slug, description, tags, artwork_filename, category_id, paid)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [title, slug, description || '', tags || null, artwork_filename || null, category_id || null, paid]
   );
   return getPlaylistById(result.insertId);
 }
 
 async function updatePlaylistAdmin(
   id,
-  { title, slug, tags, artwork_filename, category_id }
+  { title, slug, description, tags, artwork_filename, category_id, paid = 1 } 
 ) {
   await db.query(
     `UPDATE playlists
         SET title            = ?,
             slug             = ?,
+            description      = ?,
             tags             = ?,
             artwork_filename = ?,
             category_id      = ?,
             paid             = ?
       WHERE id = ?`,
-    [title, slug, tags || null, artwork_filename || null, category_id || null, 1, id]
+    [
+      title, 
+      slug, 
+      description || '', 
+      tags || null, 
+      artwork_filename || null, 
+      category_id || null, 
+      paid,  
+      id
+    ]
   );
   return getPlaylistById(id);
 }
+
 
 async function deletePlaylistAdmin(id) {
   await db.query(`DELETE FROM playlists WHERE id = ?`, [id]);

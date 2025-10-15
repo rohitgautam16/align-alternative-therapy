@@ -38,17 +38,27 @@ export default function CategoryView() {
     );
   }
 
-  const bgUrl =
-    loading
-      ? 'black'
-      : `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${
-          category?.image || category?.artwork_filename || FALLBACK_BG
-        })`;
+const bgImage = category?.image
+  ? category.image.startsWith('http')
+    ? category.image.includes('%20')
+      ? category.image // already encoded → leave as-is
+      : category.image.replace(/ /g, '%20') // encode only spaces
+    : `https://cdn.align-alternativetherapy.com/align-images/categories/${encodeURIComponent(category.image)}`
+  : category?.artwork_filename
+  ? `https://cdn.align-alternativetherapy.com/align-images/categories/${encodeURIComponent(category.artwork_filename)}`
+  : FALLBACK_BG;
+
+
+const bgUrl = bgImage
+  ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${bgImage})`
+  : 'transparent';
+
+console.log(category.image, category.artwork_filename);
 
   return (
     <div
       className="min-h-screen bg-cover bg-center relative"
-      style={{ background: bgUrl, backgroundSize: 'cover' }}
+      style={{ background: bgUrl, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       {/* Page content */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10">
@@ -97,7 +107,7 @@ export default function CategoryView() {
             </div>
           ) : categoryPlaylists.length === 0 ? (
             <p className="text-white text-center py-10">
-              No playlists found in “{category?.name}.”
+              No playlists found in {category?.title}.
             </p>
           ) : (
             /**

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdArrowOutward } from "react-icons/md";
-import Preloader from "../custom-ui/Preloader"; 
+// import Preloader from "../custom-ui/Preloader"; 
 
 const videoUrl = "https://cdn.align-alternativetherapy.com/static-pages-media/13115940_3840_2160_60fps.mp4";
 
@@ -12,102 +12,175 @@ const HeroBannerTwo = () => {
   const [isHovering, setIsHovering] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [showPreloader, setShowPreloader] = useState(true);
+  const playAttemptRef = useRef(false);
+  const animationFrameRef = useRef(null);
 
   const MIN_LOADING_TIME = 2000; // Minimum 2 seconds
 
+  // Detect mobile device
+  const isMobile = useCallback(() => {
+    return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }, []);
+
   // Handle preloader completion
-  const handlePreloaderComplete = useCallback(() => {
-    setIsVideoLoaded(true);
-    setShowPreloader(false);
-  }, []);
+  // const handlePreloaderComplete = useCallback(() => {
+  //   setIsVideoLoaded(true);
+  //   setShowPreloader(false);
+  // }, []);
 
-  // Improved Video Loading Strategy
+  // Optimized Video Loading Strategy with Better Error Handling
   useEffect(() => {
     const video = videoRef.current;
-    if (video) {
-      video.preload = "metadata";
+    if (!video) return;
+
+    video.preload = "metadata";
+    const loadStartTime = Date.now();
+    let hasCompletedLoading = false;
+
+    const completeLoading = () => {
+      if (hasCompletedLoading) return;
       
-      const handleCanPlay = async () => {
-        try {
-          if (video.readyState >= 3) {
-            await video.play();
-            
-            // Let the preloader handle the timing
-            const loadStartTime = Date.now();
-            const checkMinDuration = () => {
-              const elapsed = Date.now() - loadStartTime;
-              if (elapsed >= MIN_LOADING_TIME) {
-                // Video is ready, preloader will complete on its own
-              } else {
-                setTimeout(checkMinDuration, MIN_LOADING_TIME - elapsed);
-              }
-            };
-            checkMinDuration();
-          }
-        } catch (error) {
-          console.log("Video autoplay failed:", error);
-          // Still let preloader complete normally
-        }
-      };
+      const elapsed = Date.now() - loadStartTime;
+      const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
 
-      if (video.readyState >= 3) {
-        handleCanPlay();
-      } else {
-        video.addEventListener('canplay', handleCanPlay);
-        video.addEventListener('loadeddata', handleCanPlay);
-      }
+      setTimeout(() => {
+        hasCompletedLoading = true;
+        setIsVideoLoaded(true);
+        setShowPreloader(false);
+      }, remainingTime);
+    };
 
-      return () => {
-        video.removeEventListener('canplay', handleCanPlay);
-        video.removeEventListener('loadeddata', handleCanPlay);
-      };
-    }
-  }, []);
-
-  // Intersection Observer Preloading
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              video.preload = "auto";
-              video.load();
-              observer.disconnect();
-            }
-          });
-        },
-        { 
-          threshold: 0.1,
-          rootMargin: '50px'
-        }
-      );
+    const attemptPlay = async () => {
+      // Prevent multiple simultaneous play attempts
+      if (playAttemptRef.current) return;
       
-      observer.observe(video);
-      return () => observer.disconnect();
-    }
-  }, []);
-
-  // Optimized cursor movement with throttling
-  useEffect(() => {
-    const cursor = cursorRef.current;
-    let animationFrame;
-
-    const handleGlobalMouseMove = (e) => {
-      if (cursor && isVideoLoaded) {
-        if (animationFrame) {
-          cancelAnimationFrame(animationFrame);
-        }
+      try {
+        playAttemptRef.current = true;
         
-        animationFrame = requestAnimationFrame(() => {
-          cursor.style.transform = `translate(${e.pageX - 40}px, ${e.pageY - 40}px)`;
-        });
+        // Check if video is ready to play
+        if (video.readyState >= 2) {
+          const playPromise = video.play();
+          
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log("Video playing successfully");
+            completeLoading();
+          }
+        }
+      } catch (error) {
+        console.log("Autoplay prevented:", error.name);
+        
+        // Handle different error types gracefully
+        if (error.name === 'AbortError' || error.name === 'NotAllowedError') {
+          // Show interface even if autoplay fails
+          completeLoading();
+          
+          // Try to play on any user interaction
+          const playOnInteraction = () => {
+            video.play().catch(e => console.log("Play after interaction failed:", e));
+          };
+          
+          const interactions = ['click', 'touchstart', 'keydown'];
+          interactions.forEach(event => {
+            document.addEventListener(event, playOnInteraction, { once: true, passive: true });
+          });
+          
+          // Cleanup after 10 seconds
+          setTimeout(() => {
+            interactions.forEach(event => {
+              document.removeEventListener(event, playOnInteraction);
+            });
+          }, 10000);
+        } else {
+          // For other errors, still show the interface
+          completeLoading();
+        }
+      } finally {
+        playAttemptRef.current = false;
       }
     };
 
+    // Event handlers
+    const handleCanPlay = () => attemptPlay();
+    const handleLoadedData = () => attemptPlay();
+    
+    // Handle visibility changes (tab switching)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && video.paused && isVideoLoaded) {
+        video.play().catch(e => console.log("Resume play failed:", e));
+      }
+    };
+
+    // Try to play immediately if already loaded
+    if (video.readyState >= 2) {
+      attemptPlay();
+    }
+
+    // Add event listeners
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('loadedmetadata', handleCanPlay);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Fallback: Ensure UI loads after max wait time
+    const fallbackTimeout = setTimeout(() => {
+      if (!hasCompletedLoading) {
+        console.log("Loading timeout - showing interface");
+        completeLoading();
+      }
+    }, MIN_LOADING_TIME + 2000);
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('loadedmetadata', handleCanPlay);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(fallbackTimeout);
+    };
+  }, [MIN_LOADING_TIME, isVideoLoaded]);
+
+  // Intersection Observer for Lazy Loading
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.preload = "auto";
+            video.load();
+            observer.disconnect();
+          }
+        });
+      },
+      { 
+        threshold: 0.1,
+        rootMargin: '50px'
+      }
+    );
+    
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  // Optimized Cursor Movement with RAF
+  useEffect(() => {
+    const cursor = cursorRef.current;
+    if (!cursor || !isVideoLoaded) return;
+
+    const handleGlobalMouseMove = (e) => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      
+      animationFrameRef.current = requestAnimationFrame(() => {
+        cursor.style.transform = `translate(${e.pageX - 40}px, ${e.pageY - 40}px)`;
+      });
+    };
+
     const handleGlobalClick = () => {
-      if (cursor && isHovering && isVideoLoaded) {
+      if (isHovering) {
         cursor.classList.add("expand");
         setTimeout(() => {
           cursor.classList.remove("expand");
@@ -116,40 +189,47 @@ const HeroBannerTwo = () => {
       }
     };
 
-    if (isVideoLoaded) {
-      document.addEventListener('mousemove', handleGlobalMouseMove, { passive: true });
-      document.addEventListener('click', handleGlobalClick);
-    }
+    document.addEventListener('mousemove', handleGlobalMouseMove, { passive: true });
+    document.addEventListener('click', handleGlobalClick);
 
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('click', handleGlobalClick);
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, [isHovering, navigate, isVideoLoaded]);
 
   const handleMouseEnter = useCallback(() => {
-    if (isVideoLoaded) {
+    if (isVideoLoaded && !isMobile()) {
       setIsHovering(true);
     }
-  }, [isVideoLoaded]);
+  }, [isVideoLoaded, isMobile]);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovering(false);
   }, []);
 
+  // Determine video source based on device
+  const getVideoSource = () => {
+    if (isMobile()) {
+      return videoUrl.replace('3840_2160_60fps', '1920_1080_30fps');
+    }
+    return videoUrl;
+  };
+
   return (
     <>
       {/* Preloader Component */}
-      <Preloader 
+      {/* <Preloader 
         isVisible={showPreloader}
         onComplete={handlePreloaderComplete}
         minDuration={MIN_LOADING_TIME}
         targetText="ALIGN"
-      />
+      /> */}
 
+      {/* Custom Cursor */}
       <div
         ref={cursorRef}
         className="cursor"
@@ -188,6 +268,7 @@ const HeroBannerTwo = () => {
           position: "relative", 
           overflow: "hidden",
           minHeight: "100vh",
+          backgroundColor: "#000",
         }}
       >
         {/* Video Background */}
@@ -219,8 +300,9 @@ const HeroBannerTwo = () => {
               backgroundColor: "#000",
             }}
           >
-            <source src={videoUrl} type="video/mp4" />
+            <source src={getVideoSource()} type="video/mp4" />
             <source src={videoUrl.replace('3840_2160_60fps', '1920_1080_30fps')} type="video/mp4" />
+            Your browser does not support the video tag.
           </video>
 
           {/* Video Overlay */}
@@ -232,7 +314,7 @@ const HeroBannerTwo = () => {
               width: "100%",
               height: "100%",
               background: "rgba(0, 0, 0, 0.2)",
-              transition: "background 0.2s ease-out",
+              transition: "background 0.3s ease-out",
               ...(isHovering && { background: "rgba(0, 0, 0, 0.4)" }),
             }}
           />
@@ -270,18 +352,21 @@ const HeroBannerTwo = () => {
                 willChange: "transform",
               }}
             >
-              <h2
-                style={{
-                  fontSize: "clamp(3.5rem, 7.5vw, 5rem)",
-                  color: "#fff",
-                  letterSpacing: "0.10em",
-                  fontWeight: 200,
-                  paddingRight: "clamp(2rem, 5vw, 4rem)",
-                  flexShrink: 0,
-                }}
-              >
-                • Welcome to Align Alternative Therapy •
-              </h2>
+              {[...Array(2)].map((_, index) => (
+                <h2
+                  key={index}
+                  style={{
+                    fontSize: "clamp(3.5rem, 7.5vw, 5rem)",
+                    color: "#fff",
+                    letterSpacing: "0.10em",
+                    fontWeight: 200,
+                    paddingRight: "clamp(2rem, 5vw, 4rem)",
+                    flexShrink: 0,
+                  }}
+                >
+                  • Welcome to Align Alternative Therapy •
+                </h2>
+              ))}
             </div>
           </div>
 
@@ -489,6 +574,15 @@ const HeroBannerTwo = () => {
               .column-text {
                 font-size: 0.85rem;
                 line-height: 1.5;
+              }
+            }
+
+            /* Reduce motion for accessibility */
+            @media (prefers-reduced-motion: reduce) {
+              * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
               }
             }
           `}

@@ -34,17 +34,20 @@ async function fetchRecentPlays(userId, limit = 20) {
        s.artist,
        s.artwork_filename  AS image,
        s.cdn_url           AS audioUrl,
-       sp.played_at
+       MAX(sp.played_at)   AS played_at
      FROM song_plays sp
      JOIN audio_metadata s 
        ON s.id = sp.song_id
      WHERE sp.user_id = ?
-     ORDER BY sp.played_at DESC
+     GROUP BY s.id, s.slug, s.title, s.name, s.artist, s.artwork_filename, s.cdn_url
+     ORDER BY played_at DESC
      LIMIT ?`,
     [userId, limit]
   );
+
   return rows;
 }
+
 
 /**
  * Toggle favorite/unfavorite for a song.

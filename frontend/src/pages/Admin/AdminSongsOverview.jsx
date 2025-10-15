@@ -149,6 +149,7 @@ export default function AdminSongsOverview() {
     name: '',
     title: '',
     slug: '',
+    description: '',
     artist: '',
     tags: '',
     category: '',
@@ -392,7 +393,8 @@ export default function AdminSongsOverview() {
       const matchesSearch = !searchTerm || 
         song.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         song.artist?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        song.slug?.toLowerCase().includes(searchTerm.toLowerCase());
+        song.slug?.toLowerCase().includes(searchTerm.toLowerCase())  ||
+        song.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesPlaylist = !filterPlaylist || 
         song.playlist === Number(filterPlaylist) || 
@@ -458,6 +460,7 @@ export default function AdminSongsOverview() {
         name: '',
         title: '',
         slug: '',
+        description: '',
         artist: '',
         tags: '',
         category: '',
@@ -630,6 +633,16 @@ export default function AdminSongsOverview() {
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
                   required
+                  className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Description</label>
+                <input
+                  placeholder="song-description"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
                 />
               </div>

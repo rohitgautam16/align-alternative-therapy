@@ -42,6 +42,7 @@ import AdminUpload from './pages/Admin/AdminR2FileManager'
 import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
 import AdminPersonalize from './pages/Admin/AdminPersonalize';
 import BasicPersonalize from './pages/Admin/BasicPersonalize';
+import UserRecommendationsList from './pages/Admin/UserRecomendationList';
 
 import RecentlyPlayed from './pages/RecentlyPlayed'
 import useOneTimePreloader from './hooks/useOneTimePreloader'
@@ -70,16 +71,16 @@ function ProtectedRoute({ children, loginPath = '/login' }) {
 }
 
 export default function App() {
-  const { show, complete } = useOneTimePreloader({
-    storageKey: "preloader_seen",
-  });
+  // const { show, complete } = useOneTimePreloader({
+  //   storageKey: "preloader_seen",
+  // });
   //if (show === undefined) return null;
   const location = useLocation()
 
   return (
     <>
       <SubscriptionProvider>
-      {show && <Preloader isVisible onComplete={complete} />}
+      {/* {show && <Preloader isVisible onComplete={complete} />} */}
       <AnimatePresence initial={false} mode="wait">
       <Routes location={location} >
         {/* Public routes under your global Layout */}
@@ -145,6 +146,7 @@ export default function App() {
          <Route path="upload" element={<AdminUpload />} />
          <Route path="personalize" element={<AdminPersonalize />} />
          <Route path="personalize-basic" element={<BasicPersonalize />} />
+         <Route path="personalize-users" element={<UserRecommendationsList />} />
        </Route>
 
         {/* Fallback */}

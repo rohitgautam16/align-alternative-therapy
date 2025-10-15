@@ -148,6 +148,23 @@ export default function AdminSidebar() {
           )}
         </NavLink>
 
+        <NavLink
+          to="/admin/personalize-users"
+          onClick={() => handleExpand(() => {})}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+              isActive 
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' 
+                : 'hover:bg-gray-700/50 text-gray-300 hover:text-white'
+            } ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <UserCheck className="text-white" size={22} />
+          {!collapsed && (
+            <span className="font-medium">Personalized Plan Users</span>
+          )}
+        </NavLink>
+
         {/* Dropdown Sections */}
         {menuSections.map((section) => (
           <div key={section.title}>

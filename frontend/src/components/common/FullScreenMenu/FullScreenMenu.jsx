@@ -11,7 +11,8 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
     { title: 'Home', path: '/', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/anh-tuan-thomas-w5m0E6SogmM-unsplash.jpg' },
     { title: 'About Us', path: '/about', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-egoagency-7745134.jpg' },
     { title: 'Blogs', path: '/blog', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-pavel-danilyuk-7802305.jpg' },
-    { title: 'Contact', path: '/contact-us', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/photo-1423666639041-f56000c27a9a.jpeg' }
+    { title: 'Contact', path: '/contact-us', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/photo-1423666639041-f56000c27a9a.jpeg' },
+    { title: 'Pricing', path: '/pricing', image: 'https://cdn.align-alternativetherapy.com/static-pages-media/photo-1423666639041-f56000c27a9a.jpeg' }
   ];
 
   // Left preview image states
@@ -121,70 +122,69 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
           </div>
 
           {/* RIGHT: Menu (full width on mobile, 60% on lg+) */}
-          <div className="w-full lg:w-3/5 bg-black flex flex-col relative h-full">
-          {/* Close */}
-          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-8 lg:right-8 z-30">
-            <button
-              onClick={handleClose}
-              className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 hover:rotate-90"
-              aria-label="Close menu"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Scrollable content (items only) */}
-          <nav className="flex-1 content-center justify-end overflow-y-auto px-6 sm:px-10 lg:px-12 py-6 lg:py-12">
-            <div>
-              {menuItems.map((item, index) => (
-                <a
-                  key={item.title}
-                  href={item.path}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsMenuOpen(false);
-                    navigate(item.path);
-                  }}
-                  className="group relative block text-white transition-all duration-300"
-                  onMouseEnter={() => handleMenuItemHover(index)}
-                  onPointerEnter={() => handleMenuItemHover(index)}
-                >
-                  <div className="flex items-center justify-end-safe gap-4.5 py-4 sm:py-5 lg:py-4">
-                    <span className="text-6xl sm:text-6xl lg:text-5xl xl:text-7xl font-light text-left tracking-wide transition-transform duration-300 group-hover:translate-x-2 sm:group-hover:translate-x-4">
-                      {item.title}
-                    </span>
-                    <span className="text-lg sm:text-xl lg:text-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
-                      →
-                    </span>
-                  </div>
-                </a>
-              ))}
+          <div className="w-full lg:w-3/5 bg-black relative flex flex-col" style={{ minHeight: 0 }}>
+            {/* Close */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-8 lg:right-8 z-30">
+              <button
+                onClick={handleClose}
+                className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 hover:rotate-90"
+                aria-label="Close menu"
+              >
+                <X size={20} />
+              </button>
             </div>
-          </nav>
 
-          {/* Sticky footer */}
-          <div className="px-6 sm:px-10 lg:px-12 py-4 border-t border-white/15 shrink-0">
-            <div className="flex flex-row sm:items-end justify-between gap-3">
-              <div className="text-white/70 space-y-1">
-                <p className="text-sm sm:text-base font-light">t. +1 (647) 897-8834</p>
-                <p className="text-sm sm:text-base font-light">e. contact@align-alternativetherapy.com</p>
-                <p className="text-[11px] sm:text-xs text-white/50 mt-2">Vancouver, BC, Canada</p>
+            {/* Scrollable content (items only) */}
+            <nav className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-12 py-6 lg:py-12" style={{ minHeight: 0 }}>
+              <div className="w-full flex flex-col justify-end min-h-full">
+                {menuItems.map((item, index) => (
+                  <a
+                    key={item.title}
+                    href={item.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMenuOpen(false);
+                      navigate(item.path);
+                    }}
+                    className="group relative block text-white transition-all duration-300"
+                    onMouseEnter={() => handleMenuItemHover(index)}
+                    onPointerEnter={() => handleMenuItemHover(index)}
+                  >
+                    <div className="flex items-center justify-end gap-4.5 py-4 sm:py-5 lg:py-4">
+                      <span className="text-6xl sm:text-6xl lg:text-5xl xl:text-7xl font-light text-left tracking-wide transition-transform duration-300 group-hover:translate-x-2 sm:group-hover:translate-x-4">
+                        {item.title}
+                      </span>
+                      <span className="text-lg sm:text-xl lg:text-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
+                        →
+                      </span>
+                    </div>
+                  </a>
+                ))}
               </div>
-              <div className="flex gap-3 sm:gap-4">
-                <a
-                  href="https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-all duration-300 transform hover:scale-110 hover:-translate-y-0.5"
-                  aria-label="Instagram"
-                >
-                  <Instagram size={18} />
-                </a>
+            </nav>
+
+            {/* Sticky footer */}
+            <div className="px-6 sm:px-10 lg:px-12 py-4 border-t border-white/15 shrink-0">
+              <div className="flex flex-row sm:items-end justify-between gap-3">
+                <div className="text-white/70 space-y-1">
+                  <p className="text-sm sm:text-base font-light">t. +1 (647) 897-8834</p>
+                  <p className="text-sm sm:text-base font-light">e. contact@align-alternativetherapy.com</p>
+                  <p className="text-[11px] sm:text-xs text-white/50 mt-2">Vancouver, BC, Canada</p>
+                </div>
+                <div className="flex gap-3 sm:gap-4">
+                  <a
+                    href="https://www.instagram.com/alignalternativetherapy?igsh=a2VjN2RyZGtlcGMx"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-secondary transition-all duration-300 transform hover:scale-110 hover:-translate-y-0.5"
+                    aria-label="Instagram"
+                  >
+                    <Instagram size={18} />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
         </div>
       )}
 
