@@ -1,5 +1,7 @@
 // src/services/dashboardMusicService.js
 const db = require('../db');
+const { withAccessNormalization } = require('../utils/withAccessNormalization');
+const { attachAccessFlags } = require('../utils/attachAccessFlags');
 
 /** GET /categories */
 async function fetchDashboardCategories() {
@@ -34,7 +36,7 @@ async function fetchDashboardPlaylistsByCategory(categoryId) {
      WHERE category_id = ?`,
     [categoryId]
   );
-  return rows;
+  return attachAccessFlags(rows, 'playlist');
 }
 
 /** GET /playlists */
@@ -52,7 +54,7 @@ async function fetchDashboardAllPlaylists() {
        created     AS createdAt
      FROM playlists`
   );
-  return rows;
+  return attachAccessFlags(rows, 'playlist');
 }
 
 async function fetchDashboardFreePlaylists() {
@@ -71,7 +73,7 @@ async function fetchDashboardFreePlaylists() {
      WHERE paid = 0
      ORDER BY createdAt DESC`
   );
-  return rows;
+  return attachAccessFlags(rows, 'playlist');
 }
 
 /** GET /playlists/:playlistId/songs */
@@ -89,12 +91,13 @@ async function fetchDashboardSongsByPlaylist(playlistId) {
        playlist    AS playlistId,
        artwork_filename AS image,
        cdn_url     AS audioUrl,
-       created     AS createdAt
+       created     AS createdAt,
+       is_free
      FROM audio_metadata
      WHERE playlist = ?`,
     [playlistId]
   );
-  return rows;
+  return attachAccessFlags(rows, 'song');
 }
 
 /** GET /songs/:id */
@@ -112,7 +115,8 @@ async function fetchDashboardSongById(id) {
        playlist    AS playlistId,
        artwork_filename AS image,
        cdn_url     AS audioUrl,
-       created     AS createdAt
+       created     AS createdAt,
+       is_free
      FROM audio_metadata
      WHERE id = ?`,
     [id]
@@ -134,7 +138,8 @@ async function fetchDashboardSongBySlug(slug) {
        playlist    AS playlistId,
        artwork_filename AS image,
        cdn_url     AS audioUrl,
-       created     AS createdAt
+       created     AS createdAt,
+       is_free
      FROM audio_metadata
      WHERE slug = ?
      LIMIT 1`,
@@ -197,6 +202,7 @@ async function searchDashboardEverything(term) {
        s.artwork_filename,
        s.cdn_url,
        s.created,
+       s.is_free,
        p.title as playlist_title
      FROM audio_metadata s
      LEFT JOIN playlists p ON s.playlist = p.id
@@ -287,16 +293,21 @@ async function fetchDashboardNewReleases({ playlistLimit = 12, songLimit = 8 } =
        artwork_filename AS image,
        cdn_url         AS audioUrl,
        playlist        AS playlistId,
-       created         AS createdAt
+       created         AS createdAt,
+       is_free
      FROM audio_metadata
      ORDER BY created DESC
      LIMIT ?`,
     [songLimit]
   );
 
+  const songsWithFlags = attachAccessFlags(songRows, 'song');
+
+  console.log(songsWithFlags.map(song => ({ id: song.id, is_free: song.is_free })));
+
   return {
-    playlists: plRows,
-    songs:     songRows
+    playlists: attachAccessFlags(plRows, 'playlist'),
+    songs: songsWithFlags
   };
 }
 
@@ -314,11 +325,12 @@ async function fetchDashboardAllSongs() {
        playlist       AS playlistId,
        artwork_filename AS image,
        cdn_url         AS audioUrl,
-       created         AS createdAt
+       created         AS createdAt,
+       is_free
      FROM audio_metadata
      ORDER BY createdAt DESC`
   );
-  return rows;
+  return attachAccessFlags(rows, 'song');
 }
 
 

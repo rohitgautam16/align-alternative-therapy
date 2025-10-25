@@ -1,11 +1,13 @@
 // src/pages/SubscribePage.jsx
-import React from 'react';
-import { Check, X } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Check, X, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PlanImg from '../assets/images/girl-piano.jpg';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCheckoutSubscriptionMutation } from '../utils/api';
 import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated';
+
+
 
 const cardVariants = {
   offscreen: { opacity: 0, y: 20 },
@@ -122,9 +124,9 @@ function Modal({ open, onClose, children }) {
 export default function SubscribePage() {
   const navigate = useNavigate();
   const { requireAuthThen, loginPromptOpen, setLoginPromptOpen, proceedToLogin } = useAuthGate();
-
   const [checkout, { isLoading, error }] = useCheckoutSubscriptionMutation();
 
+  // Checkout logic
   async function startBaseCheckout({ plan, trial = false }) {
     try {
       const result = await checkout({ plan, trial }).unwrap();
@@ -144,6 +146,7 @@ export default function SubscribePage() {
   };
 
   const handeConatctSales = () => navigate('/contact-us');
+
 
   const plans = [
     {
@@ -217,21 +220,11 @@ export default function SubscribePage() {
             className="relative bg-white/90 rounded-3xl p-6 py-10 overflow-hidden h-full flex flex-col"
           >
             <div className="aspect-video mb-6">
-              <img
-                src={PlanImg}
-                alt="Featured"
-                className="w-full h-full object-cover rounded-2xl"
-              />
+              <img src={PlanImg} alt="Featured" className="w-full h-full object-cover rounded-2xl" />
             </div>
             <h3 className="text-xl text-gray-800 font-light mb-4 flex-grow">
               Discover tranquility through a curated selection of music and experiences.
             </h3>
-            {/* <button
-              className="w-full bg-black text-white py-3 cursor-pointer rounded-full font-medium hover:bg-gray-800 transition-colors"
-              onClick={handeConatctSales}
-            >
-              Contact Sales
-            </button> */}
           </motion.div>
 
           {/* Plan Cards */}
@@ -240,7 +233,7 @@ export default function SubscribePage() {
           ))}
         </div>
 
-        {/* Server error display */}
+        {/* Error Display */}
         {error && (
           <p className="mt-6 text-center text-red-400">
             {error.data?.error || error.error}
@@ -248,7 +241,49 @@ export default function SubscribePage() {
         )}
       </div>
 
-      {/* Login required modal */}
+      {/* ---------- Improved Bottom Banner ---------- */}
+<motion.div
+  initial={{ opacity: 0, y: 50 }}
+  whileInView={{ opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } }}
+  viewport={{ once: true }}
+  className="relative mt-20 overflow-hidden rounded-3xl border border-gray-800 shadow-2xl"
+>
+  {/* Background Image */}
+  <div className="absolute inset-0">
+    <img
+      src="https://images.unsplash.com/photo-1545132059-a90e55c5286c?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1170"
+      alt="Music Banner"
+      className="w-full h-full object-cover"
+    />
+  
+    <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent"></div>
+  </div>
+
+  {/* Content */}
+  <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 px-8 md:px-16 py-16">
+    {/* Text Section (Left) */}
+    <div className="flex-1 text-center md:text-left space-y-5">
+      <h3 className="text-3xl md:text-4xl font-light leading-tight">
+        Personalized Songs & Recommendations <br />
+        <span className="font-medium text-white/90">Tailored Just for You</span>
+      </h3>
+      <p className="text-gray-300 text-base max-w-md">
+        Discover melodies crafted to match your mood, preferences, and emotions. 
+        Experience a truly unique musical journey.
+      </p>
+      <button
+        onClick={handeConatctSales}
+        className="bg-white text-black px-8 py-3 rounded-full font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-white/20"
+      >
+        Contact Us
+      </button>
+    </div>
+  </div>
+</motion.div>
+
+      
+
+      {/* Login Modal */}
       <Modal open={loginPromptOpen} onClose={() => setLoginPromptOpen(false)}>
         <div className="space-y-4">
           <h4 className="text-lg font-medium">Login Required</h4>

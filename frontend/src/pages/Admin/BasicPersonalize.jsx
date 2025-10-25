@@ -41,7 +41,7 @@ const TEXTAREA = INPUT;
 const CARD =
   'rounded-xl bg-[#0b0f19] ring-1 ring-white/10 text-white shadow-[0_10px_50px_-20px_rgba(0,0,0,0.6)]';
 const CARD_DIV = 'p-5';
-const CARD_HEADER = 'flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-white/10';
+const CARD_HEADER = 'flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-white/10';
 
 // Tiny toast
 function useToast() {
@@ -110,7 +110,7 @@ function HardDeleteConfirmModal({ isOpen, onClose, onConfirm, title, isLoading }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-51 flex items-center justify-center">
+    <div className="fixed inset-0 z-[51] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-[#0b0f19] rounded-lg p-6 ring-1 ring-white/10 max-w-md w-full mx-4">
         <h3 className="text-lg font-semibold mb-3 text-red-400">Permanent Delete</h3>
@@ -259,7 +259,7 @@ function PaymentStatusBadge({ status, price, currency }) {
   );
 }
 
-// Updated Payment link creation component with improved styling
+// FIXED: Payment link creation component - no local state, relies on parent
 function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess }) {
   const [price, setPrice] = React.useState('');
   const [copied, setCopied] = React.useState(false);
@@ -272,7 +272,19 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
         recommendationId,
         price: parseFloat(price),
       }).unwrap();
-      onSuccess(result);
+      
+      console.log('Payment link created - backend response:', result);
+      
+      // Transform backend response to match expected format
+      const transformedData = {
+        paymentLinkUrl: result.paymentLink,
+        price: result.amount,
+        currency: result.currency,
+        status: 'pending'
+      };
+      
+      // Parent will handle storing this
+      onSuccess(transformedData);
       setPrice('');
     } catch (err) {
       console.error('Payment link creation failed:', err);
@@ -280,15 +292,16 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(currentPaymentData.paymentLinkUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    if (currentPaymentData?.paymentLinkUrl) {
+      navigator.clipboard.writeText(currentPaymentData.paymentLinkUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  // Get currency from current payment data or default to CAD
   const displayCurrency = currentPaymentData?.currency || 'CAD';
 
-  // If payment link already exists and is pending/paid
+  // If payment link exists
   if (currentPaymentData?.paymentLinkUrl) {
     return (
       <div className="rounded-xl bg-gradient-to-r from-green-600/10 to-green-500/10 border border-green-600/30 p-6">
@@ -307,11 +320,13 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
               </div>
             </div>
           </div>
-          <PaymentStatusBadge 
-            status={currentPaymentData.status} 
-            price={currentPaymentData.price}
-            currency={currentPaymentData.currency}
-          />
+          {currentPaymentData.status && (
+            <PaymentStatusBadge 
+              status={currentPaymentData.status} 
+              price={currentPaymentData.price}
+              currency={currentPaymentData.currency}
+            />
+          )}
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
@@ -324,11 +339,7 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
             />
           </div>
           <button
-            className={cx(
-              BTN_BASE, 
-              copied ? BTN_SUCCESS : BTN_SUCCESS,
-              'transition-all duration-200'
-            )}
+            className={cx(BTN_BASE, BTN_SUCCESS, 'transition-all duration-200')}
             onClick={handleCopyLink}
           >
             {copied ? (
@@ -353,6 +364,7 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
     );
   }
 
+  // Create payment link form
   return (
     <div className="rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-600/20 p-6">
       <div className="flex items-center gap-3 mb-4">
@@ -506,39 +518,276 @@ function PopoverPicker({
   );
 }
 
-// Item picker (track/playlist) using popover
-function ItemPicker({ type, onPick }) {
-  const hook = type === 'track' ? useAdminPbSearchSongsQuery : useAdminPbSearchPlaylistsQuery;
+// UPDATED: Drawer Component with batch adding and prescription notes
+function AddItemDrawer({ isOpen, onClose, onAddBatch, recId, isAdding }) {
+  const [newType, setNewType] = React.useState('track');
+  const [pendingItems, setPendingItems] = React.useState([]);
+
+  const hook = newType === 'track' ? useAdminPbSearchSongsQuery : useAdminPbSearchPlaylistsQuery;
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setPendingItems([]);
+    }
+  }, [isOpen]);
+
+  const handleAddToPending = (pick) => {
+    // Check if already added
+    const exists = pendingItems.some(item => item.data.id === pick.id && item.type === newType);
+    if (exists) return;
+
+    setPendingItems(prev => [...prev, {
+      type: newType,
+      data: pick,
+      prescriptionNote: '',
+      displayOrder: ''
+    }]);
+  };
+
+  const handleRemoveFromPending = (index) => {
+    setPendingItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdatePrescriptionNote = (index, note) => {
+    setPendingItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, prescriptionNote: note } : item
+    ));
+  };
+
+  const handleUpdateDisplayOrder = (index, order) => {
+    setPendingItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, displayOrder: order } : item
+    ));
+  };
+
+  const handleAddAll = async () => {
+    if (pendingItems.length === 0) return;
+    await onAddBatch(pendingItems);
+    setPendingItems([]);
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <PopoverPicker
-      placeholder={type === 'track' ? 'Search tracks…' : 'Search playlists…'}
-      hook={hook}
-      onPick={onPick}
-      formatItem={(it) => {
-        const title = type === 'track' ? it.title || it.name || `Track #${it.id}` : it.title || `Playlist #${it.id}`;
-        const sub = type === 'track' ? it.artist || '' : it.slug ? `/${it.slug}` : '';
-        return (
-          <>
-            <div className="w-10 h-10 rounded bg-white/10 overflow-hidden flex-shrink-0">
-              {it.image ? <img className="w-full h-full object-cover" alt="" src={it.image} /> : null}
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Drawer */}
+      <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-[#0b0f19] z-50 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col">
+        {/* Header */}
+        <div className="p-5 border-b border-white/10 flex items-center justify-between">
+          <div className='w-full space-y-2'>
+            <h3 className="text-lg font-semibold">Add Songs/Playlists</h3>
+            <p className="text-xs text-gray-400 mt-1">
+              {pendingItems.length} item{pendingItems.length !== 1 ? 's' : ''} ready to add
+            </p>
+                      <Field label="Item Type">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                className={cx(
+                  'px-4 py-3 rounded-lg border-2 transition text-sm font-medium',
+                  newType === 'track'
+                    ? 'border-blue-600 bg-blue-600/20 text-blue-300'
+                    : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                )}
+                onClick={() => setNewType('track')}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polygon points="10 8 16 12 10 16 10 8"/>
+                </svg>
+                Track
+              </button>
+              <button
+                className={cx(
+                  'px-4 py-3 rounded-lg border-2 transition text-sm font-medium',
+                  newType === 'playlist'
+                    ? 'border-blue-600 bg-blue-600/20 text-blue-300'
+                    : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                )}
+                onClick={() => setNewType('playlist')}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1">
+                  <line x1="8" x2="21" y1="6" y2="6"/>
+                  <line x1="8" x2="21" y1="12" y2="12"/>
+                  <line x1="8" x2="21" y1="18" y2="18"/>
+                  <line x1="3" x2="3.01" y1="6" y2="6"/>
+                  <line x1="3" x2="3.01" y1="12" y2="12"/>
+                  <line x1="3" x2="3.01" y1="18" y2="18"/>
+                </svg>
+                Playlist
+              </button>
             </div>
-            <div className="min-w-0">
-              <div className="font-medium truncate">{title}</div>
-              {sub ? <div className="text-xs text-gray-400 truncate">{sub}</div> : null}
+          </Field>
+
+          {/* Search */}
+          <Field label={newType === 'track' ? 'Search Tracks' : 'Search Playlists'}>
+            <PopoverPicker
+              placeholder={newType === 'track' ? 'Search tracks by title or artist...' : 'Search playlists by title...'}
+              hook={hook}
+              onPick={handleAddToPending}
+              formatItem={(it) => {
+                const title = newType === 'track' ? it.title || it.name || `Track #${it.id}` : it.title || `Playlist #${it.id}`;
+                const sub = newType === 'track' ? it.artist || '' : it.slug ? `/${it.slug}` : '';
+                return (
+                  <>
+                    <div className="w-10 h-10 rounded bg-white/10 overflow-hidden flex-shrink-0">
+                      {it.image ? <img className="w-full h-full object-cover" alt="" src={it.image} /> : null}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{title}</div>
+                      {sub ? <div className="text-xs text-gray-400 truncate">{sub}</div> : null}
+                    </div>
+                    <div className="ml-auto text-xs text-gray-400">#{it.id}</div>
+                  </>
+                );
+              }}
+            />
+          </Field>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 absolute top-2 right-2 hover:bg-white/10 rounded-lg transition"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Type Selector */}
+
+
+          {/* Pending Items List */}
+          {pendingItems.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Items to Add ({pendingItems.length})</div>
+                <button
+                  onClick={() => setPendingItems([])}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  Clear All
+                </button>
+              </div>
+              
+              {pendingItems.map((item, index) => {
+                const title = item.type === 'track' 
+                  ? item.data.title || item.data.name 
+                  : item.data.title;
+                const sub = item.type === 'track' 
+                  ? item.data.artist 
+                  : item.data.slug ? `/${item.data.slug}` : '';
+
+                return (
+                  <div key={index} className="rounded-lg bg-white/5 border border-white/10 p-3 space-y-2">
+                    {/* Item Header with Image */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded bg-white/10 overflow-hidden flex-shrink-0">
+                        {item.data.image && (
+                          <img className="w-full h-full object-cover" alt="" src={item.data.image} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-gray-700 text-gray-100">
+                            {item.type}
+                          </span>
+                          <div className="font-medium truncate text-sm">{title}</div>
+                        </div>
+                        {sub && <div className="text-xs text-gray-400 truncate">{sub}</div>}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFromPending(index)}
+                        className="p-1 hover:bg-red-600/20 rounded text-red-400"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Prescription Note and Order */}
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-9">
+                        <input
+                          className={cx(INPUT, 'text-xs')}
+                          placeholder="Prescription note (optional)"
+                          value={item.prescriptionNote}
+                          onChange={(e) => handleUpdatePrescriptionNote(index, e.target.value)}
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <input
+                          className={cx(INPUT, 'text-xs')}
+                          placeholder="Order"
+                          type="number"
+                          value={item.displayOrder}
+                          onChange={(e) => handleUpdateDisplayOrder(index, e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="ml-auto text-xs text-gray-400">#{it.id}</div>
-          </>
-        );
-      }}
-    />
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-5 border-t border-white/10 flex gap-3">
+          <button
+            className={cx(BTN_BASE, BTN_GHOST, 'flex-1')}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className={cx(BTN_BASE, BTN_PRIMARY, 'flex-1')}
+            onClick={handleAddAll}
+            disabled={pendingItems.length === 0 || isAdding}
+          >
+            {isAdding ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/>
+                  <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Adding {pendingItems.length} item{pendingItems.length !== 1 ? 's' : ''}...
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Add {pendingItems.length} Item{pendingItems.length !== 1 ? 's' : ''}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
-// Items list
+// UPDATED: Items list with images
 function ItemsList({ items = [], onSave, onDelete }) {
   if (!items.length) {
-    return <div className="text-sm text-gray-300">No items yet.</div>;
+    return (
+      <div className="text-center py-12 text-gray-400">
+        <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+        </svg>
+        <p className="text-sm">No items added yet</p>
+        <p className="text-xs mt-1">Click "Add Songs/Playlists" button to get started</p>
+      </div>
+    );
   }
   return (
     <div className="space-y-3">
@@ -549,6 +798,7 @@ function ItemsList({ items = [], onSave, onDelete }) {
   );
 }
 
+// UPDATED: ItemRow with image display
 function ItemRow({ it, onSave, onDelete }) {
   const [note, setNote] = React.useState(it.prescription_note || '');
   const [order, setOrder] = React.useState(it.display_order ?? '');
@@ -558,21 +808,51 @@ function ItemRow({ it, onSave, onDelete }) {
     ? meta?.title || meta?.name || `Track #${it.track_id}`
     : meta?.title || `Playlist #${it.playlist_id}`;
   const sub = it.item_type === 'track' ? meta?.artist : meta?.slug ? `/${meta.slug}` : null;
+  const image = meta?.image || null;
 
   return (
     <div className="p-3 rounded-xl bg-white/5 ring-1 ring-white/10">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="px-2 py-1 rounded-full text-[11px] bg-gray-700 text-gray-100">{it.item_type}</span>
-          <div className="font-medium truncate">{title}</div>
-          {sub ? <div className="text-xs text-gray-400 truncate">• {sub}</div> : null}
+      <div className="flex items-center gap-3 mb-3">
+        {/* Image */}
+        <div className="w-12 h-12 rounded bg-white/10 overflow-hidden flex-shrink-0">
+          {image ? (
+            <img className="w-full h-full object-cover" alt="" src={image} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-500">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {it.item_type === 'track' ? (
+                  <>
+                    <circle cx="12" cy="12" r="10"/>
+                    <polygon points="10 8 16 12 10 16 10 8"/>
+                  </>
+                ) : (
+                  <>
+                    <line x1="8" x2="21" y1="6" y2="6"/>
+                    <line x1="8" x2="21" y1="12" y2="12"/>
+                    <line x1="8" x2="21" y1="18" y2="18"/>
+                  </>
+                )}
+              </svg>
+            </div>
+          )}
         </div>
-        <div className="sm:ml-auto text-xs text-gray-400">
-          {it.item_type === 'track' ? `track_id:${it.track_id}` : `playlist_id:${it.playlist_id}`}
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-1 rounded-full text-[11px] bg-gray-700 text-gray-100">{it.item_type}</span>
+            <div className="font-medium truncate">{title}</div>
+          </div>
+          {sub && <div className="text-xs text-gray-400 truncate mt-1">{sub}</div>}
+        </div>
+
+        {/* ID */}
+        <div className="text-xs text-gray-400">
+          #{it.item_type === 'track' ? it.track_id : it.playlist_id}
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-12 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
         <input
           className={cx(INPUT, 'sm:col-span-8')}
           placeholder="Prescription note"
@@ -625,6 +905,11 @@ export default function BasicPersonalize() {
   const [hardDeleteTarget, setHardDeleteTarget] = React.useState(null);
   const [showDeletedModal, setShowDeletedModal] = React.useState(false);
 
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+
+  const [paymentLinksCache, setPaymentLinksCache] = React.useState({});
+
   React.useEffect(() => {
     if (preSelectedUser) {
       window.history.replaceState({}, '');
@@ -645,11 +930,14 @@ export default function BasicPersonalize() {
     { skip: !recId }
   );
 
-  // Payment status query for selected recommendation
+
   const { data: paymentStatus, refetch: refetchPayment } = useGetPbPaymentStatusQuery(
     recId || '__skip__',
     { skip: !recId }
   );
+
+
+  const currentPaymentData = paymentLinksCache[recId] || paymentStatus;
 
   // mutations
   const [createRec, { isLoading: creating }] = useAdminPbCreateMutation();
@@ -700,23 +988,27 @@ export default function BasicPersonalize() {
     }
   }
 
-  // add item
-  const [newType, setNewType] = React.useState('track');
-  const [pendingPick, setPendingPick] = React.useState(null);
-
-  async function onConfirmAdd() {
-    if (!recId || !newType || !pendingPick) return;
+  // UPDATED: Batch add items from drawer
+  async function onAddBatchFromDrawer(itemsToAdd) {
+    if (!recId || itemsToAdd.length === 0) return;
+    
     try {
-      const payload = {
-        recId,
-        item_type: newType,
-        track_id: newType === 'track' ? pendingPick.id : undefined,
-        playlist_id: newType === 'playlist' ? pendingPick.id : undefined,
-      };
-      await addItem(payload).unwrap();
-      setPendingPick(null);
+      // Add items one by one (you could create a batch endpoint on backend for better performance)
+      for (const item of itemsToAdd) {
+        const payload = {
+          recId,
+          item_type: item.type,
+          track_id: item.type === 'track' ? item.data.id : undefined,
+          playlist_id: item.type === 'playlist' ? item.data.id : undefined,
+          prescription_note: item.prescriptionNote || null,
+          display_order: item.displayOrder ? Number(item.displayOrder) : null,
+        };
+        await addItem(payload).unwrap();
+      }
+      
       await refetchRec();
-      show('Item added');
+      show(`Added ${itemsToAdd.length} item${itemsToAdd.length !== 1 ? 's' : ''}`);
+      setDrawerOpen(false);
     } catch (e) {
       alert(e?.data?.error || 'Add failed');
     }
@@ -780,7 +1072,7 @@ export default function BasicPersonalize() {
       setShowDeleteModal(false);
       setDeleteTarget(null);
       if (recId === deleteTarget.id) {
-        setRecId(null); // Clear selection if current rec is deleted
+        setRecId(null);
       }
       await refetchList();
       show('Recommendation deleted');
@@ -790,8 +1082,8 @@ export default function BasicPersonalize() {
   }
 
   // Hard delete handlers
-  function onHardDeleteRecommendation(recId, recTitle) {
-    setHardDeleteTarget({ id: recId, title: recTitle });
+  function onHardDeleteRecommendation(recIdParam, recTitle) {
+    setHardDeleteTarget({ id: recIdParam, title: recTitle });
     setShowHardDeleteModal(true);
   }
 
@@ -808,9 +1100,9 @@ export default function BasicPersonalize() {
   }
 
   // Restore recommendation handler
-  async function onRestoreRecommendation(recId, recTitle) {
+  async function onRestoreRecommendation(recIdParam, recTitle) {
     try {
-      await restoreRec({ id: recId, cascade: true }).unwrap();
+      await restoreRec({ id: recIdParam, cascade: true }).unwrap();
       await refetchList();
       show(`Restored: ${recTitle || 'Recommendation'}`);
     } catch (e) {
@@ -818,11 +1110,19 @@ export default function BasicPersonalize() {
     }
   }
 
-  // Payment link success handler
-  function onPaymentLinkSuccess(result) {
-    show(`Payment link created: ${result.currency} ${result.amount}`);
-    refetchPayment();
-    refetchRec();
+  // 🔥 UPDATED: Payment link success handler - stores in cache
+  async function onPaymentLinkSuccess(result) {
+    console.log('Payment link created, storing in cache:', result);
+    show(`Payment link created: ${result.currency} ${result.price}`);
+    
+    // Store in cache by recommendation ID
+    setPaymentLinksCache(prev => ({
+      ...prev,
+      [recId]: result
+    }));
+    
+    // Also refetch in background
+    await Promise.all([refetchPayment(), refetchRec()]);
   }
 
   React.useEffect(() => {
@@ -882,7 +1182,6 @@ export default function BasicPersonalize() {
                 <div className="text-xs text-gray-400 mt-2">Start typing to search…</div>
               )}
             </div>
-
             <div className="md:col-span-6">
               <div className="h-full rounded-lg border border-white/10 p-4 bg-white/[0.03]">
                 {!user ? (
@@ -907,14 +1206,6 @@ export default function BasicPersonalize() {
       <section className={CARD}>
         <header className={CARD_HEADER}>
           <h2 className="font-semibold text-[15px] tracking-tight">Recommendations for this user</h2>
-          <button
-            className={cx(BTN_BASE, BTN_PRIMARY)}
-            onClick={onCreateDraft}
-            disabled={!canCreate() || creating || !user}
-            title="Provide Title & Summary below to enable"
-          >
-            {creating ? 'Creating…' : 'Create Draft'}
-          </button>
         </header>
         <div className={CARD_DIV}>
           {!user ? (
@@ -946,6 +1237,18 @@ export default function BasicPersonalize() {
                     </Field>
                   </div>
                 </div>
+                
+                {/* Create Draft Button */}
+                <div className="mt-3 flex justify-end">
+                  <button
+                    className={cx(BTN_BASE, BTN_PRIMARY)}
+                    onClick={onCreateDraft}
+                    disabled={!canCreate() || creating || !user}
+                    title="Provide Title & Summary above to enable"
+                  >
+                    {creating ? 'Creating…' : 'Create Draft'}
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -954,7 +1257,6 @@ export default function BasicPersonalize() {
                   const cardTitle = r.title?.trim() ? r.title : '(Untitled)';
                   const hasSummary = !!(r.summary_note && r.summary_note.trim());
                   
-                  // Extract payment info from recommendation data - currency is now dynamic
                   const hasPayment = r.payment_status && r.payment_status !== 'free';
                   const paymentPrice = r.price_cents ? r.price_cents / 100 : 0;
                   const paymentCurrency = r.currency || 'CAD';
@@ -967,7 +1269,6 @@ export default function BasicPersonalize() {
                         recId === r.id && 'outline-2 outline-blue-500/60'
                       )}
                     >
-                      {/* Delete button */}
                       <button
                         className="absolute top-2 right-2 p-1 hover:bg-red-600/20 rounded text-red-400 hover:text-red-300"
                         onClick={(e) => {
@@ -981,7 +1282,6 @@ export default function BasicPersonalize() {
                         </svg>
                       </button>
 
-                      {/* Card content */}
                       <button
                         onClick={() => setRecId(r.id)}
                         className="w-full text-left pr-6"
@@ -1026,7 +1326,6 @@ export default function BasicPersonalize() {
                 )}
               </div>
 
-              {/* View deleted recommendations button */}
               {user && (
                 <div className="flex justify-end mt-4">
                   <button
@@ -1082,7 +1381,6 @@ export default function BasicPersonalize() {
               </div>
             </div>
           </header>
-
           <div className={CARD_DIV}>
             {recLoading ? (
               <div className="space-y-2">
@@ -1099,51 +1397,28 @@ export default function BasicPersonalize() {
                   </div>
                 )}
 
-                {/* Payment Link Section - Enhanced styling */}
+                {/* Payment Link Section - 🔥 UPDATED: Uses cached data */}
                 <div className="mb-6">
                   <PaymentLinkCreator
+                    key={recId}
                     recommendationId={recId}
-                    currentPaymentData={paymentStatus}
+                    currentPaymentData={currentPaymentData}
                     onSuccess={onPaymentLinkSuccess}
                   />
                 </div>
 
-                {/* Add item */}
-                <div className="rounded-lg bg-white/[0.04] p-4 mb-4 ring-1 ring-white/10">
-                  <div className="font-medium mb-2">Add Item</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                    <div className="sm:col-span-3">
-                      <Field label="Type">
-                        <select
-                          className="px-3 py-2 rounded bg-[#0b1220] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 w-full"
-                          value={newType}
-                          onChange={(e) => setNewType(e.target.value)}
-                        >
-                          <option value="track">track</option>
-                          <option value="playlist">playlist</option>
-                        </select>
-                      </Field>
-                    </div>
-                    <div className="sm:col-span-6">
-                      <Field label={newType === 'track' ? 'Pick a track' : 'Pick a playlist'}>
-                        <ItemPicker type={newType} onPick={(it) => setPendingPick(it)} />
-                      </Field>
-                    </div>
-                    <div className="sm:col-span-3 flex items-end">
-                      <button
-                        className={cx(BTN_BASE, BTN_PRIMARY, 'w-full')}
-                        onClick={onConfirmAdd}
-                        disabled={!pendingPick || adding}
-                      >
-                        {adding ? 'Adding…' : 'Add'}
-                      </button>
-                    </div>
-                  </div>
-                  {pendingPick && (
-                    <div className="mt-2 text-xs text-gray-400">
-                      Selected: {(pendingPick.title || pendingPick.name)} #{pendingPick.id}
-                    </div>
-                  )}
+                {/* Add Item Button - Opens Drawer */}
+                <div className="mb-6 flex gap-2 flex-col md:flex-row md:justify-between justify-left items-left md:items-center">
+                  <h3 className="font-medium text-sm">Items in this Recommendation</h3>
+                  <button
+                    className={cx(BTN_BASE, BTN_PRIMARY)}
+                    onClick={() => setDrawerOpen(true)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Add Songs/Playlists
+                  </button>
                 </div>
 
                 <ItemsList
@@ -1157,7 +1432,16 @@ export default function BasicPersonalize() {
         </section>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Drawer for Adding Items */}
+      <AddItemDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onAddBatch={onAddBatchFromDrawer}
+        recId={recId}
+        isAdding={adding}
+      />
+
+      {/* Modals */}
       <DeleteConfirmModal
         isOpen={showDeleteModal}
         onClose={() => {
@@ -1169,7 +1453,6 @@ export default function BasicPersonalize() {
         isLoading={deleting}
       />
 
-      {/* Hard Delete Confirmation Modal */}
       <HardDeleteConfirmModal
         isOpen={showHardDeleteModal}
         onClose={() => {
@@ -1181,7 +1464,6 @@ export default function BasicPersonalize() {
         isLoading={hardDeleting}
       />
 
-      {/* Deleted Recommendations Modal */}
       <DeletedRecommendationsModal
         isOpen={showDeletedModal}
         onClose={() => setShowDeletedModal(false)}

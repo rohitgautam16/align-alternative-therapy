@@ -1,5 +1,6 @@
 // src/components/dashboard/CarouselSection.jsx
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import PlaylistCard from '../custom-ui/PlaylistCard';
 import SongCard     from '../custom-ui/SongCard';
 
@@ -16,16 +17,14 @@ export default function CarouselSection({
   title,
   useQuery,
   queryArg,
-  items,      // optional array of either raw items or { type, data }
-  renderItem, // optional custom renderer
+  items,
+  renderItem,
 }) {
   let data, isLoading = false, isError = false;
 
   if (Array.isArray(items)) {
-    // 1) Use provided items
     data = items;
   } else {
-    // 2) Fall back to hook
     if (typeof useQuery !== 'function') {
       console.error('CarouselSection: expected useQuery to be a hook, got:', useQuery);
       return null;
@@ -35,6 +34,36 @@ export default function CarouselSection({
     isLoading = result.isLoading;
     isError   = result.isError;
   }
+
+  const carouselRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  };
+
+  useEffect(() => {
+    updateScrollButtons();
+    const el = carouselRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollButtons);
+    window.addEventListener('resize', updateScrollButtons);
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, [data]);
+
+  const scroll = (direction) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.5; 
+    el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  };
 
   if (isLoading) {
     return (
@@ -56,11 +85,40 @@ export default function CarouselSection({
   }
 
   return (
-    <section className="space-y-4 px-6 py-2">
+    <section className="relative space-y-4 px-6 py-2 group">
       <h2 className="text-2xl font-semibold">{title}</h2>
-      <div className="flex space-x-4 overflow-x-auto pb-2 snap-x snap-mandatory custom-scrollbar">
+
+      {/* Left Arrow */}
+      <button
+        onClick={() => scroll('left')}
+        disabled={!canScrollLeft}
+        className={`
+          absolute left-2 top-1/2 -translate-y-1/2 z-50 p-2 rounded-full backdrop-blur-md bg-transparent cursor-pointer text-white transition-opacity
+          ${canScrollLeft ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}
+          hidden md:flex group-hover:flex
+        `}
+      >
+        <FiChevronLeft size={34} />
+      </button>
+
+      {/* Right Arrow */}
+      <button
+        onClick={() => scroll('right')}
+        disabled={!canScrollRight}
+        className={`
+          absolute right-2 top-1/2 -translate-y-1/2 z-50 p-2 rounded-full backdrop-blur-md bg-transparent cursor-pointer text-white transition-opacity
+          ${canScrollRight ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}
+          hidden md:flex group-hover:flex
+        `}
+      >
+        <FiChevronRight size={34} />
+      </button>
+
+      <div
+        ref={carouselRef}
+        className="flex space-x-4 overflow-x-auto pb-2 snap-x snap-mandatory custom-scrollbar"
+      >
         {data.map(item => {
-          // detect combined structure
           const isCombined = item && item.type && item.data;
           const key        = isCombined ? `${item.type}-${item.data.id}` : item.id;
           const payload    = isCombined ? item.data : item;
@@ -69,12 +127,10 @@ export default function CarouselSection({
           if (renderItem) {
             content = renderItem(item);
           } else if (isCombined) {
-            // choose card by type
             content = item.type === 'song'
               ? <SongCard song={payload} />
               : <PlaylistCard playlist={payload} />;
           } else {
-            // default for raw playlists
             content = <PlaylistCard playlist={payload} />;
           }
 

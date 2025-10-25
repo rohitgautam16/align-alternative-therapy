@@ -6,6 +6,8 @@ import {
   useCreatePersonalizeBasicRequestMutation,
   useGetSubscriptionSummaryQuery
 } from '../../../utils/api';
+import { canAccessCTA } from '../../../utils/permissions';
+import { useSubscription } from '../../../context/SubscriptionContext';
 
 const btnGlass =
   'inline-flex items-center justify-center cursor-pointer gap-2 px-5 py-2.5 rounded-lg ' +
@@ -127,6 +129,9 @@ export default function PersonalizeCTA() {
   const navigate = useNavigate();
   const user = useAuthUser();
   const userId = user?.id ?? 'anon';
+  const { summary } = useSubscription();
+  const userTier = summary?.user_tier;
+  const isAllowed = canAccessCTA(userTier);
 
   const { data: subSummary, refetch } = useGetSubscriptionSummaryQuery(userId, {
     refetchOnFocus: true,
@@ -225,7 +230,7 @@ export default function PersonalizeCTA() {
 
             {/* Actions */}
             <div className="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-3">
-              {entitledStatuses.has(status) ? (
+              {isAllowed ? (
                 <button className={btnGlass} onClick={() => setOpenForm(true)}>
                   Request Personalization
                 </button>

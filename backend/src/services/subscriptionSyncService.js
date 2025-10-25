@@ -29,6 +29,8 @@ async function syncUserSubscriptionFlag(userId) {
     const count = Number(countRows?.[0]?.cnt || 0);
     const computedFlag = count > 0 ? 1 : 0;
 
+    console.log('Updating users.is_subscribed to', computedFlag, 'for userId', userId);
+    
     const [userRows] = await db.query(
       `SELECT is_subscribed FROM users WHERE id = ? LIMIT 1`,
       [userId]

@@ -9,8 +9,8 @@ const s3 = new AWS.S3({
   signatureVersion: 'v4',
 });
 
-// use your CDN domain to build public URLs:
-const CDN_URL = process.env.R2_CDN_URL; // e.g. https://cdn.align-alternativetherapy.com
+
+const CDN_URL = process.env.R2_CDN_URL; 
 
 async function createFolder(prefix) {
   if (!prefix.endsWith('/')) prefix += '/';
@@ -34,9 +34,7 @@ async function uploadFilesToFolder(prefix, files) {
   return results;
 }
 
-/**
- * List folders + files under a prefix, with pagination + optional client‑side search
- */
+
 async function listObjects({
   prefix = '',
   continuationToken = null,

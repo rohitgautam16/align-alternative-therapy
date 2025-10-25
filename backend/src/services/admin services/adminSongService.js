@@ -57,7 +57,8 @@ async function getSongById(id) {
        playlist AS playlistId,
        artwork_filename AS image,
        cdn_url AS audioUrl,
-       created AS createdAt
+       created AS createdAt,
+       is_free
      FROM audio_metadata
      WHERE id = ?`,
     [id]
@@ -95,33 +96,34 @@ async function createSongAdmin({
   category,
   playlist,
   artwork_filename,
-  cdn_url
+  cdn_url,
+  is_free = 0 // default: not free
 }) {
-
   const uniqueSlug = await generateUniqueSlug(slug);
 
   const [result] = await db.query(
     `INSERT INTO audio_metadata
-       (name, title, slug, description, artist, tags, category, playlist, artwork_filename, cdn_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, title, slug, description, artist, tags, category, playlist, artwork_filename, cdn_url, is_free)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      name          || null,
+      name || null,
       title,
       uniqueSlug,
-      description   || '',
-      artist        || null,
-      tags          || null,
-      category      || null,
-      playlist      || null,
+      description || '',
+      artist || null,
+      tags || null,
+      category || null,
+      playlist || null,
       artwork_filename || null,
-      cdn_url       || null
+      cdn_url || null,
+      is_free
     ]
   );
+
   return getSongById(result.insertId);
 }
 
 async function updateSongAdmin(id, fields) {
-  // you can either destructure fields explicitly:
   const {
     name,
     title,
@@ -132,7 +134,8 @@ async function updateSongAdmin(id, fields) {
     category,
     playlist,
     artwork_filename,
-    cdn_url
+    cdn_url,
+    is_free // allow updating this too
   } = fields;
 
   await db.query(
@@ -146,22 +149,25 @@ async function updateSongAdmin(id, fields) {
             category         = ?,
             playlist         = ?,
             artwork_filename = ?,
-            cdn_url          = ?
+            cdn_url          = ?,
+            is_free          = ?
       WHERE id = ?`,
     [
-      name          || null,
+      name || null,
       title,
       slug,
-      description   || '',
-      artist        || null,
-      tags          || null,
-      category      || null,
-      playlist      || null,
+      description || '',
+      artist || null,
+      tags || null,
+      category || null,
+      playlist || null,
       artwork_filename || null,
-      cdn_url       || null,
+      cdn_url || null,
+      is_free ?? 0, // fallback
       id
     ]
   );
+
   return getSongById(id);
 }
 

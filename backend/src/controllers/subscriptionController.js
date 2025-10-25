@@ -5,38 +5,30 @@ const db = require('../db');
 
 const {
   createOrUpdateSubscriptionSession,
-  createAddonOnlyCheckoutSession,
   handleStripeWebhook,
-  subscriptionHasAddon,
   subscriptionHasBase,
   findUserIdFromSubscriptionObject,
-  removeBaseKeepAddon
 } = require('../services/subscriptionService');
 
 const { getProductPriceMap } = require('../services/stripePriceCache');
 const { syncUserSubscriptionFlag } = require('../services/subscriptionSyncService');
 
-/**
- * POST /api/subscribe/checkout
- */
+
 async function checkoutController(req, res) {
   try {
-    const { plan, trial, includeAddon } = req.body;
+    const { plan, trial } = req.body;
     const userId = req.user.id;
 
     const result = await createOrUpdateSubscriptionSession(
       userId,
       plan,
-      Boolean(trial),
-      Boolean(includeAddon)
+      Boolean(trial)
     );
 
     if (result.type && String(result.type).startsWith('new')) {
-      // New Checkout session created → return redirect URL
       return res.json({ url: result.session.url });
     }
-
-    // Updated existing subscription (or no change)
+    console.log(`✅ Subscription handled for user ${userId}, type=${result.type}`);
     return res.json({ subscription: result.subscription, type: result.type });
   } catch (err) {
     console.error('checkoutController error:', err);
@@ -44,29 +36,9 @@ async function checkoutController(req, res) {
   }
 }
 
-async function checkoutAddonController(req, res) {
-  try {
-    const userId = req.user.id;
-    const { plan } = req.body || {}; // optional: 'monthly' | 'annual'
-    const result = await createAddonOnlyCheckoutSession(userId, plan);
 
-    if (result.type && String(result.type).startsWith('new')) {
-      return res.json({ url: result.session.url });
-    }
-    return res.json({ subscription: result.subscription, type: result.type });
-  } catch (err) {
-    console.error('checkoutAddonController error:', err);
-    return res.status(500).json({ error: err.message || 'Checkout add-on failed' });
-  }
-}
-
-/**
- * POST /api/webhooks/stripe
- *
- * NOTE: route must use express.raw({ type: 'application/json' }) middleware so req.body is Buffer
- */
 async function webhookController(req, res) {
-   console.log('⚡ Webhook hit at', new Date().toISOString());
+  console.log('⚡ Webhook hit at', new Date().toISOString());
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -78,7 +50,7 @@ async function webhookController(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Idempotency: insert event; ignore duplicates
+  // Idempotency
   try {
     await db.query(
       `INSERT INTO webhook_events (event_id, event_type, payload, created_at)
@@ -95,89 +67,65 @@ async function webhookController(req, res) {
   }
 
   try {
-    // Delegate to service-level handler (already implemented)
     await handleStripeWebhook(event);
 
-    // Mark processed
-    try {
-      await db.query(
-        `UPDATE webhook_events SET processed = 1, processed_at = NOW() WHERE event_id = ?`,
-        [event.id]
-      );
-    } catch (uerr) {
-      console.warn('Failed to mark webhook event processed:', uerr);
-    }
+    await db.query(
+      `UPDATE webhook_events SET processed = 1, processed_at = NOW() WHERE event_id = ?`,
+      [event.id]
+    );
 
     return res.status(200).send('ok');
   } catch (handlerErr) {
     console.error('Webhook handling error:', handlerErr);
-    try {
-      await db.query(
-        `UPDATE webhook_events SET attempt_count = attempt_count + 1, error = ? WHERE event_id = ?`,
-        [String(handlerErr.message || handlerErr), event.id]
-      );
-    } catch (uerr) {
-      console.warn('Failed to update webhook_events error/attempt_count:', uerr);
-    }
+    await db.query(
+      `UPDATE webhook_events SET attempt_count = attempt_count + 1, error = ? WHERE event_id = ?`,
+      [String(handlerErr.message || handlerErr), event.id]
+    );
     return res.status(500).send('error');
   }
 }
 
-/**
- * POST /api/subscribe/cancel
- * body: { subscriptionId: string, immediate?: boolean }
- */
 async function cancelSubscriptionController(req, res) {
   try {
     const userId = req.user.id;
     const { subscriptionId, immediate = false } = req.body;
     if (!subscriptionId) return res.status(400).json({ error: 'subscriptionId required' });
 
-    // Verify ownership using subscriptions table first
+    // Verify ownership
     const [rows] = await db.query(
       `SELECT user_id FROM subscriptions WHERE stripe_subscription_id = ? ORDER BY created_at DESC LIMIT 1`,
       [subscriptionId]
     );
     let ownerRow = rows[0];
 
-    // If not in DB, attempt to resolve via Stripe -> user email/customer or metadata
     if (!ownerRow) {
-      try {
-        const subForOwner = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['customer'] });
-        const resolvedUserId = await findUserIdFromSubscriptionObject(subForOwner);
-        if (!resolvedUserId || resolvedUserId !== userId) {
-          return res.status(403).json({ error: 'Subscription not found for user' });
-        }
-      } catch (err) {
-        console.warn('Could not retrieve subscription to verify ownership:', err.message);
+      const subForOwner = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['customer'] });
+      const resolvedUserId = await findUserIdFromSubscriptionObject(subForOwner);
+      if (!resolvedUserId || resolvedUserId !== userId) {
         return res.status(403).json({ error: 'Subscription not found for user' });
       }
-    } else {
-      if (ownerRow.user_id !== userId) return res.status(403).json({ error: 'Subscription not found for user' });
+    } else if (ownerRow.user_id !== userId) {
+      return res.status(403).json({ error: 'Subscription not found for user' });
     }
 
-    // Retrieve live subscription to inspect items
+    // Retrieve live subscription
     let subscription;
     try {
       subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price'] });
     } catch (err) {
       console.warn('Failed to retrieve subscription for cancel operation:', err.message);
-      // continue with best-effort (but we need items to know addon/base)
     }
 
-    const hadAddon = subscription ? await subscriptionHasAddon(subscription) : false;
     const hadBase = subscription ? await subscriptionHasBase(subscription) : false;
-
     let stripeResult;
+
     if (immediate) {
-      // Prefer `del`/`cancel` if available, else update cancel_at to now
       try {
         if (typeof stripe.subscriptions.del === 'function') {
           stripeResult = await stripe.subscriptions.del(subscriptionId);
         } else if (typeof stripe.subscriptions.cancel === 'function') {
           stripeResult = await stripe.subscriptions.cancel(subscriptionId);
         } else {
-          // fallback: set cancel_at = now
           const nowUnix = Math.floor(Date.now() / 1000);
           stripeResult = await stripe.subscriptions.update(subscriptionId, { cancel_at: nowUnix });
         }
@@ -186,8 +134,7 @@ async function cancelSubscriptionController(req, res) {
         return res.status(500).json({ error: 'Stripe cancel failed' });
       }
 
-      // Update DB: set status and expires_at NOW
-      const returnedStatus = (stripeResult && stripeResult.status) ? String(stripeResult.status) : 'canceled';
+      const returnedStatus = stripeResult?.status || 'canceled';
       await db.query(
         `UPDATE subscriptions
            SET status = ?, expires_at = NOW(), updated_at = CURRENT_TIMESTAMP
@@ -195,7 +142,6 @@ async function cancelSubscriptionController(req, res) {
         [returnedStatus, subscriptionId]
       );
     } else {
-      // Scheduled cancel at period end
       let updated;
       try {
         updated = await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
@@ -207,7 +153,6 @@ async function cancelSubscriptionController(req, res) {
       const cancelAt = updated.cancel_at || null;
       const currentPeriodEnd = updated.current_period_end || null;
 
-      // Build dynamic SQL params to avoid FROM_UNIXTIME(NULL)
       const updates = ['cancel_at_period_end = 1'];
       const params = [];
       if (cancelAt) {
@@ -221,7 +166,6 @@ async function cancelSubscriptionController(req, res) {
         params.push(currentPeriodEnd);
       }
 
-      // only set status if known/expected value (defensive)
       const ALLOWED = new Set(['trialing','active','past_due','canceled','incomplete','unpaid','incomplete_expired']);
       if (ALLOWED.has(updated.status)) {
         updates.unshift('status = ?');
@@ -235,12 +179,7 @@ async function cancelSubscriptionController(req, res) {
       stripeResult = updated;
     }
 
-    // Update user flags locally (we still call syncUserSubscriptionFlag to let DB be authoritative)
-    if (hadAddon) {
-      await db.query(`UPDATE users SET has_addon = 0 WHERE id = ?`, [userId]);
-    }
-
-    // Recompute is_subscribed from DB rows (authoritative)
+    // Update user subscription flag
     await syncUserSubscriptionFlag(userId);
 
     return res.json({ ok: true, subscription: stripeResult });
@@ -251,114 +190,59 @@ async function cancelSubscriptionController(req, res) {
 }
 
 /**
- * POST /api/subscribe/cancel-addon
- * body: { subscriptionId: string }
+ * GET /api/subscribe/summary
  */
-async function cancelAddonController(req, res) {
-  try {
-    const userId = req.user.id;
-    const { subscriptionId } = req.body;
-    if (!subscriptionId) return res.status(400).json({ error: 'subscriptionId required' });
-
-    // Verify ownership via subscriptions table first
-    const [rows] = await db.query(
-      `SELECT user_id FROM subscriptions WHERE stripe_subscription_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [subscriptionId]
-    );
-    const owner = rows[0];
-    if (!owner || owner.user_id !== userId) {
-      // fallback: try to resolve via Stripe customer/metadata
-      try {
-        const subForOwner = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['customer'] });
-        const resolved = await findUserIdFromSubscriptionObject(subForOwner);
-        if (!resolved || resolved !== userId) {
-          return res.status(403).json({ error: 'Subscription not found for user' });
-        }
-      } catch (err) {
-        console.warn('Could not verify ownership via Stripe:', err.message);
-        return res.status(403).json({ error: 'Subscription not found for user' });
-      }
-    }
-
-    // Retrieve subscription and expanded prices
-    let subscription;
-    try {
-      subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price'] });
-    } catch (err) {
-      console.error('Failed to retrieve subscription:', err);
-      return res.status(500).json({ error: 'Failed to retrieve subscription' });
-    }
-
-    // Determine addon item by comparing to cached price map
-    const priceMap = await getProductPriceMap();
-    const addonPriceIds = new Set(Object.values(priceMap.addon.prices).filter(Boolean));
-
-    const addonItem = subscription.items.data.find(it => addonPriceIds.has(it.price?.id));
-    if (!addonItem) {
-      return res.status(404).json({ error: 'No add-on found on this subscription' });
-    }
-
-    // Delete that subscription item (no prorations)
-    let updated;
-    try {
-      updated = await stripe.subscriptions.update(subscriptionId, {
-        items: [{ id: addonItem.id, deleted: true }],
-        proration_behavior: 'none',
-      });
-    } catch (err) {
-      console.error('Failed to remove addon item from subscription:', err);
-      return res.status(500).json({ error: 'Failed to remove addon' });
-    }
-
-    // Update DB and flags
-    await db.query(`UPDATE users SET has_addon = 0 WHERE id = ?`, [userId]);
-    await db.query(`UPDATE subscriptions SET updated_at = CURRENT_TIMESTAMP WHERE stripe_subscription_id = ?`, [subscriptionId]);
-
-    await syncUserSubscriptionFlag(userId);
-
-    return res.json({ ok: true, subscription: updated });
-  } catch (err) {
-    console.error('cancelAddonController error:', err);
-    return res.status(500).json({ error: err.message || 'Cancel addon failed' });
-  }
-}
-
-async function removeBaseController(req, res) {
-  try {
-    const userId = req.user.id;
-    const { subscriptionId } = req.body;
-
-    if (!subscriptionId) {
-      return res.status(400).json({ error: 'subscriptionId required' });
-    }
-
-    // Verify ownership by resolving userId from the Stripe sub
-    const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-      expand: ['items.data.price'],
-    });
-    const ownerId = await findUserIdFromSubscriptionObject(sub);
-    if (ownerId !== userId) {
-      return res.status(403).json({ error: 'Subscription not found for user' });
-    }
-
-    // Perform mutation
-    const result = await removeBaseKeepAddon(userId, subscriptionId);
-    if (result.type === 'no_base_found') {
-      return res.status(404).json({ error: 'No base item found on subscription' });
-    }
-
-    return res.json({ ok: true, subscription: result.subscription });
-  } catch (err) {
-    console.error('Remove base error:', err);
-    return res.status(500).json({ error: err.message || 'Remove base failed' });
-  }
-}
-
 async function subscriptionSummaryController(req, res) {
   try {
     const userId = req.user.id;
 
-    // 1️⃣ — get latest subscription row
+    // Always fetch base user info (for tier + profile_type)
+    const [[userRow]] = await db.query(
+      `SELECT id, user_tier_id, profile_type FROM users WHERE id = ? LIMIT 1`,
+      [userId]
+    );
+
+    // Set strict no-cache headers
+    res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Vary', 'Cookie');
+
+    // -------------------------------------------------------
+    // 🟣 Fetch user_tier info safely (for all cases)
+    // -------------------------------------------------------
+    let tier = null;
+    if (userRow?.user_tier_id) {
+      const [[tierRow]] = await db.query(
+        `SELECT id AS tier_id, name AS tier_name, is_paid, permissions
+           FROM user_tiers
+          WHERE id = ? LIMIT 1`,
+        [userRow.user_tier_id]
+      );
+      if (tierRow) {
+        let parsedPermissions = {};
+        try {
+          parsedPermissions =
+            typeof tierRow.permissions === 'string'
+              ? JSON.parse(tierRow.permissions)
+              : tierRow.permissions || {};
+        } catch (err) {
+          console.warn('⚠️ Failed to parse user_tiers.permissions JSON:', err.message);
+          parsedPermissions = {};
+        }
+
+        tier = {
+          id: tierRow.tier_id,
+          name: tierRow.tier_name,
+          is_paid: Boolean(tierRow.is_paid),
+          permissions: parsedPermissions,
+        };
+      }
+    }
+
+    // -------------------------------------------------------
+    // 🟣 No active Stripe subscription
+    // -------------------------------------------------------
     const [[row]] = await db.query(
       `SELECT id, stripe_subscription_id, status, cancel_at
          FROM subscriptions
@@ -370,46 +254,38 @@ async function subscriptionSummaryController(req, res) {
       [userId]
     );
 
-    // apply cache headers
-    res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.set('Vary', 'Cookie');
-
-    // 2️⃣ — no subscription found
     if (!row || !row.stripe_subscription_id) {
       return res.json({
         hasSubscription: false,
         status: 'none',
         plan: null,
-        hasAddon: false,
         subscriptionId: null,
         isEntitled: false,
         baseEntitled: false,
-        addonEntitled: false,
+        profile_type: userRow?.profile_type ?? 'free',
+        user_tier_id: userRow?.user_tier_id ?? null,
+        user_tier: tier,
+        summaryRetrievedAt: new Date().toISOString(),
       });
     }
 
-    // 3️⃣ — Prepare base/addon maps
+    // -------------------------------------------------------
+    // 🟢 Active Stripe subscription
+    // -------------------------------------------------------
     const priceMap = await getProductPriceMap();
     const basePriceIds = new Set(Object.values(priceMap.base.prices).filter(Boolean));
-    const addonPriceIds = new Set(Object.values(priceMap.addon.prices).filter(Boolean));
 
     let sub;
     try {
-      // 4️⃣ — try fetching live subscription
       sub = await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
         expand: ['items.data.price.product'],
       });
     } catch (err) {
-      // 5️⃣ — handle invalid subscription IDs cleanly
       if (err.code === 'resource_missing' || err.statusCode === 404) {
-        console.warn(
-          `⚠️ subscriptionSummaryController: Missing Stripe sub ${row.stripe_subscription_id}, cleaning up DB`
-        );
-
         await db.query(
-          `UPDATE subscriptions SET status = 'deleted', stripe_subscription_id = NULL, updated_at = NOW() WHERE id = ?`,
+          `UPDATE subscriptions
+             SET status = 'deleted', stripe_subscription_id = NULL, updated_at = NOW()
+           WHERE id = ?`,
           [row.id]
         );
 
@@ -417,19 +293,20 @@ async function subscriptionSummaryController(req, res) {
           hasSubscription: false,
           status: 'none',
           plan: null,
-          hasAddon: false,
           subscriptionId: null,
           isEntitled: false,
           baseEntitled: false,
-          addonEntitled: false,
+          profile_type: userRow?.profile_type ?? 'free',
+          user_tier_id: userRow?.user_tier_id ?? null,
+          user_tier: tier,
+          summaryRetrievedAt: new Date().toISOString(),
         });
       }
       throw err;
     }
 
-    // 6️⃣ — valid subscription
+    // Extract data from Stripe
     const items = Array.isArray(sub.items?.data) ? sub.items.data : [];
-    const hasAddon = items.some((i) => addonPriceIds.has(i.price?.id));
     const baseItem = items.find((i) => basePriceIds.has(i.price?.id));
 
     const plan =
@@ -442,7 +319,6 @@ async function subscriptionSummaryController(req, res) {
     const currency = items[0]?.price?.currency?.toUpperCase?.() || 'USD';
     const totalUnit = items.reduce((sum, i) => sum + (i.price?.unit_amount ?? 0), 0);
 
-    // entitlement logic
     const nowSec = Math.floor(Date.now() / 1000);
     const entitledStatuses = new Set(['active', 'trialing', 'past_due']);
     const stripeCPE = Number(sub.current_period_end) || null;
@@ -456,18 +332,17 @@ async function subscriptionSummaryController(req, res) {
       entitledStatuses.has(sub.status) || (sub.status === 'canceled' && stillWithinPaidPeriod);
 
     const baseEntitled = Boolean(isEntitled && baseItem);
-    const addonEntitled = Boolean(isEntitled && hasAddon);
 
-    // 7️⃣ — response
+    // -------------------------------------------------------
+    // ✅ Final Response
+    // -------------------------------------------------------
     res.json({
       hasSubscription: true,
       subscriptionId: sub.id,
       status: sub.status,
       plan,
-      hasAddon,
       isEntitled,
       baseEntitled,
-      addonEntitled,
       cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
       cancelAt: sub.cancel_at
         ? new Date(sub.cancel_at * 1000).toISOString()
@@ -490,6 +365,11 @@ async function subscriptionSummaryController(req, res) {
         interval: i.price?.recurring?.interval,
         amount: i.price?.unit_amount,
       })),
+      // 🆕 User + tier details
+      profile_type: userRow?.profile_type ?? 'free',
+      user_tier_id: userRow?.user_tier_id ?? null,
+      user_tier: tier,
+      summaryRetrievedAt: new Date().toISOString(),
     });
   } catch (err) {
     console.error('subscriptionSummaryController error:', err);
@@ -498,11 +378,11 @@ async function subscriptionSummaryController(req, res) {
 }
 
 
+
 async function createBillingPortalSession(req, res) {
   try {
     const userId = req.user.id;
 
-    // 1) Ensure we have customer id
     const [[user]] = await db.query(
       `SELECT stripe_customer_id, stripe_subscription_id FROM users WHERE id = ? LIMIT 1`,
       [userId]
@@ -510,7 +390,6 @@ async function createBillingPortalSession(req, res) {
 
     let customerId = user?.stripe_customer_id;
 
-    // Derive from subscription if missing
     if (!customerId && user?.stripe_subscription_id) {
       const sub = await stripe.subscriptions.retrieve(user.stripe_subscription_id);
       customerId = sub.customer;
@@ -523,7 +402,6 @@ async function createBillingPortalSession(req, res) {
       return res.status(400).json({ error: 'No Stripe customer found for this user.' });
     }
 
-    // 2) Create Billing Portal session (Stripe-hosted)
     const returnUrl = process.env.STRIPE_PORTAL_RETURN_URL || `${process.env.APP_ORIGIN || ''}/account/billing`;
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
@@ -537,10 +415,8 @@ async function createBillingPortalSession(req, res) {
   }
 }
 
-
 async function repairStripeLinksController(req, res) {
   try {
-    // 1) Optional: admin-only guard (if you have user roles)
     if (!req.user || req.user.user_roles !== 1) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
@@ -629,11 +505,8 @@ async function repairStripeLinksController(req, res) {
 
 module.exports = {
   checkoutController,
-  checkoutAddonController,
   webhookController,
   cancelSubscriptionController,
-  cancelAddonController,
-  removeBaseController,
   subscriptionSummaryController,
   createBillingPortalSession,
   repairStripeLinksController

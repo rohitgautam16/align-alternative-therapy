@@ -3,6 +3,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetCategoriesQuery, useGetDashboardAllPlaylistsQuery } from '../utils/api';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const FALLBACK_BG =
   'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop';
@@ -10,6 +11,7 @@ const FALLBACK_BG =
 export default function CategoryView() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { isRecommendationOnly } = useSubscription();
 
   const {
     data: categories = [],
@@ -119,7 +121,7 @@ console.log(category.image, category.artwork_filename);
             <div className="flex flex-wrap gap-6 justify-center sm:justify-center md:justify-center lg:justify-start items-start">
               {categoryPlaylists.map((pl) => (
                 <div key={pl.id} className="flex-none">
-                  <PlaylistCard playlist={pl} />
+                  <PlaylistCard playlist={pl} isLockedOverlay={isRecommendationOnly} />
                 </div>
               ))}
             </div>

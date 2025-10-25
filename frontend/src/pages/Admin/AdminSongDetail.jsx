@@ -12,19 +12,23 @@ import {
 import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+
 // Enhanced placeholder image for better UX
 const DEFAULT_PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjMzc0MTUxIi8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIyNCIgZmlsbD0iIzZCNzI4MCIvPjxwYXRoIGQ9Ik0xNDQgNzZIMTc2VjEwNEgxNDRWNzZaTTE1MiA4NEgxNjhWOTZIMTUyVjg0WiIgZmlsbD0iIzlDQTNBRiIvPjx0ZXh0IHg9IjE2MCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPg==';
+
 
 // Custom Image Dropdown Component (Updated with improved placeholders)
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
 
+
   const getPlaceholderForType = (type) => {
     return type === 'playlist' 
       ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBNEFGIiBmb250LXNpemU9IjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5QPC90ZXh0Pgo8L3N2Zz4='
       : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgZmlsbD0iIzlDQTRBRiIvPgo8L3N2Zz4=';
   };
+
 
   return (
     <div className="relative">
@@ -59,6 +63,7 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
+
 
       {isOpen && (
         <>
@@ -108,9 +113,11 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   );
 };
 
+
 export default function AdminSongDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+
 
   // File upload - Updated for presigned URLs
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
@@ -123,13 +130,16 @@ export default function AdminSongDetail() {
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
-  // ✅ NEW: Progress tracking state
+
+  // Progress tracking state
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+
 
   // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
+
 
   // Fetch song data
   const { 
@@ -139,23 +149,28 @@ export default function AdminSongDetail() {
     refetch: refetchSong 
   } = useGetAdminSongQuery(id);
 
+
   // Fetch categories and playlists for dropdowns (keeping categories for existing data display)
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({ page: 1, pageSize: 100 });
   const { data: plRaw = { data: [] } } = useListPlaylistsQuery({ page: 1, pageSize: 100 });
+
 
   // Ensure arrays for safe operations
   const categories = catRaw.data || [];
   const playlists = plRaw.data || [];
 
+
   // Mutations
   const [updateSong, { isLoading: saving }] = useUpdateAdminSongMutation();
   const [deleteSong] = useDeleteAdminSongMutation();
+
 
   // Local form & UI state
   const [form, setForm] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [flash, setFlash] = useState({ txt: '', ok: true });
+
 
   // Use existing hook with conditional skip for presigned URLs
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
@@ -167,6 +182,7 @@ export default function AdminSongDetail() {
     { skip: !artworkPresignParams }
   );
 
+
   const { data: audioPresign } = useGetR2PresignUrlQuery(
     audioPresignParams || {
       filename: "",
@@ -176,7 +192,8 @@ export default function AdminSongDetail() {
     { skip: !audioPresignParams }
   );
 
-  // Initialize form
+
+  // ✅ UPDATED - Initialize form with is_free field
   useEffect(() => {
     if (song) {
       setForm({
@@ -190,9 +207,11 @@ export default function AdminSongDetail() {
         playlist: song.playlistId || song.playlist_id || song.playlist || '',
         artwork_filename: song.image || song.artwork_filename || '',
         cdn_url: song.audioUrl || song.cdn_url || '',
+        is_free: song.is_free ?? 0, // ✅ ADDED - Default to 0 (paid) if not set
       });
     }
   }, [song]);
+
 
   // Auto‑clear flash messages
   useEffect(() => {
@@ -202,16 +221,16 @@ export default function AdminSongDetail() {
     }
   }, [flash]);
 
-  // ✅ Enhanced: Manual artwork upload handler with progress
+
+  // Manual artwork upload handler with progress
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
     setArtworkUploading(true);
-    setArtworkUploadProgress(5); // Set initial progress
+    setArtworkUploadProgress(5);
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      // Trigger the presign query by setting params
       setArtworkPresignParams({
         filename: selectedArtFile.name,
         contentType: selectedArtFile.type,
@@ -226,16 +245,16 @@ export default function AdminSongDetail() {
     }
   };
 
-  // ✅ Enhanced: Manual audio upload handler with progress
+
+  // Manual audio upload handler with progress
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
     
     setAudioUploading(true);
-    setAudioUploadProgress(5); // Set initial progress
+    setAudioUploadProgress(5);
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      // Trigger the presign query by setting params
       setAudioPresignParams({
         filename: selectedAudioFile.name,
         contentType: selectedAudioFile.type,
@@ -250,9 +269,11 @@ export default function AdminSongDetail() {
     }
   };
 
-  // ✅ Enhanced: Handle artwork presign response with progress tracking
+
+  // Handle artwork presign response with progress tracking
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
+
 
     const uploadArtwork = async () => {
       try {
@@ -262,19 +283,20 @@ export default function AdminSongDetail() {
           fileName: selectedArtFile.name,
         });
 
+
         setFlash({ txt: "Uploading artwork...", ok: true });
-        setArtworkUploadProgress(10); // Initial progress
+        setArtworkUploadProgress(10);
         
-        // ✅ Create XMLHttpRequest for progress tracking
         const xhr = new XMLHttpRequest();
         
         // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
             setArtworkUploadProgress(percentComplete);
           }
         });
+
 
         // Handle completion
         xhr.addEventListener('load', () => {
@@ -287,27 +309,29 @@ export default function AdminSongDetail() {
             setFlash({ txt: "Artwork uploaded successfully!", ok: true });
             setArtworkUploadProgress(100);
             
-            // Clear file selection after successful upload
+            // Clear file selection
             setSelectedArtFile(null);
             setArtworkPresignParams(null);
             const artInput = document.getElementById('song-artwork-upload');
             if (artInput) artInput.value = '';
             
-            // ✅ Delay resetting upload state to keep progress bar visible
+            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setArtworkUploading(false);
               setArtworkUploadProgress(0);
-            }, 3000); // Keep visible for 3 seconds
+            }, 3000);
             
           } else {
             throw new Error('Upload failed');
           }
         });
 
+
         // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
+
 
         // Start the upload
         xhr.open('PUT', artworkPresign.url);
@@ -318,33 +342,35 @@ export default function AdminSongDetail() {
         console.error('Artwork upload error:', err);
         setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
         setArtworkUploadProgress(0);
-        setArtworkUploading(false); // Reset immediately on error
+        setArtworkUploading(false);
       }
-      // ✅ No finally block to avoid immediate state reset
     };
+
 
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // ✅ Enhanced: Handle audio presign response with progress tracking
+
+  // Handle audio presign response with progress tracking
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
+
 
     const uploadAudio = async () => {
       try {
         setFlash({ txt: "Uploading audio file...", ok: true });
-        setAudioUploadProgress(10); // Initial progress
+        setAudioUploadProgress(10);
         
-        // ✅ Create XMLHttpRequest for progress tracking
         const xhr = new XMLHttpRequest();
         
         // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
             setAudioUploadProgress(percentComplete);
           }
         });
+
 
         // Handle completion
         xhr.addEventListener('load', () => {
@@ -355,27 +381,29 @@ export default function AdminSongDetail() {
             setFlash({ txt: "Audio file uploaded successfully!", ok: true });
             setAudioUploadProgress(100);
             
-            // Clear file selection after successful upload
+            // Clear file selection
             setSelectedAudioFile(null);
             setAudioPresignParams(null);
             const audioInput = document.getElementById('song-audio-upload');
             if (audioInput) audioInput.value = '';
             
-            // ✅ Delay resetting upload state to keep progress bar visible
+            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setAudioUploading(false);
               setAudioUploadProgress(0);
-            }, 3000); // Keep visible for 3 seconds
+            }, 3000);
             
           } else {
             throw new Error('Upload failed');
           }
         });
 
+
         // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
+
 
         // Start the upload
         xhr.open('PUT', audioPresign.url);
@@ -386,17 +414,19 @@ export default function AdminSongDetail() {
         console.error('Audio upload error:', err);
         setFlash({ txt: "Audio upload failed.", ok: false });
         setAudioUploadProgress(0);
-        setAudioUploading(false); // Reset immediately on error
+        setAudioUploading(false);
       }
-      // ✅ No finally block to avoid immediate state reset
     };
+
 
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
 
+
   if (isLoading) return <div className="p-6 text-white">Loading…</div>;
   if (isError || !song) return <div className="p-6 text-red-500">Error loading song</div>;
   if (!form) return null;
+
 
   // Handlers   
   const handleSave = async () => {
@@ -411,8 +441,10 @@ export default function AdminSongDetail() {
     }
   };
 
+
   const confirmDelete = () => setShowDeleteModal(true);
   const cancelDelete = () => setShowDeleteModal(false);
+
 
   const handleDelete = async () => {
     try {
@@ -424,6 +456,7 @@ export default function AdminSongDetail() {
       setFlash({ txt: 'Failed to delete song.', ok: false });
     }
   };
+
 
   return (
     <div className="p-6 text-white space-y-8">
@@ -440,6 +473,7 @@ export default function AdminSongDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -474,6 +508,7 @@ export default function AdminSongDetail() {
         </div>
       </div>
 
+
       {/* Form & Artwork */}
       <div className="bg-gray-800 rounded-lg flex flex-col md:flex-row gap-6">
         {/* Form */}
@@ -493,6 +528,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
+
             {/* Title */}
             <div>
               <label className="block text-gray-400 mb-1">Title</label>
@@ -506,6 +542,7 @@ export default function AdminSongDetail() {
                 <p>{song.title || '—'}</p>
               )}
             </div>
+
 
             {/* Slug */}
             <div>
@@ -521,6 +558,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
+
             <div className="md:col-span-2">
               <label className="block text-gray-400 mb-1">Description</label>
               {editMode ? (
@@ -533,6 +571,7 @@ export default function AdminSongDetail() {
                 <p>{song.description || '—'}</p>
               )}
             </div>
+
 
             {/* Artist */}
             <div>
@@ -548,6 +587,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
+
             {/* Tags */}
             <div className="md:col-span-2">
               <label className="block text-gray-400 mb-1">Tags</label>
@@ -561,6 +601,56 @@ export default function AdminSongDetail() {
                 <p>{song.tags || '—'}</p>
               )}
             </div>
+
+
+            {/* ✅ ADDED - Access Type Field */}
+            <div>
+              <label className="block text-gray-400 mb-2">Access Type</label>
+              {editMode ? (
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="is_free"
+                      value={0}
+                      checked={form.is_free === 0}
+                      onChange={(e) => setForm(f => ({ ...f, is_free: Number(e.target.value) }))}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:ring-2 accent-blue-600"
+                    />
+                    <span className="text-white text-sm group-hover:text-blue-400 transition-colors">
+                      Paid
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="is_free"
+                      value={1}
+                      checked={form.is_free === 1}
+                      onChange={(e) => setForm(f => ({ ...f, is_free: Number(e.target.value) }))}
+                      className="w-4 h-4 text-green-600 bg-gray-700 border-gray-600 focus:ring-green-500 focus:ring-2 accent-green-600"
+                    />
+                    <span className="text-white text-sm group-hover:text-green-400 transition-colors">
+                      Free
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {form.is_free === 1 ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-600/20 text-green-400 border border-green-600/30">
+                      Free
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-600/20 text-blue-400 border border-blue-600/30">
+                      Paid
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
 
             {/* Category - only show in read-only mode for existing data */}
             {!editMode && form.category && (
@@ -579,6 +669,7 @@ export default function AdminSongDetail() {
                 </div>
               </div>
             )}
+
 
             {/* Playlist Dropdown with Images */}
             <div>
@@ -606,9 +697,11 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* ✅ Enhanced Artwork Upload with Progress Bar */}
+
+            {/* Artwork Upload with Progress Bar */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Artwork URL</label>
+
 
               {editMode ? (
                 <div className="space-y-2">
@@ -619,6 +712,7 @@ export default function AdminSongDetail() {
                     placeholder="https://cdn.example.com/img.jpg"
                     className="w-full p-2 bg-gray-700 rounded text-white"
                   />
+
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
@@ -647,7 +741,8 @@ export default function AdminSongDetail() {
                     )}
                   </div>
 
-                  {/* ✅ Progress bar */}
+
+                  {/* Progress bar */}
                   {artworkUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -668,6 +763,7 @@ export default function AdminSongDetail() {
                     </div>
                   )}
 
+
                   {/* Upload button */}
                   {selectedArtFile && !artworkKey && (
                     <button
@@ -685,7 +781,8 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-            {/* ✅ Enhanced Audio Upload with Progress Bar */}
+
+            {/* Audio Upload with Progress Bar */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Audio URL</label>
               
@@ -698,6 +795,7 @@ export default function AdminSongDetail() {
                     placeholder="https://cdn.example.com/audio.mp3"
                     className="w-full p-2 bg-gray-700 rounded text-white"
                   />
+
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
@@ -726,7 +824,8 @@ export default function AdminSongDetail() {
                     )}
                   </div>
 
-                  {/* ✅ Progress bar */}
+
+                  {/* Progress bar */}
                   {audioUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -746,6 +845,7 @@ export default function AdminSongDetail() {
                       </div>
                     </div>
                   )}
+
 
                   {/* Upload button */}
                   {selectedAudioFile && !audioKey && (
@@ -779,6 +879,7 @@ export default function AdminSongDetail() {
           </div>
         </div>
 
+
         {/* Enhanced Artwork Preview with better placeholder handling */}
         <div className="w-full md:w-80 h-48 md:h-auto rounded overflow-hidden order-first md:order-last">
           <img
@@ -791,6 +892,7 @@ export default function AdminSongDetail() {
           />
         </div>
       </div>
+
 
       {/* Delete Modal    */}
       <AnimatePresence>

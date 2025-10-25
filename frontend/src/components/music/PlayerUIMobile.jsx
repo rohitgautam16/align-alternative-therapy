@@ -159,7 +159,7 @@ export default function PlayerUIMobile(props) {
                 />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{currentTrack.name}</p>
+                <p className="text-sm font-semibold truncate">{currentTrack.name || currentTrack.title}</p>
                 <p className="text-xs text-gray-200/90 truncate">{currentTrack.artist}</p>
               </div>
             </div>
@@ -269,7 +269,7 @@ export default function PlayerUIMobile(props) {
                   "
                 >
                   <div className="text-center px-2 mb-2 mt-1.5">
-                    <h3 className="text-md font-medium truncate">{currentTrack.name}</h3>
+                    <h3 className="text-md font-medium truncate">{currentTrack.name || currentTrack.title}</h3>
                   </div>
 
                   <div className="mb-3">

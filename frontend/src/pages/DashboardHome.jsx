@@ -7,7 +7,7 @@ import CategorySection from '../components/dashboard/CategorySection';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
 import SongCard     from '../components/custom-ui/SongCard';
 import PersonalizeBanner from '../components/dashboard/Personalized Service/PersonalizeBanner';
-
+import { useSubscription } from '../context/SubscriptionContext';
 import PersonalizeCTA from '../components/dashboard/Personalized Service/PersonalizeCTA';
 import PBMyRecommendations from '../components/dashboard/Personalized Service/PBMyRecommendations';
 
@@ -22,6 +22,7 @@ const DashboardHome = () => {
 
   const navigate = useNavigate()
   const location = useLocation()
+  const { isRecommendationOnly } = useSubscription();
 
   useEffect(() => {
     const returnTo = sessionStorage.getItem('returnToPath') || sessionStorage.getItem('returnTo');
@@ -62,7 +63,7 @@ const DashboardHome = () => {
       
      <PBMyRecommendations />
 
-
+      {!isRecommendationOnly && (
       <CarouselSection
         title="New Releases"
         items={combinedNew}
@@ -72,21 +73,23 @@ const DashboardHome = () => {
             : <SongCard     key={`s-${data.id}`}  song={data}      />
         }
       />
+      )}
 
       {/* Recently Played */}
-      {!rpL && !rpE && recentItems.length > 0 && (
-      <CarouselSection
-        title="Recently Played"
-        items={recentItems}
-        renderItem={(song) => (
-          <SongCard
-            key={`s-${song.id}-${song.slug}`}
-            song={song}
-            onPlay={() => {}}
-          />
-        )}
-      />
+      {!isRecommendationOnly && !rpL && !rpE && recentItems.length > 0 && (
+        <CarouselSection
+          title="Recently Played"
+          items={recentItems}
+          renderItem={(song) => (
+            <SongCard
+              key={`s-${song.id}-${song.slug}`}
+              song={song}
+              onPlay={() => {}}
+            />
+          )}
+        />
       )}
+
 
       {/* Free Playlists */}
       <CarouselSection
@@ -96,11 +99,13 @@ const DashboardHome = () => {
       />
 
       {/* All Playlists */}
+      {!isRecommendationOnly && (
       <CarouselSection
         title="All Playlists"
         useQuery={useGetDashboardAllPlaylistsQuery}
         renderItem={(pl) => <PlaylistCard key={pl.id} playlist={pl} />}
       />
+      )}
 
       <PersonalizeCTA/>
       

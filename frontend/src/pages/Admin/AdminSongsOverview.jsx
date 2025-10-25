@@ -15,9 +15,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
 
 
+
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
+
 
   return (
     <div className="relative">
@@ -47,6 +49,7 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
+
 
       {isOpen && (
         <>
@@ -92,6 +95,7 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   );
 };
 
+
 export default function AdminSongsOverview() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
@@ -99,9 +103,11 @@ export default function AdminSongsOverview() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const frontendPageSize = 12;
 
+
   // Search and Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlaylist, setFilterPlaylist] = useState('');
+
 
   // File uploads - Manual upload control
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
@@ -114,13 +120,16 @@ export default function AdminSongsOverview() {
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
+
   // Progress tracking state
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
 
+
   // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
+
 
   // Songs data 
   const {
@@ -130,6 +139,7 @@ export default function AdminSongsOverview() {
     error,
     refetch,
   } = useGetAdminSongsQuery({ page: 1, pageSize: 200 });
+
 
   // Categories and Playlists  
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
@@ -141,10 +151,12 @@ export default function AdminSongsOverview() {
     pageSize: 100,
   });
 
+
   // Create mutation 
   const [createSong, { isLoading: creating }] = useCreateAdminSongMutation();
 
-  // Form state  
+
+  // ✅ UPDATED - Form state with is_free field (default 0 = paid)
   const [form, setForm] = useState({
     name: '',
     title: '',
@@ -156,9 +168,12 @@ export default function AdminSongsOverview() {
     playlist: '',
     artwork_filename: '',
     cdn_url: '',
+    is_free: 0, // ✅ ADDED - 0 = paid (default), 1 = free
   });
 
+
   const [flash, setFlash] = useState({ txt: '', ok: true });
+
 
   // Use existing hook with conditional skip
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
@@ -170,6 +185,7 @@ export default function AdminSongsOverview() {
     { skip: !artworkPresignParams }
   );
 
+
   const { data: audioPresign } = useGetR2PresignUrlQuery(
     audioPresignParams || {
       filename: "",
@@ -178,6 +194,7 @@ export default function AdminSongsOverview() {
     },
     { skip: !audioPresignParams }
   );
+
 
   // Manual artwork upload handler
   const handleArtworkUpload = async () => {
@@ -201,6 +218,7 @@ export default function AdminSongsOverview() {
     }
   };
 
+
   // Manual audio upload handler
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
@@ -223,9 +241,11 @@ export default function AdminSongsOverview() {
     }
   };
 
-  // ✅ FIXED: Handle artwork presign response with delayed state reset
+
+  // Handle artwork presign response with delayed state reset
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
+
 
     const uploadArtwork = async () => {
       try {
@@ -244,6 +264,7 @@ export default function AdminSongsOverview() {
           }
         });
 
+
         // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
@@ -261,21 +282,23 @@ export default function AdminSongsOverview() {
             const artInput = document.getElementById('create-artwork-upload');
             if (artInput) artInput.value = '';
             
-            // ✅ FIXED: Delay resetting upload state to keep progress bar visible
+            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setArtworkUploading(false);
               setArtworkUploadProgress(0);
-            }, 3000); // Keep visible for 3 seconds
+            }, 3000);
             
           } else {
             throw new Error('Upload failed');
           }
         });
 
+
         // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
+
 
         // Start the upload
         xhr.open('PUT', artworkPresign.url);
@@ -286,17 +309,19 @@ export default function AdminSongsOverview() {
         console.error('Artwork upload error:', err);
         setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
         setArtworkUploadProgress(0);
-        setArtworkUploading(false); // Reset immediately on error
+        setArtworkUploading(false);
       }
-      // ✅ REMOVED: No finally block to avoid immediate state reset
     };
+
 
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // ✅ FIXED: Handle audio presign response with delayed state reset
+
+  // Handle audio presign response with delayed state reset
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
+
 
     const uploadAudio = async () => {
       try {
@@ -313,6 +338,7 @@ export default function AdminSongsOverview() {
           }
         });
 
+
         // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
@@ -328,21 +354,23 @@ export default function AdminSongsOverview() {
             const audioInput = document.getElementById('create-audio-upload');
             if (audioInput) audioInput.value = '';
             
-            // ✅ FIXED: Delay resetting upload state to keep progress bar visible
+            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setAudioUploading(false);
               setAudioUploadProgress(0);
-            }, 3000); // Keep visible for 3 seconds
+            }, 3000);
             
           } else {
             throw new Error('Upload failed');
           }
         });
 
+
         // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
+
 
         // Start the upload
         xhr.open('PUT', audioPresign.url);
@@ -353,15 +381,15 @@ export default function AdminSongsOverview() {
         console.error('Audio upload error:', err);
         setFlash({ txt: "Audio upload failed.", ok: false });
         setAudioUploadProgress(0);
-        setAudioUploading(false); // Reset immediately on error
+        setAudioUploading(false);
       }
-      // ✅ REMOVED: No finally block to avoid immediate state reset
     };
+
 
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
 
-  // All other existing logic remains exactly the same...
+
   // Process data safely based on backend response structure  
   const allSongs = React.useMemo(() => {
     if (!songsData) return [];
@@ -377,15 +405,18 @@ export default function AdminSongsOverview() {
     return [];
   }, [songsData]);
 
+
   const categories = React.useMemo(() => {
     if (!catRaw) return [];
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
 
+
   const playlists = React.useMemo(() => {
     if (!plRaw) return [];
     return Array.isArray(plRaw.data) ? plRaw.data : (Array.isArray(plRaw) ? plRaw : []);
   }, [plRaw]);
+
 
   // Filter songs based on search and playlist filter only  
   const filteredSongs = React.useMemo(() => {
@@ -407,15 +438,18 @@ export default function AdminSongsOverview() {
         song.playlistId === filterPlaylist ||
         song.playlistId === String(filterPlaylist);
 
+
       return matchesSearch && matchesPlaylist;
     });
   }, [allSongs, searchTerm, filterPlaylist]);
+
 
   // Get total from backend or use filtered length  
   const totalItems = songsData?.total || filteredSongs.length;
   const totalPages = Math.ceil(filteredSongs.length / frontendPageSize);
   const startIndex = (page - 1) * frontendPageSize;
   const paginatedSongs = filteredSongs.slice(startIndex, startIndex + frontendPageSize);
+
 
   // Auto-clear flash messages  
   useEffect(() => {
@@ -425,10 +459,12 @@ export default function AdminSongsOverview() {
     }
   }, [flash]);
 
+
   // Reset page when filters change  
   useEffect(() => {
     setPage(1);
   }, [searchTerm, filterPlaylist]);
+
 
   // Fixed auto-generate slug from title  
   const generateSlug = (title) => {
@@ -442,9 +478,11 @@ export default function AdminSongsOverview() {
       .replace(/^-|-$/g, '');
   };
 
+
   const toggleView = () => {
     setViewType((prev) => (prev === 'grid' ? 'list' : 'grid'));
   };
+
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -455,7 +493,7 @@ export default function AdminSongsOverview() {
       await createSong(form).unwrap();
       setFlash({ txt: 'Song created successfully!', ok: true });
       
-      // Reset form and files
+      // ✅ UPDATED - Reset form and files (including is_free)
       setForm({
         name: '',
         title: '',
@@ -467,6 +505,7 @@ export default function AdminSongsOverview() {
         playlist: '',
         artwork_filename: '',
         cdn_url: '',
+        is_free: 0, // ✅ ADDED - Reset to paid (default)
       });
       setSelectedArtFile(null);
       setSelectedAudioFile(null);
@@ -493,10 +532,12 @@ export default function AdminSongsOverview() {
     }
   };
 
+
   const clearFilters = () => {
     setSearchTerm('');
     setFilterPlaylist('');
   };
+
 
   return (
     <div className="p-4 sm:p-6 text-white space-y-6">
@@ -513,6 +554,7 @@ export default function AdminSongsOverview() {
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -541,6 +583,7 @@ export default function AdminSongsOverview() {
           </button>
         </div>
       </div>
+
 
       {/* Search and Filters */}
       <div className="bg-gray-800 p-3 sm:p-4 rounded-lg space-y-4">
@@ -577,6 +620,7 @@ export default function AdminSongsOverview() {
         </div>
       </div>
 
+
       {/* Create Form */}
       <AnimatePresence>
         {showCreateForm && (
@@ -590,6 +634,7 @@ export default function AdminSongsOverview() {
             <h3 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
               <Plus size={20} /> Create New Song
             </h3>
+
 
             {/* Form fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -637,6 +682,7 @@ export default function AdminSongsOverview() {
                 />
               </div>
 
+
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Description</label>
                 <input
@@ -667,6 +713,40 @@ export default function AdminSongsOverview() {
                 />
               </div>
               
+              {/* ✅ ADDED - Access Type Radio Group */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Access Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="is_free"
+                      value={0}
+                      checked={form.is_free === 0}
+                      onChange={(e) => setForm({ ...form, is_free: Number(e.target.value) })}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:ring-2 accent-blue-600"
+                    />
+                    <span className="text-white text-sm group-hover:text-blue-400 transition-colors">
+                      Paid
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="is_free"
+                      value={1}
+                      checked={form.is_free === 1}
+                      onChange={(e) => setForm({ ...form, is_free: Number(e.target.value) })}
+                      className="w-4 h-4 text-green-600 bg-gray-700 border-gray-600 focus:ring-green-500 focus:ring-2 accent-green-600"
+                    />
+                    <span className="text-white text-sm group-hover:text-green-400 transition-colors">
+                      Free
+                    </span>
+                  </label>
+                </div>
+              </div>
+              
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Playlist</label>
                 <ImageDropdown
@@ -678,6 +758,7 @@ export default function AdminSongsOverview() {
                 />
               </div>
             </div>
+
 
             {/* File Uploads with Progress Bars */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -721,7 +802,7 @@ export default function AdminSongsOverview() {
                     )}
                   </div>
                   
-                  {/* ✅ FIXED: Progress bar shows when uploading */}
+                  {/* Progress bar */}
                   {artworkUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -755,6 +836,7 @@ export default function AdminSongsOverview() {
                   )}
                 </div>
               </div>
+
 
               {/* Audio Upload */}
               <div>
@@ -796,7 +878,7 @@ export default function AdminSongsOverview() {
                     )}
                   </div>
                   
-                  {/* ✅ FIXED: Progress bar shows when uploading */}
+                  {/* Progress bar */}
                   {audioUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -832,6 +914,7 @@ export default function AdminSongsOverview() {
               </div>
             </div>
 
+
             <div className="flex flex-col sm:flex-row justify-end gap-2">
               <button
                 type="button"
@@ -852,12 +935,14 @@ export default function AdminSongsOverview() {
         )}
       </AnimatePresence>
 
+
       {/* Loading/Error States */}
       {isLoading && (
         <div className="flex justify-center items-center py-12">
           <div className="text-gray-400">Loading songs...</div>
         </div>
       )}
+
 
       {isError && (
         <div className="bg-red-900/20 border border-red-600 p-4 rounded">
@@ -866,6 +951,7 @@ export default function AdminSongsOverview() {
           </p>
         </div>
       )}
+
 
       {/* Songs Grid/List */}
       {!isLoading && !isError && (
@@ -895,6 +981,7 @@ export default function AdminSongsOverview() {
               ))}
             </div>
           )}
+
 
           {/* Pagination */}
           {totalPages > 1 && (

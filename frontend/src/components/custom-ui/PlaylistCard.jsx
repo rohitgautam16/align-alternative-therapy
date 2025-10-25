@@ -1,28 +1,41 @@
-// src/components/ui/PlaylistCard.jsx
-import React from 'react';
-import LockedOverlay from '../dashboard/LockedOverlay';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { Play, Lock, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { setQueue, setTrack, setIsPlaying } from '../../store/playerSlice';
-import { Play, Lock } from 'lucide-react';
 import { useGetSongsQuery } from '../../utils/api';
 import { useSubscription } from '../../context/SubscriptionContext';
+import { canAccessContent } from '../../utils/permissions';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 
-export default function PlaylistCard({ playlist }) {
+export default function PlaylistCard({ playlist, isLockedOverlay = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
-  const { baseEntitled } = useSubscription();
-  const locked = playlist?.paid === 1 && !baseEntitled;
-
+  const { userTier } = useSubscription();
   const { data: songs = [] } = useGetSongsQuery(playlist.id);
+  const firstSong = songs?.[0];
+
+  const locked = !canAccessContent(userTier, playlist);
+
+  // Popup state
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
 
   const handlePlaySong = (e, song) => {
     e.stopPropagation();
-    if (locked || !song) return;
+
+    // 🔹 Block play for locked playlists
+    if (locked || isLockedOverlay) {
+      setPopupMessage(
+        'This content is not included in your plan. Subscribe to a premium plan.'
+      );
+      setShowPopup(true);
+      return;
+    }
+
     dispatch(setQueue(songs));
     dispatch(
       setTrack({
@@ -37,86 +50,129 @@ export default function PlaylistCard({ playlist }) {
   };
 
   const handleCardClick = () => {
-    if (locked) return;
-    if (playlist.slug) {
-      navigate(`/dashboard/playlist/${playlist.slug}`);
-    } else {
-      navigate(`/dashboard/user-playlist/${playlist.id}`);
+    if (locked || isLockedOverlay) {
+      // 🔸 Overlay lock message
+      const msg = isLockedOverlay
+        ? 'This content is not included in your plan. Subscribe to a premium plan.'
+        : 'This playlist is available only for premium subscribers.';
+      setPopupMessage(msg);
+      setShowPopup(true);
+      return;
     }
+
+    navigate(
+      playlist.slug
+        ? `/dashboard/playlist/${playlist.slug}`
+        : `/dashboard/user-playlist/${playlist.id}`
+    );
   };
 
-  const firstSong = songs?.[0];
+  const handleLockClick = (e) => {
+    e.stopPropagation();
+    setPopupMessage('This playlist is available only for premium subscribers.');
+    setShowPopup(true);
+  };
 
   return (
-    <div className="flex flex-col items-start">
+    <div className="flex flex-col items-start relative">
+      {/* Main card */}
       <div
-        className="relative group/item w-65 aspect-square flex-shrink-0 overflow-hidden rounded-lg
-                   cursor-pointer transform transition-all duration-500 hover:scale-100"
+        className={`relative group/item w-65 aspect-square flex-shrink-0 overflow-hidden rounded-lg
+                   cursor-pointer transform transition-all duration-500 hover:scale-100`}
         onClick={handleCardClick}
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleCardClick();
-        }}
       >
-        {/* Cover Image */}
         <img
           src={playlist.image || FALLBACK_IMAGE}
-          alt={playlist.name || playlist.title || 'Playlist'}
-          className="w-full h-full object-cover transform transition-transform duration-700
-                     group-hover/item:scale-115"
+          alt={playlist.name || 'Playlist'}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover/item:scale-115"
           onError={(e) => (e.target.src = FALLBACK_IMAGE)}
         />
 
-        {/* --- LOCKED STATE OVERLAY --- */}
+        {/* Locked overlay - only icon */}
         {locked && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center px-4">
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/pricing');
-              }}
-              className="flex items-center gap-2 bg-transparent backdrop-blur-lg border border-white hover:bg-secondary hover:border-secondary 
-                        text-white text-xs font-medium px-5 py-2.5 rounded-full cursor-pointer
-                        transition-all shadow-md"
+              onClick={handleLockClick}
+              className="p-4 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 cursor-pointer transition"
             >
-              <Lock className="w-3 h-3 text-white" />
-              <span>Subscribe to Unlock</span>
+              <Lock className="w-8 h-8 text-white" />
             </button>
           </div>
         )}
 
-
-        {/* Gradient overlay on hover */}
-        {!locked && (
-          <div
-            className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent
-                        opacity-0 group-hover/item:opacity-100 transition-all duration-300"
-          />
+        {/* Extra overlay lock (for category view / limited access) */}
+        {isLockedOverlay && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 pointer-events-none">
+            <button
+              className="p-4 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition"
+            >
+              <Lock className="w-8 h-8 text-white" />
+            </button>
+          </div>
         )}
 
-        {/* Play button (only for unlocked) */}
-        {!locked && (
-          <button
-            onClick={(e) => handlePlaySong(e, firstSong)}
-            className="absolute bottom-4 right-4 w-12 h-12 bg-secondary rounded-full flex 
-                       items-center justify-center transform translate-y-4 opacity-0 
-                       group-hover/item:translate-y-0 group-hover/item:opacity-100 cursor-pointer
-                       transition-all duration-300 hover:bg-secondary/70 hover:scale-110"
-          >
-            <Play className="w-6 h-6 text-gray-800" />
-          </button>
+        {/* Gradient + Play button if unlocked */}
+        {!locked && !isLockedOverlay && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent
+                            opacity-0 group-hover/item:opacity-100 transition-all duration-300" />
+            <button
+              onClick={(e) => handlePlaySong(e, firstSong)}
+              className="absolute bottom-4 right-4 w-12 h-12 bg-secondary rounded-full flex 
+                         items-center justify-center transform translate-y-4 opacity-0 
+                         group-hover/item:translate-y-0 group-hover/item:opacity-100 cursor-pointer
+                         transition-all duration-300 hover:bg-secondary/70 hover:scale-110"
+            >
+              <Play className="w-6 h-6 text-gray-800" />
+            </button>
+          </>
         )}
 
-        {/* Playlist title inside the card */}
-        <h3
-          className={`absolute bottom-4 left-4 text-white font-semibold text-base 
-                       truncate max-w-[calc(100%-4rem)] ${
-                         locked ? 'opacity-80' : ''
-                       }`}
-        >
+        <h3 className="absolute bottom-4 left-4 text-white font-semibold text-base truncate max-w-[calc(100%-4rem)]">
           {playlist.name || playlist.title}
         </h3>
       </div>
+
+      {/* Popup Modal with Scale Animation */}
+      <AnimatePresence>
+        {showPopup && (
+          <motion.div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ type: 'spring', stiffness: 120, damping: 12 }}
+              className="relative bg-white/10 backdrop-blur-xl p-6 rounded-2xl border border-white/20 w-[90%] max-w-md text-center shadow-md"
+            >
+              <button
+                onClick={() => setShowPopup(false)}
+                className="absolute top-3 right-3 cursor-pointer text-white hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex flex-col items-center">
+                <Lock className="w-10 h-10 text-secondary mb-3" />
+                <p className="text-white text-lg font-medium mb-5">{popupMessage}</p>
+                <button
+                  onClick={() => {
+                    setShowPopup(false);
+                    navigate('/pricing');
+                  }}
+                  className="bg-secondary text-gray-900 px-5 py-2.5 cursor-pointer rounded-full hover:bg-secondary/80 transition"
+                >
+                  View Plans
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

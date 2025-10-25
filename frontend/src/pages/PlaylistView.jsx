@@ -280,7 +280,7 @@ const bgUrl = bgImage
                     e.stopPropagation();
                     navigate(`/dashboard/song/${song.slug}`);
                   }}
-                  className="md:opacity-100 flex flex-row gap-1 lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
+                  className="md:opacity-100 flex flex-row items-center cursor-pointer gap-1 lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
                 >
                   <Eye className="w-4 h-4 text-white" /> View
                 </button>

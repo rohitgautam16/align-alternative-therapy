@@ -110,6 +110,14 @@ export const api = createApi({
       invalidatesTags: ['User'],
     }),
 
+    retryPayment: build.mutation({
+      query: ({ id }) => ({
+        url: `/admin/users/${id}/retry-payment`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Users'],
+    }),
+
     listCategories: build.query({
       query: ({ page = 1, pageSize = 20 } = {}) => ({
         url: '/admin/categories',
@@ -1024,16 +1032,25 @@ export const api = createApi({
                   : [{ type: 'PersonalizeUser', id: 'LIST' }],
             }),
 
-             createPbPaymentLink: build.mutation({
-                query: ({ recommendationId, price }) => ({
-                  url: '/pb-payment/admin/create-link',
-                  method: 'POST',
-                  body: { recommendationId, price },
-                }),
-              }),
-              getPbPaymentStatus: build.query({
-                query: (id) => `/pb-payment/status/${id}`,
-              }),
+            // In your API file where you define the queries
+createPbPaymentLink: build.mutation({
+  query: ({ recommendationId, price }) => ({
+    url: '/pb-payment/admin/create-link',
+    method: 'POST',
+    body: { recommendationId, price },
+  }),
+  // ✅ ADDED: Invalidate payment status cache after creating link
+  invalidatesTags: (result, error, { recommendationId }) => [
+    { type: 'PbPaymentStatus', id: recommendationId },
+    { type: 'PbRecommendation', id: recommendationId },
+  ],
+}),
+
+getPbPaymentStatus: build.query({
+  query: (id) => `/pb-payment/status/${id}`,
+  // ✅ ADDED: Tag this query so it can be invalidated
+  providesTags: (result, error, id) => [{ type: 'PbPaymentStatus', id }],
+}),
 
 
   }),
@@ -1049,6 +1066,7 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
+  useRetryPaymentMutation,
   useListCategoriesQuery,
   useGetAdminCategoryQuery,
   useCreateCategoryMutation,

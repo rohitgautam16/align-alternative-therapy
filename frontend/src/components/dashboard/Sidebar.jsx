@@ -13,6 +13,7 @@ import {
 import { MdLibraryMusic, MdFavorite, MdQueueMusic } from 'react-icons/md';
 import { useGetCategoriesQuery } from '../../utils/api';
 import { useSidebar } from '../../context/SidebarContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 
 export default function Sidebar({ className = '' }) {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function Sidebar({ className = '' }) {
 
   const [isExploreOpen, setIsExploreOpen] = useState(true);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const { isRecommendationOnly } = useSubscription();
 
   useEffect(() => {
     // console.log('Categories raw data:', categories);
@@ -125,7 +127,7 @@ export default function Sidebar({ className = '' }) {
           </motion.div>
         </div>
 
-       
+       {!isRecommendationOnly && (
         <div>
           <button
             onClick={() =>
@@ -178,6 +180,8 @@ export default function Sidebar({ className = '' }) {
             </NavLink>
           </motion.div>
         </div>
+       )}
+
       </div>
 
      

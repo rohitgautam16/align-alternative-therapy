@@ -280,15 +280,17 @@ router.delete ('/user-playlists/:id',                requireAuth, pc.deletePlayl
 router.post   ('/user-playlists/:id/songs',          requireAuth, pc.addSong);
 router.delete ('/user-playlists/:id/songs/:songId',  requireAuth, pc.removeSong);
 
-const { checkoutController, checkoutAddonController, cancelSubscriptionController, cancelAddonController, removeBaseController, subscriptionSummaryController, createBillingPortalSession, repairStripeLinksController } = require('./controllers/subscriptionController');
+const { userPermissionController } = require('./controllers/userPermissionController');
+
+router.get('/permissions', requireAuth, userPermissionController);
+
+const { checkoutController, cancelSubscriptionController, subscriptionSummaryController, createBillingPortalSession, repairStripeLinksController } = require('./controllers/subscriptionController');
 
 console.log('requireAuth:', typeof requireAuth);
 console.log('checkoutController:', typeof checkoutController);
 router.post('/subscribe/checkout', requireAuth, checkoutController);
-router.post('/subscribe/checkout-addon', requireAuth, checkoutAddonController);
+
 router.post('/subscribe/cancel', requireAuth, cancelSubscriptionController);
-router.post('/subscribe/cancel-addon', requireAuth, cancelAddonController);
-router.post('/subscribe/remove-base', requireAuth, removeBaseController);
 router.get('/subscribe/summary', requireAuth, subscriptionSummaryController);
 router.post('/billing/portal', requireAuth, createBillingPortalSession);
 router.post('/admin/repair-stripe-links', requireAuth, repairStripeLinksController);
@@ -359,7 +361,8 @@ const {
   getUserController,
   createUserController,
   updateUserController,
-  deleteUserController
+  deleteUserController,
+  retryUserPaymentController
 } = require('./controllers/admin Controllers/adminUserController');
 
 router.get('/admin/users/admins',      requireAuth, requireAdmin, listAdminsController);
@@ -369,6 +372,8 @@ router.get(   '/admin/users/:id',      requireAuth, requireAdmin, getUserControl
 router.post(  '/admin/users',          requireAuth, requireAdmin, createUserController);
 router.put(   '/admin/users/:id',      requireAuth, requireAdmin, updateUserController);
 router.delete('/admin/users/:id',      requireAuth, requireAdmin, deleteUserController);
+router.post('/users/:id/retry-payment', retryUserPaymentController);
+
 
 const {
   listCategoriesController,

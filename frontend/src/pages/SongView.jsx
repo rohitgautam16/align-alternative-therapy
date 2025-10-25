@@ -218,10 +218,10 @@ const bgUrl = heroImg
 
           <span className="hidden md:block text-gray-400">{song.category || '—'}</span>
           <span className="hidden md:block text-gray-400">{timeText}</span>
-          <div className="hidden md:flex justify-end">
+          <div className="hidden md:flex justify-start">
             <button
               onClick={(e) => { e.stopPropagation(); handlePlay(); }}
-              className="md:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
+              className="md:opacity-100 cursor-pointer lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
             >
               Play
             </button>

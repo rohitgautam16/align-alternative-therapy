@@ -17,8 +17,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useLocation, createSearchParams, Link } from 'react-router-dom';
 import useSignOut from 'react-auth-kit/hooks/useSignOut';
-
-// ✅ import subscription context
 import { useSubscription } from '../../context/SubscriptionContext';
 
 export default function Topbar() {
@@ -32,6 +30,7 @@ export default function Topbar() {
 
   // ✅ consume latest subscription context
   const { summary, baseEntitled, addonEntitled, isEntitled, loading, error } = useSubscription();
+  const { isRecommendationOnly } = useSubscription();
 
   // Show "Manage subscription" if user has any entitlement or active subscription
   const showManage = Boolean(isEntitled);
@@ -115,21 +114,23 @@ export default function Topbar() {
       </div>
 
       {/* CENTER */}
-      <div className="flex-1 flex justify-center">
-        {isLoading ? (
-          <div className="w-1/3 h-10 bg-gray-600 rounded-full animate-pulse" />
-        ) : (
-          <div className="relative text-gray-300 focus-within:text-gray-100 w-2/3 sm:w-1/3 max-md:w-2/3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search..."
-              onChange={handleSearchChange}
-              className="w-full pl-10 pr-4 py-2 bg-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary/50"
-            />
+      {!isRecommendationOnly && (
+          <div className="flex-1 flex justify-center">
+            {isLoading ? (
+              <div className="w-1/3 h-10 bg-gray-600 rounded-full animate-pulse" />
+            ) : (
+              <div className="relative text-gray-300 focus-within:text-gray-100 w-2/3 sm:w-1/3 max-md:w-2/3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  onChange={handleSearchChange}
+                  className="w-full pl-10 pr-4 py-2 bg-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary/50"
+                />
+              </div>
+            )}
           </div>
         )}
-      </div>
 
       {/* RIGHT */}
       <div className="flex items-center space-x-4 relative">

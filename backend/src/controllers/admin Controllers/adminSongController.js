@@ -44,11 +44,14 @@ async function createSongController(req, res, next) {
       category,
       playlist,
       artwork_filename,
-      cdn_url
+      cdn_url,
+      is_free // ✅ include this
     } = req.body;
+
     if (!title || !slug) {
       return res.status(400).json({ error: 'title and slug are required' });
     }
+
     const newSong = await createSongAdmin({
       name,
       title,
@@ -59,8 +62,10 @@ async function createSongController(req, res, next) {
       category,
       playlist,
       artwork_filename,
-      cdn_url
+      cdn_url,
+      is_free // ✅ pass through
     });
+
     res.status(201).json(newSong);
   } catch (err) {
     next(err);
@@ -70,12 +75,19 @@ async function createSongController(req, res, next) {
 async function updateSongController(req, res, next) {
   try {
     const fields = req.body;
+
+
+    if (fields.is_free !== undefined) {
+      fields.is_free = fields.is_free ? 1 : 0; // normalize to 1/0
+    }
+
     const updated = await updateSongAdmin(req.params.id, fields);
     res.json(updated);
   } catch (err) {
     next(err);
   }
 }
+
 
 async function deleteSongController(req, res, next) {
   try {

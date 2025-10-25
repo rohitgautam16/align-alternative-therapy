@@ -81,6 +81,8 @@ export default function PlayerUIDesktop(props) {
   );
   const initialSlide = currentIndex >= 0 ? currentIndex : 0;
 
+  console.log(currentTrack);
+
   useEffect(() => {
     if (!currentTrack) return;
     if (!expanded) onToggleExpanded?.();
@@ -251,7 +253,7 @@ export default function PlayerUIDesktop(props) {
                     onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                   />
                   <div className="min-w-0">
-                    <h3 className="text-white font-semibold text-sm truncate">{currentTrack.name}</h3>
+                    <h3 className="text-white font-semibold text-sm truncate">{currentTrack.name || currentTrack.title}</h3>
                     <p className="text-gray-300 text-xs truncate">{currentTrack.artist}</p>
                   </div>
                 </div>
@@ -332,7 +334,7 @@ export default function PlayerUIDesktop(props) {
               onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
             />
             <div className="truncate">
-              <p className="font-semibold truncate">{currentTrack.name}</p>
+              <p className="font-semibold truncate">{currentTrack.name || currentTrack.title}</p>
               <p className="text-sm text-gray-400 truncate">{currentTrack.artist}</p>
             </div>
           </div>

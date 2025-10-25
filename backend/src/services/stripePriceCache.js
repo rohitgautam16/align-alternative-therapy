@@ -1,47 +1,42 @@
 'use strict';
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const FREE_PRICE_ID = process.env.STRIPE_FREE_PREMIUM_PRICE_ID;
 
 let cachedProducts = null;
 let cachedPrices = null;
 
 /**
  * Load all products and prices from Stripe (paginated) and cache them.
- * This implementation is defensive: only passes starting_after when truthy.
  */
 async function loadProductsAndPrices() {
   const products = [];
   let startingAfter = null;
 
-  // Load products (paginated)
   do {
     const params = { limit: 100 };
     if (startingAfter) params.starting_after = startingAfter;
 
-    const response = await stripe.products.list(params);
-    products.push(...response.data);
+    const resp = await stripe.products.list(params);
+    products.push(...resp.data);
 
-    if (response.has_more && response.data.length > 0) {
-      startingAfter = response.data[response.data.length - 1].id;
-    } else {
-      startingAfter = null;
-    }
+    startingAfter = resp.has_more && resp.data.length > 0
+      ? resp.data[resp.data.length - 1].id
+      : null;
   } while (startingAfter);
 
-  // Load prices (paginated) and expand product in each price for metadata
   const prices = [];
   startingAfter = null;
+
   do {
     const params = { limit: 100, expand: ['data.product'] };
     if (startingAfter) params.starting_after = startingAfter;
 
-    const response = await stripe.prices.list(params);
-    prices.push(...response.data);
+    const resp = await stripe.prices.list(params);
+    prices.push(...resp.data);
 
-    if (response.has_more && response.data.length > 0) {
-      startingAfter = response.data[response.data.length - 1].id;
-    } else {
-      startingAfter = null;
-    }
+    startingAfter = resp.has_more && resp.data.length > 0
+      ? resp.data[resp.data.length - 1].id
+      : null;
   } while (startingAfter);
 
   cachedProducts = products;
@@ -50,33 +45,56 @@ async function loadProductsAndPrices() {
   return { products, prices };
 }
 
-// Build a structured map of product types and prices keyed by billing interval
+/**
+ * Build product price map using STRIPE_BASE_PRODUCT_ID and include free-access.
+ */
 function buildProductPriceMap() {
   if (!cachedPrices) throw new Error('Prices not loaded yet');
-  const result = {
-    base: { productId: null, name: null, prices: {} },
-    addon: { productId: null, name: null, prices: {} },
-  };
+
+  const BASE_PRODUCT_ID = process.env.STRIPE_BASE_PRODUCT_ID;
+  const result = { base: { productId: null, name: null, prices: {} } };
 
   for (const price of cachedPrices) {
-    // price.product may be an id or expanded object depending on response; handle both
-    const product = price.product && price.product.id ? price.product : null;
-    const metadata = product ? (product.metadata || {}) : {};
+    const product = price.product?.id ? price.product : null;
+    if (!product) continue;
 
-    // fallback: if product is not expanded, try to use price.product as id (we'll ignore metadata)
-    const type = metadata.type ? String(metadata.type).toLowerCase() : null;
-    if (!type) continue;
-    if (!['base', 'addon'].includes(type)) continue;
+    // Filter by base product if set
+    if (BASE_PRODUCT_ID && product.id !== BASE_PRODUCT_ID) continue;
 
-    if (!result[type].productId) {
-      result[type].productId = product.id;
-      result[type].name = metadata.name || product.name || null;
+    if (!result.base.productId) {
+      result.base.productId = product.id;
+      result.base.name = product.name || 'Music Platform Premium';
     }
 
-    if (price.recurring?.interval === 'month') {
-      result[type].prices.monthly = price.id;
-    } else if (price.recurring?.interval === 'year') {
-      result[type].prices.annual = price.id;
+    const interval = price.recurring?.interval;
+    if (interval === 'month') result.base.prices.monthly = price.id;
+    else if (interval === 'year') result.base.prices.annual = price.id;
+
+    // Add free-access price if it matches env var
+    if (FREE_PRICE_ID && price.id === FREE_PRICE_ID) {
+      result.base.prices.free_access = price.id;
+    }
+  }
+
+  // Fallback if STRIPE_BASE_PRODUCT_ID set but not found
+  if (BASE_PRODUCT_ID && !result.base.productId) {
+    console.warn(
+      `⚠️ STRIPE_BASE_PRODUCT_ID=${BASE_PRODUCT_ID} not found in fetched prices.`
+    );
+  }
+
+  // Fallback if no base product configured
+  if (!BASE_PRODUCT_ID && !result.base.productId) {
+    console.warn(
+      '⚠️ No STRIPE_BASE_PRODUCT_ID provided and no base product found — using first available recurring product.'
+    );
+    const firstActive = cachedPrices.find(p => p.recurring?.interval);
+    if (firstActive?.product?.id) {
+      result.base.productId = firstActive.product.id;
+      result.base.name = firstActive.product.name || 'Music Platform Premium';
+      const interval = firstActive.recurring?.interval;
+      if (interval === 'month') result.base.prices.monthly = firstActive.id;
+      else if (interval === 'year') result.base.prices.annual = firstActive.id;
     }
   }
 
@@ -84,13 +102,10 @@ function buildProductPriceMap() {
 }
 
 async function getProductPriceMap() {
-  if (!cachedPrices) {
-    await loadProductsAndPrices();
-  }
+  if (!cachedPrices) await loadProductsAndPrices();
   return buildProductPriceMap();
 }
 
-// Optional: expose a function to force-refresh cache
 async function loadAndCache(force = false) {
   if (force) {
     cachedProducts = null;
