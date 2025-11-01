@@ -53,7 +53,7 @@ export default function PBMyRecommendations() {
 
     const recTitle = rec.title?.trim() || 'Personalized Pack';
     const recId = rec.id;
-    const paymentStatus = rec.payment_status || 'pending'; // 'pending' | 'paid'
+    const paymentStatus = rec.payment_status || 'pending'; // 'pending' | 'paid' | 'free'
     const paymentLinkUrl = rec.payment_link_url || null;
 
     const items = Array.isArray(entry?.items) ? entry.items : [];
@@ -92,15 +92,22 @@ export default function PBMyRecommendations() {
 
   // 🎵 Single Card Renderer with Lock Popup
   function CardWithMeta({ kind, item, meta, k }) {
-    const locked = meta.paymentStatus !== 'paid';
+    // 🔥 FIXED: Free recommendations should NOT be locked
+    const locked = meta.paymentStatus !== 'paid' && meta.paymentStatus !== 'free';
 
     const handleLockedClick = (e) => {
       e.stopPropagation();
       if (!locked) return;
 
-      // Show animated popup
-      setPopupMessage('This recommendation is locked. Complete payment to unlock access.');
-      setPaymentUrl(meta.paymentLinkUrl);
+      // Determine message based on payment link existence
+      if (meta.paymentLinkUrl) {
+        setPopupMessage('This recommendation is locked. Complete payment to unlock access.');
+        setPaymentUrl(meta.paymentLinkUrl);
+      } else {
+        setPopupMessage('Payment link not generated yet. Please contact support or wait for the admin to set up payment.');
+        setPaymentUrl(null);
+      }
+      
       setShowPopup(true);
     };
 
@@ -206,9 +213,9 @@ export default function PBMyRecommendations() {
                 ) : (
                   <button
                     onClick={() => setShowPopup(false)}
-                    className="bg-secondary text-gray-900 px-5 py-2.5 rounded-full hover:bg-secondary/80 transition"
+                    className="bg-gray-600 text-white px-5 py-2.5 rounded-full hover:bg-gray-500 transition"
                   >
-                    Payment Link Not Generated Yet
+                    Close
                   </button>
                 )}
               </div>

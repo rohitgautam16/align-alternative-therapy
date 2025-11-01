@@ -39,6 +39,7 @@ export default function SongCard({ song, playlist }) {
         artist: song.artist || song.artistName,
         image: song.image || FALLBACK_IMAGE,
         audioUrl: song.audioUrl,
+        description: song.description,
       })
     );
     dispatch(setIsPlaying(true));

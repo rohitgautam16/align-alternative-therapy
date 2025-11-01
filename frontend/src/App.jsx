@@ -24,9 +24,7 @@ import TransitionWrapper from './components/custom-ui/transition'
 import SubscribePage from './pages/SubscribePage'
 import PaymentSuccesful from './components/landing/PaymentSuccesful'
 import ManageSubscription from './pages/ManageSubscription'
-
 import PersonalizeSection from './components/dashboard/Personalized Service/PersonalizeSection';
-
 import AdminRoute from './components/admin/AdminRoutes'
 import AdminDashboardLayout from './components/admin/AdminDashboardLayout'
 import AdminUsersOverview from './pages/Admin/AdminUsersOverview';
@@ -43,19 +41,17 @@ import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
 import AdminPersonalize from './pages/Admin/AdminPersonalize';
 import BasicPersonalize from './pages/Admin/BasicPersonalize';
 import UserRecommendationsList from './pages/Admin/UserRecomendationList';
-
 import RecentlyPlayed from './pages/RecentlyPlayed'
 import useOneTimePreloader from './hooks/useOneTimePreloader'
 import Preloader from './components/custom-ui/Preloader'
-
 import { SubscriptionProvider } from './context/SubscriptionContext';
+import ScrollToTop from './components/common/ScrollToTop'
+import useScrollToTop from './hooks/useScrollToTop';
 
 
-// Wrap with your page‑transition HOC
-//const WrappedHomepage = TransitionWrapper(Homepage)
 const WrappedLoginPage = TransitionWrapper(LoginPage)
 
-// A real component (not an IIFE) to guard /login
+
 function LoginRoute() {
   const isAuth = useIsAuthenticated()
   return isAuth
@@ -64,7 +60,7 @@ function LoginRoute() {
 }
 
 function ProtectedRoute({ children, loginPath = '/login' }) {
-  const isAuth = useIsAuthenticated();  // boolean now
+  const isAuth = useIsAuthenticated();  
   return isAuth
     ? children
    : <Navigate to={loginPath} replace />;
@@ -76,11 +72,13 @@ export default function App() {
   // });
   //if (show === undefined) return null;
   const location = useLocation()
+  useScrollToTop();
 
   return (
     <>
       <SubscriptionProvider>
       {/* {show && <Preloader isVisible onComplete={complete} />} */}
+      <ScrollToTop delay={150} />
       <AnimatePresence initial={false} mode="wait">
       <Routes location={location} >
         {/* Public routes under your global Layout */}

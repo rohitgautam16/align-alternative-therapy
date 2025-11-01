@@ -18,16 +18,17 @@ export default function PlayerShell() {
 
   const {
     currentTrack, audioSrc, isPlaying, progress, volume,
-    shuffle, repeatOne, queue = []
+    shuffle, repeatOne, queue = [], currentIndex
   } = useSelector(s => s.player);
 
   // build sources + key once
   const primary = audioSrc || currentTrack?.audioUrl;
   const srcs = primary ? [primary, FALLBACK] : [FALLBACK];
   const howlerKey = `${currentTrack?.id ?? 'noid'}::${primary ?? 'fallback'}`;
+  const nextTrackSrc = queue[currentIndex + 1]?.audioUrl;
 
   // howler hook
-  const { soundRef, duration, seekTo, handleLoad, handleEnd } = useHowler({
+  const { soundRef, duration, seekTo, handleLoad, handleEnd, isLoading } = useHowler({
     src: srcs,
     playing: isPlaying,
     volume,
@@ -39,10 +40,11 @@ export default function PlayerShell() {
       } else {
         dispatch(nextTrack());
       }
-    }
+    },
+    preloadSrc: queue[currentIndex + 1]?.audioUrl
   });
 
-  // smooth progress rAF (single source)
+
   useEffect(() => {
     let raf;
     const loop = () => {
@@ -56,9 +58,9 @@ export default function PlayerShell() {
     return () => cancelAnimationFrame(raf);
   }, [dispatch, isPlaying, soundRef]);
 
-  if (!currentTrack) return null; // nothing to render if no track
+  if (!currentTrack) return null; 
 
-  // shared callbacks
+
   const onTogglePlay       = () => dispatch(togglePlay());
   const onNext             = () => dispatch(nextTrack());
   const onPrev             = () => dispatch(prevTrack());
@@ -91,8 +93,8 @@ export default function PlayerShell() {
       />
 
       {isMobile
-        ? <PlayerUIMobile {...sharedProps} />
-        : <PlayerUIDesktop {...sharedProps} />
+        ? <PlayerUIMobile {...sharedProps}  isLoading={isLoading} />
+        : <PlayerUIDesktop {...sharedProps}  isLoading={isLoading} />
       }
     </>
   );

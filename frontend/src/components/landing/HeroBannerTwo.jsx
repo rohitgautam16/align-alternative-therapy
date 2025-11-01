@@ -214,7 +214,7 @@ const HeroBannerTwo = () => {
   // Determine video source based on device
   const getVideoSource = () => {
     if (isMobile()) {
-      return videoUrl.replace('3840_2160_60fps', '1920_1080_30fps');
+      return videoUrl.replace('3840_2160_60fps', '3840_2160_60fps');
     }
     return videoUrl;
   };
@@ -264,10 +264,10 @@ const HeroBannerTwo = () => {
       <section 
         style={{ 
           width: "100vw", 
-          height: "100vh", 
+          height: "100svh", 
           position: "relative", 
           overflow: "hidden",
-          minHeight: "100vh",
+          minHeight: "100svh",
           backgroundColor: "#000",
         }}
       >

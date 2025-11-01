@@ -3,8 +3,9 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import stubBlogs from '../stubs/blogs';
 import Header from '../components/common/Header';
+import TransitionWrapper from '../components/custom-ui/transition';
 
-export default function BlogPostPage() {
+const BlogPostPage = () => {
   const { slug } = useParams();
   const location = useLocation();
   const blog = stubBlogs.find(b => b.slug === slug);
@@ -205,3 +206,5 @@ export default function BlogPostPage() {
     </div>
   );
 }
+
+export default TransitionWrapper(BlogPostPage);

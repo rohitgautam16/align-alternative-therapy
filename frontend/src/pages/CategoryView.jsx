@@ -7,6 +7,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 
 const FALLBACK_BG =
   'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop';
+const FALLBACK_DESC = '';
 
 export default function CategoryView() {
   const { slug } = useParams();
@@ -89,7 +90,7 @@ console.log(category.image, category.artwork_filename);
                 {category?.title}
               </h1>
               <p className="max-w-2xl mt-3 sm:mt-4 text-sm sm:text-base text-gray-300">
-                {category?.description || 'No description available for this category.'}
+                {category?.description || FALLBACK_DESC}
               </p>
             </>
           )}

@@ -89,7 +89,7 @@ const FullScreenMenu = ({ isMenuOpen, setIsMenuOpen }) => {
   return (
     <>
       {showMenu && (
-        <div className="fixed inset-0 z-140 h-screen max-h-screen bg-black flex">
+        <div className="fixed inset-0 z-140 h-svh max-h-svh bg-black flex">
           {/* LEFT: Image column (hidden on mobile; visible on lg+) */}
           <div className="hidden md:block lg:block lg:w-2/5 relative overflow-hidden">
             <img

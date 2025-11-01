@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { buildImageUrl } from '../utils/imageHelpers';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
-const FALLBACK_DESC = 'No description available for this track.';
+const FALLBACK_DESC = '';
 
 export default function SongView() {
   const { slug } = useParams();
@@ -68,10 +68,22 @@ export default function SongView() {
       artist:   song.artist,
       image:    heroImg,        // use the resolved image
       audioUrl: song.audioUrl,
+      description: song.description,
     }));
     dispatch(setIsPlaying(true));
     recordPlay(song.id);
   };
+
+  const [showDescModal, setShowDescModal] = useState(false);
+  const [isDescTruncated, setIsDescTruncated] = useState(false);
+  const descRef = React.useRef(null);
+
+  useEffect(() => {
+    if (descRef.current) {
+      const el = descRef.current;
+      setIsDescTruncated(el.scrollHeight > el.clientHeight + 5);
+    }
+  }, [song?.description]);
 
   if (isLoading) return <div className="text-white text-center py-20">Loading song…</div>;
   if (isError || !song) return <div className="text-red-500 text-center py-20">Error loading song.</div>;
@@ -130,9 +142,43 @@ const bgUrl = heroImg
             {song.name || song.title}
           </h1>
           <p className="mt-2 text-gray-400 text-sm sm:text-base">{song.artist}</p>
-          <p className="mt-3 max-w-none sm:max-w-xl text-gray-300 text-base sm:text-lg">
+          <p
+            ref={descRef} 
+            className="mt-3 max-w-none sm:max-w-xl text-gray-300 text-base sm:text-lg line-clamp-3">
             {song.description || FALLBACK_DESC}
           </p>
+          {isDescTruncated && (
+            <button
+              onClick={() => setShowDescModal(true)}
+              className="mt-2 text-secondary cursor-pointer font-medium hover:underline"
+            >
+              Read more
+            </button>
+          )}
+
+          {/* Read More Modal */}
+          <div
+            className={`fixed inset-0 z-200 flex items-center justify-center bg-black/40 backdrop-blur-lg transition-all duration-300 ${
+              showDescModal ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-0 pointer-events-none'
+            }`}
+            onClick={() => setShowDescModal(false)}
+          >
+            <div
+              className="relative bg-black/30 backdrop-blur-lg rounded-xl w-[85vw] h-[75vh] overflow-x-scroll max-w-3xl p-6 sm:p-8 text-gray-200 transform transition-all duration-300 ease-out"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowDescModal(false)}
+                className="absolute top-3 right-3 p-1 hover:bg-secondary/70 rounded transition"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+              <h3 className="text-2xl pt-4 sm:text-3xl text-secondary font-semibold mb-3">About {song.name || song.title}</h3>
+              <p className="text-gray-400 leading-relaxed whitespace-pre-line">
+                {song.description}
+              </p>
+            </div>
+          </div>
           <p className="mt-2 text-sm sm:text-base text-gray-400">
             • Released: {new Date(song.createdAt).toLocaleDateString()} 
             • {song.category || 'Uncategorized'}
@@ -210,7 +256,7 @@ const bgUrl = heroImg
             <button
               onClick={(e) => { e.stopPropagation(); handlePlay(); }}
               aria-label="Play"
-              className="inline-flex items-center justify-center w-8 h-8 transition"
+              className="inline-flex items-center cursor-pointer justify-center w-8 h-8 transition"
             >
               <Play className="w-4 h-4 text-white" />
             </button>
@@ -221,9 +267,9 @@ const bgUrl = heroImg
           <div className="hidden md:flex justify-start">
             <button
               onClick={(e) => { e.stopPropagation(); handlePlay(); }}
-              className="md:opacity-100 cursor-pointer lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
+              className="md:opacity-100 cursor-pointer lg:opacity-0 lg:group-hover:opacity-100 px-2 py-1 rounded transition"
             >
-              Play
+              <Play className="w-6 h-6 text-white" />
             </button>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { useMenu } from './context/MenuContext';
 import Lenis from '@studio-freight/lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
+import useScrollToTop from './hooks/useScrollToTop';
 import Header from './components/common/Header';
 import FullScreenMenu from './components/common/FullScreenMenu/FullScreenMenu';
 // import MusicPlayer from './components/music/MusicPlayer';
@@ -14,6 +14,7 @@ import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated';
 gsap.registerPlugin(ScrollTrigger);
 
 export default function Layout() {
+  useScrollToTop();
   const { isMenuOpen, setIsMenuOpen } = useMenu();
   //const isAuth = useSelector((s) => s.auth.isAuthenticated);
   const isAuth = useIsAuthenticated(); 

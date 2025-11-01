@@ -51,7 +51,7 @@ export default function Search() {
     return (
       <div className="flex items-center justify-center py-12">
         {/* keeping as-is per your logic; border still red */}
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
         <span className="ml-2">Searching "{debouncedTerm}"...</span>
       </div>
     );
@@ -96,7 +96,7 @@ export default function Search() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={[
-                  "snap-start pb-2 px-4 py-2 rounded-full border transition whitespace-nowrap text-sm sm:text-base",
+                  "snap-start pb-2 px-4 py-2 rounded-full cursor-pointer border transition whitespace-nowrap text-sm sm:text-base",
                   isActive
                     ? "text-white border-gray-400 bg-secondary"
                     : "text-gray-300 border-gray-500 hover:text-white hover:border-white"
@@ -116,7 +116,7 @@ export default function Search() {
       {showSection('Songs') && songs.length > 0 && (
         <section className="space-y-3 sm:space-y-4">
           <h2 className="text-lg sm:text-2xl font-semibold">Songs</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {songs.map((song, idx) => (
               <div
                 key={song.id}
@@ -127,7 +127,7 @@ export default function Search() {
 
                 <img
                   src={song.image || song.artwork_filename || FALLBACK_IMAGE}
-                  alt={song.title}
+                  alt={song.name || song.title}
                   className="w-16 h-16 rounded-md object-cover shrink-0"
                   onError={(e) => {
                     console.log('Song image failed to load:', song.artwork_filename);
@@ -136,7 +136,7 @@ export default function Search() {
                 />
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{song.title}</p>
+                  <p className="font-semibold truncate">{song.name || song.title}</p>
                   <p className="text-gray-400 text-sm truncate">{song.artist}</p>
                   {song.playlistTitle && (
                     <p className="text-gray-500 text-xs truncate">from {song.playlistTitle}</p>

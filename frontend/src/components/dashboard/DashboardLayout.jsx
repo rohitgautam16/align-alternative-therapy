@@ -9,8 +9,10 @@ import Sidebar from './Sidebar';
 // import MusicPlayer, { PLAYER_HEIGHT, HANDLE_HEIGHT } from '../music/MusicPlayer';
 import PlayerShell from '../music/PlayerShell';
 import { usePlayerBarPadding } from '../music/usePlayerBarPadding';
+import useScrollToTop from '../../hooks/useScrollToTop';
 
 function InnerLayout() {
+  useScrollToTop();
   const { currentTrack } = useSelector(s => s.player);
   const { expanded } = usePlayerUI();
   const { drawerOpen, toggleDrawer } = useSidebar(); 

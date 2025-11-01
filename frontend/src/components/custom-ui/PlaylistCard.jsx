@@ -44,6 +44,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false }) {
         artist: song.artistName,
         image: song.image || FALLBACK_IMAGE,
         audioUrl: song.audioUrl,
+        description: song.description,
       })
     );
     dispatch(setIsPlaying(true));

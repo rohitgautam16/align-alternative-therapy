@@ -41,6 +41,7 @@ export default function PlayerUIMobile(props) {
     onToggleRepeatOne,
     onToggleExpanded,
     onSelectTrack,
+    isLoading
   } = props;
 
   if (!currentTrack) return null;
@@ -81,7 +82,7 @@ export default function PlayerUIMobile(props) {
     className: 'center slider-3d',
     centerMode: true,
     infinite: shuffledQueue.length > 1,
-    centerPadding: '48px',
+    centerPadding: '58px',
     slidesToShow: 1,
     speed: 500,
     cssEase: 'ease-out',
@@ -98,20 +99,42 @@ export default function PlayerUIMobile(props) {
     },
   };
 
-  // --- fallback handling for background ---
-  const [bgSrc, setBgSrc] = useState(currentTrack.image || FALLBACK_IMAGE);
-  useEffect(() => {
-    if (!currentTrack?.image) {
-      setBgSrc(FALLBACK_IMAGE);
-      return;
-    }
-    const img = new Image();
-    img.src = currentTrack.image;
-    img.onload = () => setBgSrc(currentTrack.image);
-    img.onerror = () => setBgSrc(FALLBACK_IMAGE);
-  }, [currentTrack]);
+  // --- safe URL builder (CDN fallback + simple space-encoding) ---
+function getSafeImageURL(track) {
+  if (!track) return FALLBACK_IMAGE;
 
-  const bgImage = (shuffledQueue[activeIdx] || currentTrack).image || FALLBACK_IMAGE;
+  // prefer an absolute HTTP url if present
+  if (track.image && track.image.startsWith('http')) {
+    // if already encoded (%20) leave as-is, otherwise replace plain spaces
+    return track.image.includes('%20') ? track.image : track.image.replace(/ /g, '%20');
+  }
+
+  // fallback to artwork_filename on your CDN if provided
+  if (track.artwork_filename) {
+    return `https://cdn.align-alternativetherapy.com/align-images/categories/${encodeURIComponent(track.artwork_filename)}`;
+  }
+
+  // fallback to the unsplash default
+  return FALLBACK_IMAGE;
+}
+
+// --- compute the active track (center slide) and preload its image ---
+const activeTrack = (shuffledQueue[activeIdx] || currentTrack);
+const [bgSrc, setBgSrc] = useState(() => getSafeImageURL(activeTrack));
+
+useEffect(() => {
+  const url = getSafeImageURL(activeTrack);
+  const img = new Image();
+  img.src = url;
+  img.onload = () => setBgSrc(url);
+  img.onerror = () => setBgSrc(FALLBACK_IMAGE);
+
+  // cleanup not strictly necessary for Image, but keep pattern consistent
+  return () => {
+    // optional: abort logic if you later use fetch/AbortController
+  };
+}, [activeIdx, JSON.stringify(shuffledQueue.map(t => t.id)), currentTrack?.id]);
+
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
@@ -166,22 +189,28 @@ export default function PlayerUIMobile(props) {
 
             <div className="flex items-center gap-2">
               <button
-                className="w-9 h-9 rounded-full grid place-items-center bg-white/10 ring-1 ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
+                className="w-12 h-12 rounded-full grid place-items-center bg-white/10 ring-1 ring-white/15 backdrop-blur-md hover:bg-white/15 transition"
                 onClick={(e) => { e.stopPropagation(); onToggleExpanded(); }}
                 aria-label="Expand player"
               >
-                <ChevronUp size={18} />
+                <ChevronUp className="cursor-pointer text-secondary hover:scale-105 transition-transform" size={18} />
               </button>
               <button
                 className="
-                  shrink-0 w-10 h-10 rounded-full grid place-items-center
-                  bg-secondary/80 text-black ring-1 ring-white/40 backdrop-blur-md
+                  shrink-0 w-12 h-12 rounded-full grid place-items-center
+                  ring-1 ring-white/40 backdrop-blur-md
                   hover:scale-[1.03] transition
                 "
                 onClick={(e) => { e.stopPropagation(); onTogglePlay(); }}
                 aria-label={isPlaying ? 'Pause' : 'Play'}
               >
-                {isPlaying ? <PauseCircle size={24} /> : <PlayCircle size={24} />}
+                {isLoading ? (
+                    <div className="w-9 h-9 border-4 border-t-secondary border-gray-200 rounded-full animate-spin" />
+                  ) : isPlaying ? (
+                    <PauseCircle className="cursor-pointer text-secondary hover:scale-105 transition-transform" size={36} />
+                  ) : (
+                    <PlayCircle className="cursor-pointer text-secondary hover:scale-105 transition-transform" size={36} />
+                  )}
               </button>
             </div>
           </motion.div>
@@ -206,7 +235,7 @@ export default function PlayerUIMobile(props) {
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{
-                  backgroundImage: `url(${bgSrc})`,
+                  backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.2)), url("${bgSrc}")`,
                   filter: 'blur(16px)',
                   transform: 'scale(1.12)',
                   willChange: 'transform'
@@ -216,7 +245,7 @@ export default function PlayerUIMobile(props) {
             </div>
 
             {/* Top bar */}
-            <div className="relative pt-[env(safe-area-inset-top,0px)]">
+            <div className="relative pt-[env(safe-area-inset-top,0px)] pb-10">
               <div className="flex items-center justify-between px-4 py-3">
                 <button
                   onClick={onToggleExpanded}
@@ -233,7 +262,7 @@ export default function PlayerUIMobile(props) {
             {/* Foreground */}
             <div className="relative h-full flex flex-col">
               {/* Slider */}
-              <div className="flex-1 flex items-center justify-center px-0">
+              <div className="flex-1 flex items-start justify-center pt-15">
                 <div className="w-full max-w-sm mx-auto">
                   <Slider ref={sliderRef} {...sliderSettings}>
                     {(shuffledQueue.length ? shuffledQueue : [currentTrack]).map((t) => (
@@ -247,8 +276,11 @@ export default function PlayerUIMobile(props) {
                               onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                             />
                           </div>
-                          <div className="relative text-center mt-2 mb-1 px-6">
-                            <p className="text-xs text-gray-200 truncate">{t.artist}</p>
+                          <div className="relative text-center mt-2 w-64 mb-1 px-1">
+                            <p className="text-xs mt-2 text-gray-200 truncate">{t.artist}</p>
+                            <p className="mt-2 text-sm text-gray-300 text-center px-4 leading-snug line-clamp-3">
+                              {t.description}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -315,7 +347,13 @@ export default function PlayerUIMobile(props) {
                           hover:scale-[1.03] transition
                         "
                       >
-                        {isPlaying ? <PauseCircle size={36} /> : <PlayCircle size={36} />}
+                        {isLoading ? (
+                            <div className="w-9 h-9 border-4 border-t-secondary border-gray-200 rounded-full animate-spin" />
+                          ) : isPlaying ? (
+                            <PauseCircle size={36} />
+                          ) : (
+                            <PlayCircle size={36} />
+                          )}
                       </button>
 
                       <button

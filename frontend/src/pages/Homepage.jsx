@@ -17,7 +17,7 @@ import HeroBannerTwo from '../components/landing/HeroBannerTwo';
 
 const Homepage = () => {
   return (
-    <main className="homepage overflow-x-hidden">
+    <main className="homepage overflow-hidden">
       <section className="header">
         <Header />
       </section>

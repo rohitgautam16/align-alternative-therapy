@@ -28,8 +28,9 @@ async function fetchRecentPlays(userId, limit = 20) {
   const [rows] = await db.query(
     `SELECT
        s.id,
-       s.slug              AS song_slug,   
+       s.slug,   
        s.title,
+       s.description,
        s.name,
        s.artist,
        s.artwork_filename  AS image,
@@ -39,7 +40,7 @@ async function fetchRecentPlays(userId, limit = 20) {
      JOIN audio_metadata s 
        ON s.id = sp.song_id
      WHERE sp.user_id = ?
-     GROUP BY s.id, s.slug, s.title, s.name, s.artist, s.artwork_filename, s.cdn_url
+     GROUP BY s.id, s.slug, s.title, s.name, s.artist, s.description, s.artwork_filename, s.cdn_url
      ORDER BY played_at DESC
      LIMIT ?`,
     [userId, limit]

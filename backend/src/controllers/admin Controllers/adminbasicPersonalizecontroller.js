@@ -554,8 +554,9 @@ exports.listMineForCurrentUser = async (req, res) => {
           title,
           name,
           artist,
+          description,
           artwork_filename AS image,
-          cdn_url AS audio_url,
+          cdn_url AS audioUrl,
           slug
         FROM audio_metadata
         WHERE id IN (${trackIds.map(() => '?').join(',')})

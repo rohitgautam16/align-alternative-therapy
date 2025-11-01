@@ -4,8 +4,10 @@ import { Outlet } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
 import AdminTopbar from './AdminTopbar';
 import AdminSidebar from './AdminSidebar';
+import useScrollToTop from '../../hooks/useScrollToTop';
 
 function InnerAdminLayout() {
+  useScrollToTop(); 
   const { drawerOpen, toggleDrawer } = useSidebar();
 
   return (

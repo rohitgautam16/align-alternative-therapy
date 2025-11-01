@@ -6,6 +6,7 @@ const multer = require('multer');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const { sendMail } = require('./mail/mailer'); 
+const { passwordResetLimiter } = require('./middleware/rateLimiter');
 
 // const upload = multer({ storage: multer.memoryStorage() });
 const AWS = require('aws-sdk');
@@ -232,6 +233,14 @@ router.post('/auth/login',    loginController);
 // Cookie-based token refresh & logout
 router.post('/auth/refresh',  refreshController);
 router.post('/auth/logout',   logoutController);
+
+const {
+  requestResetController,
+  resetPasswordController,
+} = require('./controllers/passwordResetController');
+
+router.post('/password/forgot', passwordResetLimiter,requestResetController);
+router.post('/password/reset', resetPasswordController);
 
 
 // const { uploadImagesController } = require('./controllers/admin Controllers/r2UploadController');

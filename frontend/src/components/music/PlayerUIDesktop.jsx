@@ -47,7 +47,7 @@ export default function PlayerUIDesktop(props) {
     shuffle,
     repeatOne,
     expanded,
-
+    isLoading,
     onTogglePlay,
     onNext,
     onPrev,
@@ -60,20 +60,21 @@ export default function PlayerUIDesktop(props) {
   } = props;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [bgImage, setBgImage] = useState(currentTrack?.image || FALLBACK_IMAGE);
   const sliderRef = useRef(null);
 
+  console.log(currentTrack);
+
   // Keep fallback-safe background
-  useEffect(() => {
-    if (currentTrack?.image) {
-      const img = new Image();
-      img.src = currentTrack.image;
-      img.onload = () => setBgImage(currentTrack.image);
-      img.onerror = () => setBgImage(FALLBACK_IMAGE);
-    } else {
-      setBgImage(FALLBACK_IMAGE);
-    }
-  }, [currentTrack]);
+  // useEffect(() => {
+  //   if (currentTrack?.image) {
+  //     const img = new Image();
+  //     img.src = currentTrack.image;
+  //     img.onload = () => setBgImage(currentTrack.image);
+  //     img.onerror = () => setBgImage(FALLBACK_IMAGE);
+  //   } else {
+  //     setBgImage(FALLBACK_IMAGE);
+  //   }
+  // }, [currentTrack]);
 
   const currentIndex = useMemo(
     () => (currentTrack ? queue.findIndex(t => t.id === currentTrack.id) : -1),
@@ -119,6 +120,25 @@ export default function PlayerUIDesktop(props) {
   if (!currentTrack) return null;
 
   const toggleFullscreen = () => setIsFullscreen(v => !v);
+
+
+
+  const bgImage = currentTrack?.image
+    ? currentTrack.image.startsWith('http')
+      ? currentTrack.image.includes('%20')
+        ? currentTrack.image // already encoded → leave as-is
+        : currentTrack.image.replace(/ /g, '%20') // encode only spaces
+      : `https://cdn.align-alternativetherapy.com/align-images/songs/${encodeURIComponent(currentTrack.image)}`
+    : currentTrack?.artwork_filename
+    ? `https://cdn.align-alternativetherapy.com/align-images/songs/${encodeURIComponent(currentTrack.artwork_filename)}`
+    : FALLBACK_IMAGE;
+
+  const bgUrl = bgImage
+    ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${bgImage})`
+    : 'transparent';
+
+  console.log(currentTrack);
+
 
   return (
     <motion.div
@@ -175,14 +195,14 @@ export default function PlayerUIDesktop(props) {
           {/* Main Container */}
           <div className="relative h-full flex flex-col">
             {/* ── Carousel Section (75vh) ── */}
-            <div className="flex-1 flex flex-col items-center justify-center pt-16 pb-4" style={{ height: '75vh' }}>
+            <div className="flex-1 flex flex-col items-center justify-start pt-25 pb-4" style={{ height: '75vh' }}>
               <div className="mx-auto max-w-screen-lg w-full">
                 <Slider ref={sliderRef} {...sliderSettings}>
                   {queue.length > 0 ? (
                     queue.map((track, idx) => (
                       <div key={track.id || idx} className="px-2">
                         <div
-                          className={`w-56 h-56 mx-auto relative transition-transform duration-300 ${
+                          className={`w-76 h-76 mx-auto relative transition-transform duration-300 ${
                             track.id === currentTrack.id ? 'scale-100' : 'scale-75 opacity-60'
                           }`}
                           onClick={() => {
@@ -204,6 +224,11 @@ export default function PlayerUIDesktop(props) {
                                 {track.artist}
                               </p>
                             </div>
+                          )}
+                          {track.id === currentTrack.id && (
+                            <p className="mt-2 text-base text-gray-300 mx-auto text-center line-clamp-4">
+                              {track.description}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -272,7 +297,10 @@ export default function PlayerUIDesktop(props) {
                     onClick={onPrev}
                     className="cursor-pointer text-white hover:text-secondary/70 transition-colors"
                   />
-                  {isPlaying ? (
+                  {isLoading ? (
+                    // Spinner in place of play/pause
+                    <div className="w-10 h-10 border-4 border-t-secondary border-gray-200 rounded-full animate-spin" />
+                  ) : isPlaying ? (
                     <PauseCircle
                       size={40}
                       onClick={onTogglePlay}
@@ -350,17 +378,20 @@ export default function PlayerUIDesktop(props) {
                 onClick={onPrev}
                 className="cursor-pointer hover:text-secondary/70"
               />
-              {isPlaying ? (
+              {isLoading ? (
+                // Spinner in place of play/pause
+                <div className="w-10 h-10 border-4 border-t-secondary border-gray-200 rounded-full animate-spin" />
+              ) : isPlaying ? (
                 <PauseCircle
-                  size={36}
+                  size={40}
                   onClick={onTogglePlay}
-                  className="cursor-pointer text-secondary"
+                  className="cursor-pointer text-secondary hover:scale-105 transition-transform"
                 />
               ) : (
                 <PlayCircle
-                  size={36}
+                  size={40}
                   onClick={onTogglePlay}
-                  className="cursor-pointer text-secondary"
+                  className="cursor-pointer text-secondary hover:scale-105 transition-transform"
                 />
               )}
               <SkipForward

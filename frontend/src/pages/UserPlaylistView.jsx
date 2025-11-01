@@ -179,154 +179,187 @@ export default function UserPlaylistView() {
       </AnimatePresence>
 
       {/* Top Bar */}
-      <div className="flex justify-between items-center px-6 py-4">
-        <button onClick={()=>nav(-1)} className="flex items-center gap-1 text-gray-300 hover:text-white">
-          <ArrowLeft size={20}/> Back
+      <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3 sm:py-4">
+        <button onClick={()=>nav(-1)} className="text-gray-300 hover:text-white flex items-center gap-2 text-sm sm:text-base">
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" /> Back
         </button>
-        <div className="flex items-center gap-3">
-          {/* {!editMode
-            ? <h1 className="text-2xl font-bold flex items-center gap-1">
-                {playlist.title}
-                <Edit3 size={18} className="opacity-50 hover:opacity-100 cursor-pointer"
-                  onClick={()=>setEditMode(true)}
-                />
-              </h1>
-            : <input
-                value={title}
-                onChange={e=>setTitle(e.target.value)}
-                className="p-1 bg-gray-700 rounded text-white w-48"
-              />
-          }
-          {editMode && (
-            <button
-              onClick={doRename} disabled={renaming}
-              className="p-1 bg-blue-600 rounded hover:bg-blue-500 disabled:opacity-50"
-            >
-              <Save size={16}/>
-            </button>
-          )} */}
-          <button
-            onClick={()=>setShowDelete(true)}
-            className="p-1 bg-red-700 rounded hover:bg-red-600"
-          >
-            <Trash2 size={16}/>
-          </button>
-        </div>
+        <button
+          onClick={()=>setShowDelete(true)}
+          className="p-1 bg-red-700 rounded hover:bg-red-600"
+        >
+          <Trash2 size={16}/>
+        </button>
       </div>
 
-      {/* Header */}
-      <div
-        className="flex items-end gap-6 px-6 py-8"
-        
-      >
+      {/* Header - matching PlaylistView exactly */}
+      <div className="p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
         <img
           src={playlist.image||FALLBACK_BG}
           alt={playlist.title}
-          className="w-48 h-48 rounded-lg object-cover shadow-lg"
+          className="w-45 h-45 sm:w-52 sm:h-52 md:w-64 md:h-64 lg:w-72 lg:h-72 rounded-lg object-cover shadow-lg"
         />
         <div>
-          <p className="text-sm uppercase text-gray-400">Playlist</p>
-          <h2 className="text-4xl font-semibold">{playlist.title}</h2>
-          {/* <p className="mt-2 text-gray-300 max-w-lg">
-            {playlist.description || FALLBACK_DESC}
-          </p> */}
+          <p className="text-sm uppercase font-semibold text-gray-400">Playlist</p>
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-semibold leading-tight">{playlist.title}</h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-400">
+            • {(playlist.songs||[]).length} songs
+          </p>
         </div>
       </div>
 
       {/* Add-Song Dropdown */}
-<div className="px-6 py-4">
-  <div className="relative">
-    <input
-      readOnly
-      onClick={() => setAddOpen(o => !o)}
-      placeholder="Search & add songs… "
-      className="w-fit p-2 bg-secondary/50 rounded text-white cursor-pointer"
-    />
-    {addOpen && (
-      <div className="absolute top-full left-0 right-0 max-h-64 overflow-y-auto bg-gray-800 rounded mt-1 z-10">
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Filter songs..."
-          className="w-full p-2 bg-secondary/30 text-white rounded-t"
-        />
-        {filtered.map(s => {
-          const locked = paidById[s.playlistId] && !isSub;
-          const imgSrc = s.image || FALLBACK_BG;
+      <div className="px-4 sm:px-6 md:px-8 py-4">
+        <div className="relative">
+          <input
+            readOnly
+            onClick={() => setAddOpen(o => !o)}
+            placeholder="Search & add songs… "
+            className="w-full sm:w-fit p-2 bg-secondary/50 rounded text-white cursor-pointer text-sm sm:text-base"
+          />
+          {addOpen && (
+            <div className="absolute top-full left-0 right-0 sm:right-auto sm:min-w-[400px] max-h-64 overflow-y-auto bg-gray-800 rounded mt-1 z-10 shadow-xl">
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Filter songs..."
+                className="w-full p-2 bg-secondary/30 text-white rounded-t text-sm"
+              />
+              {filtered.map(s => {
+                const locked = paidById[s.playlistId] && !isSub;
+                const imgSrc = s.image || FALLBACK_BG;
 
-          return (
-            <div
-              key={s.id}
-              onClick={() => !locked && doAdd(s.id)} // Make entire row clickable
-              className={`flex items-center justify-between p-2 bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition ${
-                locked ? 'opacity-60 cursor-not-allowed' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3 w-full">
-                <img
-                  src={imgSrc}
-                  alt={s.title}
-                  onError={e => (e.target.src = FALLBACK_BG)} // fallback image
-                  className="w-10 h-10 object-cover rounded"
-                />
-                <div className="flex flex-col flex-1">
-                  <div className="flex items-center gap-1">
-                    {locked && <Lock size={14} className="text-white" />}
-                    <span className="truncate text-white">{s.title}</span>
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => !locked && doAdd(s.id)}
+                    className={`flex items-center justify-between p-2 bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition ${
+                      locked ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 w-full min-w-0">
+                      <img
+                        src={imgSrc}
+                        alt={s.title}
+                        onError={e => (e.target.src = FALLBACK_BG)}
+                        className="w-10 h-10 object-cover rounded flex-shrink-0"
+                      />
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {locked && <Lock size={14} className="text-white flex-shrink-0" />}
+                          <span className="truncate text-white text-sm">{s.title}</span>
+                        </div>
+                        <span className="text-xs text-gray-400 truncate">{s.artist}</span>
+                      </div>
+                      {!locked && (
+                        <Plus
+                          size={16}
+                          className="text-white opacity-70 hover:opacity-100 flex-shrink-0"
+                        />
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-400 truncate">{s.artist}</span>
-                </div>
-                {!locked && (
-                  <Plus
-                    size={16}
-                    className="text-white opacity-70 hover:opacity-100"
-                  />
-                )}
-              </div>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="p-2 text-gray-400 text-sm">No songs found.</div>
+              )}
             </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="p-2 text-gray-400">No songs found.</div>
-        )}
+          )}
+        </div>
       </div>
-    )}
-  </div>
-</div>
-
 
       {/* Songs Table */}
-      <div className="px-8 pb-12">
-        <div className="grid grid-cols-[50px_1fr_1fr_80px_100px] items-center text-gray-400 text-sm border-b border-gray-700 pb-2 mb-4">
-          <span>#</span><span>Title</span><span>Artist</span><Clock/><span>Details</span>
+      <div className="px-4 sm:px-6 md:px-8 py-12">
+        {/* Mobile header */}
+        <div className="grid md:hidden grid-cols-[32px_1fr_auto_60px] items-center text-gray-400 text-xs border-b border-gray-700 pb-2 mb-2 gap-x-2">
+          <span>#</span>
+          <span>Title</span>
+          <span className="flex items-center gap-1 justify-end">
+            <Clock className="w-3 h-3" />
+          </span>
+          <span className="text-center">Action</span>
         </div>
+
+        {/* Desktop header */}
+        <div className="hidden md:grid grid-cols-[50px_1fr_1fr_80px_100px] items-center text-gray-400 text-sm border-b border-gray-700 pb-2 mb-4">
+          <span>#</span>
+          <span>Title</span>
+          <span>Artist</span>
+          <Clock />
+          <span>Details</span>
+        </div>
+
+        {/* Song rows */}
         {(playlist.songs||[]).map((s,i)=>(  
           <div key={s.id}
-            className="group grid grid-cols-[50px_1fr_1fr_80px_100px]
-                       items-center text-white py-2 px-2 rounded-lg
-                       hover:bg-red-700/30 cursor-pointer transition"
+            className="group 
+                       grid grid-cols-[32px_1fr_auto_60px]
+                       md:grid-cols-[50px_1fr_1fr_80px_100px]
+                       items-start md:items-center 
+                       text-white py-3 md:py-2 px-1 rounded-lg
+                       hover:bg-secondary/30 cursor-pointer transition gap-x-1 md:gap-x-0"
             onClick={()=>playSong(s)}
           >
-            <span className="text-gray-400">{i+1}</span>
-            <div className="flex items-center gap-4">
-              <img src={s.image||FALLBACK_BG} alt={s.title}
-                   onError={e => (e.target.src = FALLBACK_BG)}
-                   className="w-12 h-12 rounded-md object-cover"/>
-              <p className="font-semibold">{s.title}</p>
+            {/* Track # */}
+            <span className="text-gray-400 text-sm md:text-base leading-6">{i+1}</span>
+            
+            {/* Title + Image */}
+            <div className="flex items-start md:items-center gap-3 md:gap-4 min-w-0">
+              <img 
+                src={s.image||FALLBACK_BG} 
+                alt={s.title}
+                onError={e => (e.target.src = FALLBACK_BG)}
+                className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover flex-shrink-0 mt-0.5"
+              />
+              <div className="min-w-0">
+                <p className="font-semibold text-sm md:text-base whitespace-normal break-words md:line-clamp-2 md:leading-snug">
+                  {s.title}
+                </p>
+                <p className="text-gray-400 text-xs md:text-sm truncate">{s.artist}</p>
+              </div>
             </div>
-            <span className="text-gray-400 text-sm">{s.artist}</span>
-            <span className="text-gray-400">
+            
+            {/* Duration - mobile (3rd col) */}
+            <span className="text-gray-400 text-xs md:hidden text-right leading-6">
               {durations[s.id]!=null?fmt(durations[s.id]):'––:––'}
             </span>
-            <div className="flex justify-end opacity-0 group-hover:opacity-100 gap-2">
-              <button onClick={e=>{e.stopPropagation();nav(`/dashboard/song/${s.id}`);}}
-                      className="bg-white/20 hover:bg-white/40 text-white
-                                 text-sm px-2 py-1 rounded transition">
+
+            {/* Actions - mobile (4th col) */}
+            <div className="md:hidden flex items-start justify-center gap-1">
+              <button 
+                onClick={e=>{e.stopPropagation();nav(`/dashboard/song/${s.id}`);}}
+                className="text-white text-[10px] px-1.5 py-1 bg-white/20 hover:bg-white/40 rounded transition"
+              >
                 View
               </button>
-              <button onClick={e=>{e.stopPropagation();doRemove(s.id);}}
-                      className="text-red-400 hover:underline text-sm">
+              <button 
+                onClick={e=>{e.stopPropagation();doRemove(s.id);}}
+                className="text-red-400 hover:text-red-300 p-1"
+              >
+                <X size={12}/>
+              </button>
+            </div>
+
+            {/* Desktop columns */}
+            <span className="hidden md:block text-gray-400 text-sm">{s.artist}</span>
+            <span className="hidden md:block text-gray-400">
+              {durations[s.id]!=null?fmt(durations[s.id]):'––:––'}
+            </span>
+            
+            {/* Desktop actions */}
+            <div className="hidden md:flex justify-end opacity-0 group-hover:opacity-100 gap-2">
+              <button 
+                onClick={e=>{e.stopPropagation();nav(`/dashboard/song/${s.id}`);}}
+                className="bg-white/20 hover:bg-white/40 text-white
+                           text-sm px-2 py-1 rounded transition"
+              >
+                View
+              </button>
+              <button 
+                onClick={e=>{e.stopPropagation();doRemove(s.id);}}
+                className="text-red-400 hover:underline text-sm flex items-center gap-1"
+              >
                 <X size={14}/> Remove
               </button>
             </div>
@@ -334,7 +367,7 @@ export default function UserPlaylistView() {
         ))}
       </div>
 
-      {/* Confirm Delete */}
+      {/* Confirm Delete Modal */}
       <AnimatePresence>
         {showDelete && (
           <>
@@ -350,14 +383,14 @@ export default function UserPlaylistView() {
             >
               <div className="bg-gray-900 p-6 rounded-lg space-y-4 max-w-sm w-full">
                 <h3 className="text-lg font-semibold text-white">Confirm Deletion</h3>
-                <p className="text-gray-300">Delete “{playlist.title}”?</p>
+                <p className="text-gray-300">Delete "{playlist.title}"?</p>
                 <div className="flex justify-end gap-2">
                   <button onClick={()=>setShowDelete(false)}
-                          className="px-4 py-2 bg-gray-700 rounded text-white">
+                          className="px-4 py-2 bg-gray-700 rounded text-white text-sm">
                     Cancel
                   </button>
                   <button onClick={doDelete}
-                          className="px-4 py-2 bg-red-600 rounded text-white">
+                          className="px-4 py-2 bg-red-600 rounded text-white text-sm">
                     Delete
                   </button>
                 </div>

@@ -21,6 +21,7 @@ export default function RecentlyPlayed() {
       artist:   song.artist,
       image:    song.image,
       audioUrl: song.audioUrl,
+      description: song.description,
     }));
     dispatch(setIsPlaying(true));
     recordPlay(song.id);

@@ -16,7 +16,7 @@ export default function Header() {
           className="absolute left-6 top-1 transform text-white cursor-pointer"
           onClick={() => navigate('/')}
         > 
-          <img src={Logo} alt="Align Logo" className="h-25 w-auto" />
+          <img src={Logo} alt="Align Logo" className="h-18 sm:h-20 w-auto" />
         </div>
 
         <div className="absolute right-6 flex items-center space-x-4">

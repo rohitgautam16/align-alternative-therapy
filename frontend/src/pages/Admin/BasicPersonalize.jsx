@@ -240,9 +240,17 @@ function DeletedRecommendationsModal({ isOpen, onClose, userId, onRestore, onHar
   );
 }
 
-// Payment status badge component - now handles dynamic currency
+// Payment status badge component - now handles dynamic currency and free status
 function PaymentStatusBadge({ status, price, currency }) {
-  if (!status || status === 'free') return null;
+  if (!status) return null;
+  
+  if (status === 'free') {
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] bg-green-600/30 text-green-200">
+        Free
+      </span>
+    );
+  }
   
   const badgeClasses = {
     pending: 'bg-yellow-600/30 text-yellow-200',
@@ -259,18 +267,20 @@ function PaymentStatusBadge({ status, price, currency }) {
   );
 }
 
-// FIXED: Payment link creation component - no local state, relies on parent
+// 🆕 UPDATED: Payment link creation component with "Make Free" option
 function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess }) {
   const [price, setPrice] = React.useState('');
   const [copied, setCopied] = React.useState(false);
   const [createLink, { isLoading, error }] = useCreatePbPaymentLinkMutation();
 
-  const handleCreate = async () => {
-    if (!price.trim()) return;
+  const handleCreate = async (isFree = false) => {
+    if (!isFree && !price.trim()) return;
+    
     try {
       const result = await createLink({
         recommendationId,
-        price: parseFloat(price),
+        price: isFree ? 0 : parseFloat(price),
+        isFree: isFree,
       }).unwrap();
       
       console.log('Payment link created - backend response:', result);
@@ -280,7 +290,7 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
         paymentLinkUrl: result.paymentLink,
         price: result.amount,
         currency: result.currency,
-        status: 'pending'
+        status: result.status  // Will be 'free' or 'pending'
       };
       
       // Parent will handle storing this
@@ -301,7 +311,36 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
 
   const displayCurrency = currentPaymentData?.currency || 'CAD';
 
-  // If payment link exists
+  // If marked as free
+  if (currentPaymentData?.status === 'free') {
+    return (
+      <div className="rounded-xl bg-gradient-to-r from-green-600/10 to-emerald-500/10 border border-green-600/30 p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-600/20 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-400">
+                <path d="M9 12l2 2 4-4"/>
+                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/>
+              </svg>
+            </div>
+            <div>
+              <span className="text-base font-medium text-green-200">Free Recommendation</span>
+              <div className="text-sm text-gray-300">
+                No payment required
+              </div>
+            </div>
+          </div>
+          <PaymentStatusBadge 
+            status="free"
+            price={0}
+            currency={currentPaymentData.currency}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // If payment link exists (paid or pending)
   if (currentPaymentData?.paymentLinkUrl) {
     return (
       <div className="rounded-xl bg-gradient-to-r from-green-600/10 to-green-500/10 border border-green-600/30 p-6">
@@ -364,7 +403,7 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
     );
   }
 
-  // Create payment link form
+  // Create payment link form with "Make Free" option
   return (
     <div className="rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-600/20 p-6">
       <div className="flex items-center gap-3 mb-4">
@@ -375,59 +414,96 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
           </svg>
         </div>
         <div>
-          <div className="text-base font-medium">Create Payment Link</div>
-          <div className="text-sm text-gray-400">Generate a Stripe payment link for this recommendation</div>
+          <div className="text-base font-medium">Payment Setup</div>
+          <div className="text-sm text-gray-400">Create a payment link or mark as free</div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-        <div className="sm:col-span-7">
-          <Field 
-            label={`Price (${displayCurrency})`} 
-            hint={`Amount user will pay in ${displayCurrency}`}
-          >
-            <input
-              className={cx(INPUT, 'bg-blue-950/30 border border-blue-600/20')}
-              type="number"
-              step="0.01"
-              min="1"
-              placeholder={`e.g., ${displayCurrency === 'CAD' ? '29.99' : '299.00'}`}
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
-          </Field>
+      <div className="grid grid-cols-1 gap-4">
+        {/* Price Input Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+          <div className="sm:col-span-7">
+            <Field 
+              label={`Price (${displayCurrency})`} 
+              hint={`Leave empty to mark as free`}
+            >
+              <input
+                className={cx(INPUT, 'bg-blue-950/30 border border-blue-600/20')}
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={`e.g., ${displayCurrency === 'CAD' ? '29.99' : '299.00'} or leave empty for free`}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+            </Field>
+          </div>
+          <div className="sm:col-span-5 flex items-center">
+            <button
+              className={cx(BTN_BASE, BTN_PRIMARY, 'w-full h-[42px]')}
+              onClick={() => handleCreate(false)}
+              disabled={isLoading || !price.trim()}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/>
+                    <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                  Generate Payment Link
+                </>
+              )}
+            </button>
+          </div>
         </div>
-        <div className="sm:col-span-5 flex items-center">
-          <button
-            className={cx(BTN_BASE, BTN_PRIMARY, 'w-full h-[42px]')}
-            onClick={handleCreate}
-            disabled={isLoading || !price.trim()}
-          >
-            {isLoading ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/>
-                  <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Creating...
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                </svg>
-                Generate Payment Link
-              </>
-            )}
-          </button>
+
+        {/* Separator */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-[#0b0f19] px-2 text-gray-400">Or</span>
+          </div>
         </div>
+
+        {/* Make Free Button */}
+        <button
+          className={cx(BTN_BASE, BTN_SUCCESS, 'w-full')}
+          onClick={() => handleCreate(true)}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/>
+                <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+              Processing...
+            </>
+          ) : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              Mark as Free Recommendation
+            </>
+          )}
+        </button>
       </div>
       
       {error && (
         <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-600/30">
           <div className="text-sm text-red-300">
-            {error?.data?.error || 'Failed to create payment link'}
+            {error?.data?.error || 'Failed to process request'}
           </div>
         </div>
       )}
@@ -585,69 +661,69 @@ function AddItemDrawer({ isOpen, onClose, onAddBatch, recId, isAdding }) {
             <p className="text-xs text-gray-400 mt-1">
               {pendingItems.length} item{pendingItems.length !== 1 ? 's' : ''} ready to add
             </p>
-                      <Field label="Item Type">
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                className={cx(
-                  'px-4 py-3 rounded-lg border-2 transition text-sm font-medium',
-                  newType === 'track'
-                    ? 'border-blue-600 bg-blue-600/20 text-blue-300'
-                    : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
-                )}
-                onClick={() => setNewType('track')}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polygon points="10 8 16 12 10 16 10 8"/>
-                </svg>
-                Track
-              </button>
-              <button
-                className={cx(
-                  'px-4 py-3 rounded-lg border-2 transition text-sm font-medium',
-                  newType === 'playlist'
-                    ? 'border-blue-600 bg-blue-600/20 text-blue-300'
-                    : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
-                )}
-                onClick={() => setNewType('playlist')}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1">
-                  <line x1="8" x2="21" y1="6" y2="6"/>
-                  <line x1="8" x2="21" y1="12" y2="12"/>
-                  <line x1="8" x2="21" y1="18" y2="18"/>
-                  <line x1="3" x2="3.01" y1="6" y2="6"/>
-                  <line x1="3" x2="3.01" y1="12" y2="12"/>
-                  <line x1="3" x2="3.01" y1="18" y2="18"/>
-                </svg>
-                Playlist
-              </button>
-            </div>
-          </Field>
+            <Field label="Item Type">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  className={cx(
+                    'px-4 py-3 rounded-lg border-2 transition text-sm font-medium',
+                    newType === 'track'
+                      ? 'border-blue-600 bg-blue-600/20 text-blue-300'
+                      : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                  )}
+                  onClick={() => setNewType('track')}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polygon points="10 8 16 12 10 16 10 8"/>
+                  </svg>
+                  Track
+                </button>
+                <button
+                  className={cx(
+                    'px-4 py-3 rounded-lg border-2 transition text-sm font-medium',
+                    newType === 'playlist'
+                      ? 'border-blue-600 bg-blue-600/20 text-blue-300'
+                      : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                  )}
+                  onClick={() => setNewType('playlist')}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1">
+                    <line x1="8" x2="21" y1="6" y2="6"/>
+                    <line x1="8" x2="21" y1="12" y2="12"/>
+                    <line x1="8" x2="21" y1="18" y2="18"/>
+                    <line x1="3" x2="3.01" y1="6" y2="6"/>
+                    <line x1="3" x2="3.01" y1="12" y2="12"/>
+                    <line x1="3" x2="3.01" y1="18" y2="18"/>
+                  </svg>
+                  Playlist
+                </button>
+              </div>
+            </Field>
 
-          {/* Search */}
-          <Field label={newType === 'track' ? 'Search Tracks' : 'Search Playlists'}>
-            <PopoverPicker
-              placeholder={newType === 'track' ? 'Search tracks by title or artist...' : 'Search playlists by title...'}
-              hook={hook}
-              onPick={handleAddToPending}
-              formatItem={(it) => {
-                const title = newType === 'track' ? it.title || it.name || `Track #${it.id}` : it.title || `Playlist #${it.id}`;
-                const sub = newType === 'track' ? it.artist || '' : it.slug ? `/${it.slug}` : '';
-                return (
-                  <>
-                    <div className="w-10 h-10 rounded bg-white/10 overflow-hidden flex-shrink-0">
-                      {it.image ? <img className="w-full h-full object-cover" alt="" src={it.image} /> : null}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{title}</div>
-                      {sub ? <div className="text-xs text-gray-400 truncate">{sub}</div> : null}
-                    </div>
-                    <div className="ml-auto text-xs text-gray-400">#{it.id}</div>
-                  </>
-                );
-              }}
-            />
-          </Field>
+            {/* Search */}
+            <Field label={newType === 'track' ? 'Search Tracks' : 'Search Playlists'}>
+              <PopoverPicker
+                placeholder={newType === 'track' ? 'Search tracks by title or artist...' : 'Search playlists by title...'}
+                hook={hook}
+                onPick={handleAddToPending}
+                formatItem={(it) => {
+                  const title = newType === 'track' ? it.title || it.name || `Track #${it.id}` : it.title || `Playlist #${it.id}`;
+                  const sub = newType === 'track' ? it.artist || '' : it.slug ? `/${it.slug}` : '';
+                  return (
+                    <>
+                      <div className="w-10 h-10 rounded bg-white/10 overflow-hidden flex-shrink-0">
+                        {it.image ? <img className="w-full h-full object-cover" alt="" src={it.image} /> : null}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{title}</div>
+                        {sub ? <div className="text-xs text-gray-400 truncate">{sub}</div> : null}
+                      </div>
+                      <div className="ml-auto text-xs text-gray-400">#{it.id}</div>
+                    </>
+                  );
+                }}
+              />
+            </Field>
           </div>
           <button
             onClick={onClose}
@@ -661,9 +737,6 @@ function AddItemDrawer({ isOpen, onClose, onAddBatch, recId, isAdding }) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Type Selector */}
-
-
           {/* Pending Items List */}
           {pendingItems.length > 0 && (
             <div className="space-y-3">
@@ -907,7 +980,6 @@ export default function BasicPersonalize() {
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
-
   const [paymentLinksCache, setPaymentLinksCache] = React.useState({});
 
   React.useEffect(() => {
@@ -930,12 +1002,10 @@ export default function BasicPersonalize() {
     { skip: !recId }
   );
 
-
   const { data: paymentStatus, refetch: refetchPayment } = useGetPbPaymentStatusQuery(
     recId || '__skip__',
     { skip: !recId }
   );
-
 
   const currentPaymentData = paymentLinksCache[recId] || paymentStatus;
 
@@ -1113,7 +1183,12 @@ export default function BasicPersonalize() {
   // 🔥 UPDATED: Payment link success handler - stores in cache
   async function onPaymentLinkSuccess(result) {
     console.log('Payment link created, storing in cache:', result);
-    show(`Payment link created: ${result.currency} ${result.price}`);
+    
+    const message = result.status === 'free' 
+      ? 'Recommendation marked as free' 
+      : `Payment link created: ${result.currency} ${result.price}`;
+    
+    show(message);
     
     // Store in cache by recommendation ID
     setPaymentLinksCache(prev => ({
@@ -1289,7 +1364,7 @@ export default function BasicPersonalize() {
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="font-medium truncate">{cardTitle}</div>
                           <div className="flex items-center gap-2">
-                            {hasPayment && (
+                            {(hasPayment || r.payment_status === 'free') && (
                               <PaymentStatusBadge 
                                 status={r.payment_status} 
                                 price={paymentPrice}

@@ -18,7 +18,7 @@ import {
 import { setQueue, setTrack, setIsPlaying } from '../store/playerSlice';
 
 const FALLBACK_BG = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
-const FALLBACK_DESC = 'No description available for this playlist.';
+const FALLBACK_DESC = '';
 const FALLBACK_SONG_IMG = FALLBACK_BG;
 
 const myPlaylistsStub = [
@@ -34,7 +34,6 @@ export default function PlaylistView() {
 
   const { data: allPlaylists = [], isLoading: plLoading, isError: plError } = useGetDashboardAllPlaylistsQuery();
   const playlist = allPlaylists.find(p => p.slug === slug);
-  console.log(allPlaylists);
 
   const [recordPlay] = useRecordPlayMutation();
 
@@ -47,6 +46,18 @@ export default function PlaylistView() {
   const [showShareModal, setShowShareModal] = useState(false);
 
   const [durations, setDurations] = useState({});
+  const [activeTooltip, setActiveTooltip] = useState(null);
+
+  const [showDescModal, setShowDescModal] = useState(false);
+  const [isDescTruncated, setIsDescTruncated] = useState(false);
+  const descRef = React.useRef(null);
+
+  useEffect(() => {
+    if (descRef.current) {
+      const el = descRef.current;
+      setIsDescTruncated(el.scrollHeight > el.clientHeight + 5);
+    }
+  }, [playlist?.description]);
 
   useEffect(() => {
     songs.forEach(song => {
@@ -58,6 +69,13 @@ export default function PlaylistView() {
       }
     });
   }, [songs]);
+
+  useEffect(() => {
+  const closeTooltip = () => setActiveTooltip(null);
+  window.addEventListener('click', closeTooltip);
+  return () => window.removeEventListener('click', closeTooltip);
+}, []);
+
 
   if (plLoading || songsLoading || userLoading || !playlist) {
     return <div className="text-white text-center py-20">Loading playlist…</div>;
@@ -83,7 +101,8 @@ export default function PlaylistView() {
       artist:   song.artistName,
       image:    song.image || FALLBACK_BG,
       audioUrl: song.audioUrl,
-      audio_src: song.audio_src
+      audio_src: song.audio_src,
+      description: song.description,
     }));
     dispatch(setIsPlaying(true));
     recordPlay(song.id);
@@ -98,20 +117,20 @@ export default function PlaylistView() {
   };
 
   
-const bgImage = playlist?.image
-  ? playlist.image.startsWith('http')
-    ? playlist.image.includes('%20')
-      ? playlist.image // already encoded → leave as-is
-      : playlist.image.replace(/ /g, '%20') // encode only spaces
-    : `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.image)}`
-  : playlist?.artwork_filename
-  ? `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.artwork_filename)}`
-  : undefined;
+  const bgImage = playlist?.image
+    ? playlist.image.startsWith('http')
+      ? playlist.image.includes('%20')
+        ? playlist.image // already encoded → leave as-is
+        : playlist.image.replace(/ /g, '%20') // encode only spaces
+      : `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.image)}`
+    : playlist?.artwork_filename
+    ? `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.artwork_filename)}`
+    : undefined;
 
 
-const bgUrl = bgImage
-  ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${bgImage})`
-  : 'transparent';
+  const bgUrl = bgImage
+    ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${bgImage})`
+    : 'transparent';
 
   return (
     <div
@@ -138,9 +157,44 @@ const bgUrl = bgImage
         <div>
           <p className="text-sm uppercase font-semibold">Playlist</p>
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-semibold leading-tight">{playlist.name}</h1>
-          <p className="mt-2 max-w-none sm:max-w-xl text-gray-300 text-base sm:text-lg">
+          <p 
+           className="mt-2 max-w-none sm:max-w-lg text-gray-300 text-base sm:text-lg line-clamp-3"
+           ref={descRef}
+            >
             {playlist.description || FALLBACK_DESC}
           </p>
+          {isDescTruncated && (
+            <button
+              onClick={() => setShowDescModal(true)}
+              className="mt-2 text-secondary cursor pointer font-medium hover:underline"
+            >
+              Read more
+            </button>
+          )}
+
+          {/* Read More Modal */}
+          <div
+            className={`fixed inset-0 z-200 flex items-center justify-center bg-black/40 backdrop-blur-lg transition-all duration-300 ${
+              showDescModal ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-0 pointer-events-none'
+            }`}
+            onClick={() => setShowDescModal(false)}
+          >
+            <div
+              className="relative bg-black/30 backdrop-blur-lg rounded-xl w-[85vw] h-[75vh] overflow-x-scroll max-w-3xl p-6 sm:p-8 text-gray-200 transform transition-all duration-300 ease-out"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowDescModal(false)}
+                className="absolute top-3 right-3 p-1 hover:bg-secondary/70 rounded transition"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+              <h3 className="text-2xl pt-4 sm:text-3xl text-secondary font-semibold mb-3">About {playlist.name}</h3>
+              <p className="text-gray-400 leading-relaxed whitespace-pre-line">
+                {playlist.description}
+              </p>
+            </div>
+          </div>
           <p className="mt-2 text-sm sm:text-base text-gray-400">
             {/* • {playlist.saveCount?.toLocaleString()||0} saves  */}
             • {songs.length} songs
@@ -257,16 +311,36 @@ const bgUrl = bgImage
 
               {/* Eye (mobile 4th col) */}
               <div className="md:hidden flex justify-end">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/dashboard/song/${song.slug}`);
-                  }}
-                  aria-label="View details"
-                  className="inline-flex items-center justify-center w-8 h-8 transition"
-                >
-                  <Eye className="w-4 h-4 text-white" />
-                </button>
+                <div className="relative overflow-visible">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(activeTooltip === song.id ? null : song.id);
+                    }}
+                    aria-label="View details"
+                    className="inline-flex items-center justify-center w-8 h-8 transition"
+                  >
+                    <Eye className="w-4 h-4 text-white" />
+                  </button>
+
+                  {/* Tooltip Popup */}
+                  {activeTooltip === song.id && (
+                    <div
+                      className="absolute bottom-full right-0 mt-2 w-64 p-6 bg-transparent backdrop-blur-lg border border-gray-700 rounded-lg shadow-xl z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <p className="text-gray-200 text-sm line-clamp-4">
+                        {song.description || 'No description available.'}
+                      </p>
+                      <button
+                        onClick={() => navigate(`/dashboard/song/${song.slug}`)}
+                        className="mt-3 w-full text-sm bg-secondary hover:bg-secondary/80 text-black font-semibold py-1.5 rounded transition"
+                      >
+                        View more
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Tablet/Desktop columns */}
@@ -275,15 +349,35 @@ const bgUrl = bgImage
 
               {/* Details button: visible on md, hover-only on lg+ */}
               <div className="hidden md:flex justify-start">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/dashboard/song/${song.slug}`);
-                  }}
-                  className="md:opacity-100 flex flex-row items-center cursor-pointer gap-1 lg:opacity-0 lg:group-hover:opacity-100 bg-white/20 hover:bg-white/40 text-white text-sm px-2 py-1 rounded transition"
-                >
-                  <Eye className="w-4 h-4 text-white" /> View
-                </button>
+                <div className="relative overflow-visible">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(activeTooltip === song.id ? null : song.id);
+                    }}
+                    className="md:opacity-100 flex flex-row items-center cursor-pointer gap-1 lg:opacity-0 lg:group-hover:opacity-100 px-2 py-1 rounded transition"
+                  >
+                    <Eye className="w-6 h-6 text-white" />
+                  </button>
+
+                  {/* Tooltip Popup */}
+                  {activeTooltip === song.id && (
+                    <div
+                      className="absolute bottom-full right-0 mt-2 w-64 p-6 bg-transparent backdrop-blur-lg border border-gray-700 rounded-lg shadow-xl z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <p className="text-gray-200 text-sm line-clamp-4">
+                        {song.description || 'No description available.'}
+                      </p>
+                      <button
+                        onClick={() => navigate(`/dashboard/song/${song.slug}`)}
+                        className="mt-3 w-full text-sm bg-secondary hover:bg-secondary/80 text-black font-semibold py-1.5 rounded transition"
+                      >
+                        View more
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

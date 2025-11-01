@@ -5,10 +5,11 @@ import stubBlogs from '../stubs/blogs';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Header from '../components/common/Header';
+import TransitionWrapper from '../components/custom-ui/transition';
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function BlogsPage() {
+const BlogsPage = () => {
   const titleRef = useRef(null);
   const subtitleRef = useRef(null);
   const animationObjectRef = useRef(null);
@@ -166,3 +167,5 @@ export default function BlogsPage() {
     </div>
   );
 }
+
+export default TransitionWrapper(BlogsPage);
