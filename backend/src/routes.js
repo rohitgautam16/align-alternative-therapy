@@ -593,7 +593,49 @@ const {
 router.post('/pb-payment/admin/create-link', requireAuth, requireAdmin, createPaymentLink);
 router.get('/pb-payment/status/:id', requireAuth, getRecommendationPaymentStatus);
 
+const { loadAndCache, getProductPriceMap } = require('./services/stripePriceCache');
 
+router.post(
+  '/admin/stripe/reload-cache',
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      console.log(`🚀 Admin (user_id=${req.user.id}) triggered Stripe cache reload`);
+      const priceMap = await loadAndCache(true);
+      console.log('✅ Stripe cache reload completed.');
+
+      res.json({
+        success: true,
+        message: 'Stripe cache reloaded successfully',
+        base: priceMap.base,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('❌ Stripe cache reload failed:', err);
+      res.status(500).json({ error: 'Stripe cache reload failed', details: err.message });
+    }
+  }
+);
+
+router.get(
+  '/admin/stripe/price-map',
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const priceMap = await getProductPriceMap();
+      res.json({
+        success: true,
+        base: priceMap.base,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('⚠️ Error fetching Stripe price map:', err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 // router.get('/categories', async (_req, res) => {
 //   try {
