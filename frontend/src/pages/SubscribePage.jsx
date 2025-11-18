@@ -149,21 +149,21 @@ export default function SubscribePage() {
 
 
   const plans = [
-    {
-      name: '1 Month Free Access',
-      price: 0,
-      features: [
-        { text: 'Basic Audio Quality' },
-        { text: 'Limited Content' },
-        { text: '24/7 Customer Support' },
-        { text: 'Personalized Recommendations' },
-      ],
-      buttonText: 'Get 1-Month Free',
-      onSelect: () => handleBasePlanClick('monthly', true),
-    },
+    // {
+    //   name: '1 Month Free Access',
+    //   price: 0,
+    //   features: [
+    //     { text: 'Basic Audio Quality' },
+    //     { text: 'Limited Content' },
+    //     { text: '24/7 Customer Support' },
+    //     { text: 'Personalized Recommendations' },
+    //   ],
+    //   buttonText: 'Get 1-Month Free',
+    //   onSelect: () => handleBasePlanClick('monthly', true),
+    // },
     {
       name: 'Monthly Plan',
-      price: 9.99,
+      price: 144,
       features: [
         { text: 'Basic Audio Quality' },
         { text: 'Unlimited Content' },
@@ -175,12 +175,11 @@ export default function SubscribePage() {
     },
     {
       name: 'Yearly Plan',
-      originalPrice: 120,
-      discountedPrice: 108,
+      originalPrice: 1499,
+      discountedPrice: 749,
       features: [
         { text: 'High Audio Quality' },
         { text: 'Exclusive Content' },
-        { text: 'Offline Listening' },
         { text: 'Priority Support' },
         { text: 'Early Access Releases' },
       ],
@@ -190,7 +189,7 @@ export default function SubscribePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white py-12 px-4 sm:px-6 lg:px-8 relative">
+    <div className="min-h-screen bg-black  text-white py-12 px-4 sm:px-6 lg:px-8 relative">
       {/* Top-right cross button */}
       <button
         onClick={() => navigate(-1)}
@@ -199,7 +198,7 @@ export default function SubscribePage() {
         <X className="w-5 h-5 text-white" />
       </button>
 
-      <div className="max-w-screen mx-auto">
+      <div className="max-w-screen mx-auto flex flex-col justify-center">
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-light mb-4">Our Pricing Plan</h2>
@@ -209,7 +208,7 @@ export default function SubscribePage() {
         </div>
 
         {/* Featured + Plans */}
-        <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {/* Featured Card */}
           <motion.div
             variants={cardVariants}
@@ -241,7 +240,6 @@ export default function SubscribePage() {
         )}
       </div>
 
-      {/* ---------- Improved Bottom Banner ---------- */}
 <motion.div
   initial={{ opacity: 0, y: 50 }}
   whileInView={{ opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } }}
