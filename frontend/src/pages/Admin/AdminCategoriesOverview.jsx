@@ -13,15 +13,26 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 export default function AdminCategoriesOverview() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const saved = sessionStorage.getItem('adminCategoriesPage');
+    return saved ? Number(saved) : 1;
+  });
   const [viewType, setViewType] = useState('grid');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const frontendPageSize = 12;
-
-  // Search and Filter
   const [searchTerm, setSearchTerm] = useState('');
 
-  // File uploads - Updated for presigned URLs
+  
+  useEffect(() => {
+    sessionStorage.setItem('adminCategoriesPage', String(page));
+  }, [page]);
+
+
+  useEffect(() => {
+    if (searchTerm !== '') setPage(1);
+  }, [searchTerm]);
+
+
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
 

@@ -6,12 +6,25 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 export default function AdminAdminsOverview() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const saved = sessionStorage.getItem('adminAdminsPage');
+    return saved ? Number(saved) : 1;
+  });
   const [viewType, setViewType] = useState('grid');
   const pageSize = 6;
 
-  // Search functionality
+
   const [searchTerm, setSearchTerm] = useState('');
+
+
+  useEffect(() => {
+    sessionStorage.setItem('adminAdminsPage', String(page));
+  }, [page]);
+
+
+  useEffect(() => {
+    if (searchTerm !== '') setPage(1);
+  }, [searchTerm]);
 
   // API call (kept exactly the same)
   const { data, isLoading, isError, error, refetch } =

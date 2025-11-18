@@ -7,7 +7,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 export default function AdminUsersOverview() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+  const saved = sessionStorage.getItem('adminUsersPage');
+  return saved ? Number(saved) : 1;
+});
   const [viewType, setViewType] = useState('grid');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +22,17 @@ export default function AdminUsersOverview() {
   const [paymentLinkData, setPaymentLinkData] = useState(null);
   
   const pageSize = 6;
+
+  useEffect(() => {
+  sessionStorage.setItem('adminUsersPage', String(page));
+}, [page]);
+
+
+
+useEffect(() => {
+  if (searchTerm !== '') setPage(1);
+}, [searchTerm]);
+
 
   // Fetch paginated users with search
   const { data, isLoading, isError, error, refetch } = useListUsersQuery({ 

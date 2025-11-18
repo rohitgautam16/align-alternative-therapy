@@ -93,15 +93,27 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
 
 export default function AdminPlaylistsOverview() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const saved = sessionStorage.getItem('adminPlaylistsPage');
+    return saved ? Number(saved) : 1;
+  });
   const [viewType, setViewType] = useState('grid');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const frontendPageSize = 12;
 
-  // Search and Filter (kept exactly the same)
+    useEffect(() => {
+    sessionStorage.setItem('adminPlaylistsPage', String(page));
+  }, [page]);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPaid, setFilterPaid] = useState('');
+
+
+
+  useEffect(() => {
+    if (searchTerm !== '' || filterCategory !== '' || filterPaid !== '') setPage(1);
+  }, [searchTerm, filterCategory, filterPaid]);
 
   // File uploads - Updated for presigned URLs
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
@@ -244,11 +256,6 @@ export default function AdminPlaylistsOverview() {
       return () => clearTimeout(t);
     }
   }, [flash]);
-
-  // Reset page when filters change (kept exactly the same)
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, filterCategory, filterPaid]);
 
   // Fixed auto-generate slug from title (kept exactly the same)
   const generateSlug = (title) => {

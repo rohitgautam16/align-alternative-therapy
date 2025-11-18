@@ -1,5 +1,5 @@
 // src/pages/UserPlaylistView.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate }            from 'react-router-dom';
 import { useDispatch }                        from 'react-redux';
 import {
@@ -62,6 +62,8 @@ export default function UserPlaylistView() {
   const [addOpen, setAddOpen]       = useState(false);
   const [search, setSearch]         = useState('');
   const [durations, setDurations]   = useState({});
+
+  const lastRecordedRef = useRef({ songId: null, ts: 0 });
 
   // initialize title
   useEffect(() => {
@@ -141,8 +143,11 @@ export default function UserPlaylistView() {
     }
   };
 
-  const playSong = song => {
-    dispatch(setQueue(playlist.songs));
+  const playSong = async (song) => {
+    if (!song) return;
+
+    // start playing immediately (optimistic)
+    dispatch(setQueue(playlist.songs || []));
     dispatch(setTrack({
       id: song.id,
       title: song.title,
@@ -151,7 +156,21 @@ export default function UserPlaylistView() {
       audioUrl: song.audioUrl
     }));
     dispatch(setIsPlaying(true));
-    recordPlay(song.id);
+
+    // debounce guard
+    const now = Date.now();
+    if (lastRecordedRef.current.songId === song.id && (now - lastRecordedRef.current.ts) < RECORD_DEBOUNCE_MS) {
+      return;
+    }
+    lastRecordedRef.current = { songId: song.id, ts: now };
+
+    // attempt to record play with playlist context
+    try {
+      await recordPlay({ songId: song.id, sourcePlaylistId: playlist.id }).unwrap();
+    } catch (err) {
+      console.error('recordPlay failed', err);
+      // do not block playback; optionally you could refetch recent lists or show a small toast
+    }
   };
 
   const filtered = allSongs.filter(s =>

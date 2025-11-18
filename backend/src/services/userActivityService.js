@@ -10,13 +10,47 @@ const db = require('../db');
  * - Updates `played_at` if already exists (ensures "most recent" is accurate)
  */
 async function recordRecentPlay(userId, songId) {
-  await db.query(
-    `INSERT INTO song_plays (user_id, song_id, played_at)
-       VALUES (?, ?, CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE played_at = VALUES(played_at)`,
-    [userId, songId]
-  );
+  // Use a connection + transaction to avoid races between reading audio_metadata and writing playlist_plays
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1) song_plays as before
+    await conn.query(
+      `INSERT INTO song_plays (user_id, song_id, played_at)
+         VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON DUPLICATE KEY UPDATE played_at = VALUES(played_at)`,
+      [userId, songId]
+    );
+
+    // 2) read playlist id from audio_metadata for this song
+    //    NOTE: column name per your description is `playlist` on audio_metadata
+    const [metaRows] = await conn.query(
+      `SELECT playlist FROM audio_metadata WHERE id = ? LIMIT 1`,
+      [songId]
+    );
+
+    const playlistId = metaRows && metaRows[0] ? metaRows[0].playlist : null;
+
+    // 3) if playlist exists (not null), upsert into playlist_plays
+    if (playlistId !== null && playlistId !== undefined) {
+      await conn.query(
+        `INSERT INTO playlist_plays (user_id, playlist_id, played_at)
+           VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON DUPLICATE KEY UPDATE played_at = VALUES(played_at)`,
+        [userId, playlistId]
+      );
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
+
 
 /**
  * Fetch a user’s recent plays.
@@ -41,6 +75,28 @@ async function fetchRecentPlays(userId, limit = 20) {
        ON s.id = sp.song_id
      WHERE sp.user_id = ?
      GROUP BY s.id, s.slug, s.title, s.name, s.artist, s.description, s.artwork_filename, s.cdn_url
+     ORDER BY played_at DESC
+     LIMIT ?`,
+    [userId, limit]
+  );
+
+  return rows;
+}
+
+async function fetchRecentPlaylists(userId, limit = 20) {
+  const [rows] = await db.query(
+    `SELECT
+       p.id,
+       p.slug,
+       p.title,
+       p.description,
+       p.artwork_filename AS image,
+       MAX(pp.played_at)   AS played_at
+     FROM playlist_plays pp
+     JOIN playlists p
+       ON p.id = pp.playlist_id
+     WHERE pp.user_id = ?
+     GROUP BY p.id, p.slug, p.title, p.description, p.artwork_filename
      ORDER BY played_at DESC
      LIMIT ?`,
     [userId, limit]
@@ -144,6 +200,7 @@ async function fetchFavoritePlaylists(userId) {
 module.exports = {
   recordRecentPlay,
   fetchRecentPlays,
+  fetchRecentPlaylists,
   toggleFavoriteSong,
   fetchFavoriteSongs,
   toggleFavoritePlaylist,

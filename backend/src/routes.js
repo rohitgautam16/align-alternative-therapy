@@ -345,6 +345,7 @@ router.post('/personalize/admin/followups/:id/sent', requireAuth, requireAdmin, 
 const {
   recordPlay,
   getRecentPlays,
+  getRecentPlaylists,
   toggleFavSong,
   getFavSongs,
   toggleFavPlaylist,
@@ -353,6 +354,7 @@ const {
 
 router.post(   '/user/plays',                  requireAuth, recordPlay);
 router.get(    '/user/recent-plays',           requireAuth, getRecentPlays);
+router.get(    '/user/recent-playlists',       requireAuth, getRecentPlaylists);
 
 router.post(   '/user/favorites/songs',        requireAuth, toggleFavSong);
 router.get(    '/user/favorites/songs',        requireAuth, getFavSongs);

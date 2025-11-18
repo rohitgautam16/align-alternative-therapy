@@ -208,7 +208,7 @@ export default function SubscribePage() {
         </div>
 
         {/* Featured + Plans */}
-        <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
           {/* Featured Card */}
           <motion.div
             variants={cardVariants}
@@ -216,11 +216,12 @@ export default function SubscribePage() {
             whileInView="onscreen"
             viewport={{ once: true, amount: 0.5 }}
             whileHover={{ scale: 1.05, transition: { type: 'spring', stiffness: 300 } }}
-            className="relative bg-white/90 rounded-3xl p-6 py-10 overflow-hidden h-full flex flex-col"
+            className="relative bg-white/90 rounded-3xl p-6 overflow-hidden h-full flex flex-col border border-gray-800 w-full"
           >
-            <div className="aspect-video mb-6">
+            <div className="aspect-video mb-6 w-full">
               <img src={PlanImg} alt="Featured" className="w-full h-full object-cover rounded-2xl" />
             </div>
+
             <h3 className="text-xl text-gray-800 font-light mb-4 flex-grow">
               Discover tranquility through a curated selection of music and experiences.
             </h3>

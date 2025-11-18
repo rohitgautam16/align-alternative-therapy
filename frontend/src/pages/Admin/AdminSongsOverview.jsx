@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   useGetAdminSongsQuery,
   useCreateAdminSongMutation,
@@ -14,12 +14,9 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
 
-
-
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
-
 
   return (
     <div className="relative">
@@ -49,7 +46,6 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-
 
       {isOpen && (
         <>
@@ -95,19 +91,55 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   );
 };
 
-
 export default function AdminSongsOverview() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+  
+  // ✅ FIXED: Track if filters changed to avoid resetting page on mount
+  const prevFiltersRef = useRef({ searchTerm: '', filterPlaylist: '' });
+  
+  // ✅ FIXED: Initialize page from sessionStorage
+  const [page, setPage] = useState(() => {
+    const saved = sessionStorage.getItem('adminSongsPage');
+    return saved ? Number(saved) : 1;
+  });
+  
   const [viewType, setViewType] = useState('grid');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const frontendPageSize = 12;
+  
+  // Frontend-only pagination
+  const itemsPerPage = 12;
 
+  // Search and Filter with session storage
+  const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('adminSongsSearchTerm') || '');
+  const [filterPlaylist, setFilterPlaylist] = useState(() => sessionStorage.getItem('adminSongsFilterPlaylist') || '');
 
-  // Search and Filter
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterPlaylist, setFilterPlaylist] = useState('');
+  // ✅ FIXED: Save page to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('adminSongsPage', String(page));
+  }, [page]);
 
+  useEffect(() => {
+    sessionStorage.setItem('adminSongsSearchTerm', searchTerm);
+    sessionStorage.setItem('adminSongsFilterPlaylist', filterPlaylist);
+  }, [searchTerm, filterPlaylist]);
+
+  // ✅ FIXED: Reset page to 1 ONLY when filters actually change (not on initial mount)
+  useEffect(() => {
+    const prevFilters = prevFiltersRef.current;
+    
+    // Check if filters actually changed (not just initialized)
+    if (prevFilters.searchTerm !== searchTerm || prevFilters.filterPlaylist !== filterPlaylist) {
+      // Only reset if this isn't the first render (filters were actually changed by user)
+      if (prevFilters.searchTerm !== '' || prevFilters.filterPlaylist !== '' || 
+          searchTerm !== sessionStorage.getItem('adminSongsSearchTerm') || 
+          filterPlaylist !== sessionStorage.getItem('adminSongsFilterPlaylist')) {
+        setPage(1);
+      }
+    }
+    
+    // Update ref for next comparison
+    prevFiltersRef.current = { searchTerm, filterPlaylist };
+  }, [searchTerm, filterPlaylist]);
 
   // File uploads - Manual upload control
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
@@ -120,26 +152,22 @@ export default function AdminSongsOverview() {
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
-
   // Progress tracking state
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
-
 
   // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
 
-
-  // Songs data 
+  // ✅ FIXED: Fetch ALL songs at once (increased pageSize to 1000)
   const {
     data: songsData,
     isLoading,
     isError,
     error,
     refetch,
-  } = useGetAdminSongsQuery({ page: 1, pageSize: 200 });
-
+  } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
 
   // Categories and Playlists  
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
@@ -151,12 +179,9 @@ export default function AdminSongsOverview() {
     pageSize: 100,
   });
 
-
   // Create mutation 
   const [createSong, { isLoading: creating }] = useCreateAdminSongMutation();
 
-
-  // ✅ UPDATED - Form state with is_free field (default 0 = paid)
   const [form, setForm] = useState({
     name: '',
     title: '',
@@ -168,12 +193,10 @@ export default function AdminSongsOverview() {
     playlist: '',
     artwork_filename: '',
     cdn_url: '',
-    is_free: 0, // ✅ ADDED - 0 = paid (default), 1 = free
+    is_free: 0,
   });
 
-
   const [flash, setFlash] = useState({ txt: '', ok: true });
-
 
   // Use existing hook with conditional skip
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
@@ -185,7 +208,6 @@ export default function AdminSongsOverview() {
     { skip: !artworkPresignParams }
   );
 
-
   const { data: audioPresign } = useGetR2PresignUrlQuery(
     audioPresignParams || {
       filename: "",
@@ -194,7 +216,6 @@ export default function AdminSongsOverview() {
     },
     { skip: !audioPresignParams }
   );
-
 
   // Manual artwork upload handler
   const handleArtworkUpload = async () => {
@@ -218,7 +239,6 @@ export default function AdminSongsOverview() {
     }
   };
 
-
   // Manual audio upload handler
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
@@ -241,11 +261,9 @@ export default function AdminSongsOverview() {
     }
   };
 
-
   // Handle artwork presign response with delayed state reset
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
-
 
     const uploadArtwork = async () => {
       try {
@@ -263,7 +281,6 @@ export default function AdminSongsOverview() {
             setArtworkUploadProgress(percentComplete);
           }
         });
-
 
         // Handle completion
         xhr.addEventListener('load', () => {
@@ -293,12 +310,10 @@ export default function AdminSongsOverview() {
           }
         });
 
-
         // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
-
 
         // Start the upload
         xhr.open('PUT', artworkPresign.url);
@@ -313,15 +328,12 @@ export default function AdminSongsOverview() {
       }
     };
 
-
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
-
 
   // Handle audio presign response with delayed state reset
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
-
 
     const uploadAudio = async () => {
       try {
@@ -337,7 +349,6 @@ export default function AdminSongsOverview() {
             setAudioUploadProgress(percentComplete);
           }
         });
-
 
         // Handle completion
         xhr.addEventListener('load', () => {
@@ -365,12 +376,10 @@ export default function AdminSongsOverview() {
           }
         });
 
-
         // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
-
 
         // Start the upload
         xhr.open('PUT', audioPresign.url);
@@ -385,10 +394,8 @@ export default function AdminSongsOverview() {
       }
     };
 
-
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
-
 
   // Process data safely based on backend response structure  
   const allSongs = React.useMemo(() => {
@@ -405,24 +412,22 @@ export default function AdminSongsOverview() {
     return [];
   }, [songsData]);
 
-
   const categories = React.useMemo(() => {
     if (!catRaw) return [];
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
-
 
   const playlists = React.useMemo(() => {
     if (!plRaw) return [];
     return Array.isArray(plRaw.data) ? plRaw.data : (Array.isArray(plRaw) ? plRaw : []);
   }, [plRaw]);
 
-
   // Filter songs based on search and playlist filter only  
   const filteredSongs = React.useMemo(() => {
     return allSongs.filter(song => {
       const matchesSearch = !searchTerm || 
         song.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        song.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         song.artist?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         song.slug?.toLowerCase().includes(searchTerm.toLowerCase())  ||
         song.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -438,18 +443,15 @@ export default function AdminSongsOverview() {
         song.playlistId === filterPlaylist ||
         song.playlistId === String(filterPlaylist);
 
-
       return matchesSearch && matchesPlaylist;
     });
   }, [allSongs, searchTerm, filterPlaylist]);
 
-
-  // Get total from backend or use filtered length  
-  const totalItems = songsData?.total || filteredSongs.length;
-  const totalPages = Math.ceil(filteredSongs.length / frontendPageSize);
-  const startIndex = (page - 1) * frontendPageSize;
-  const paginatedSongs = filteredSongs.slice(startIndex, startIndex + frontendPageSize);
-
+  // ✅ FIXED: Frontend-only pagination
+  const totalItems = allSongs.length; // Total songs from DB
+  const totalPages = Math.ceil(filteredSongs.length / itemsPerPage);
+  const startIndex = (page - 1) * itemsPerPage;
+  const paginatedSongs = filteredSongs.slice(startIndex, startIndex + itemsPerPage);
 
   // Auto-clear flash messages  
   useEffect(() => {
@@ -458,13 +460,6 @@ export default function AdminSongsOverview() {
       return () => clearTimeout(t);
     }
   }, [flash]);
-
-
-  // Reset page when filters change  
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, filterPlaylist]);
-
 
   // Fixed auto-generate slug from title  
   const generateSlug = (title) => {
@@ -478,11 +473,9 @@ export default function AdminSongsOverview() {
       .replace(/^-|-$/g, '');
   };
 
-
   const toggleView = () => {
     setViewType((prev) => (prev === 'grid' ? 'list' : 'grid'));
   };
-
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -493,7 +486,7 @@ export default function AdminSongsOverview() {
       await createSong(form).unwrap();
       setFlash({ txt: 'Song created successfully!', ok: true });
       
-      // ✅ UPDATED - Reset form and files (including is_free)
+      // Reset form and files
       setForm({
         name: '',
         title: '',
@@ -505,7 +498,7 @@ export default function AdminSongsOverview() {
         playlist: '',
         artwork_filename: '',
         cdn_url: '',
-        is_free: 0, // ✅ ADDED - Reset to paid (default)
+        is_free: 0,
       });
       setSelectedArtFile(null);
       setSelectedAudioFile(null);
@@ -532,12 +525,10 @@ export default function AdminSongsOverview() {
     }
   };
 
-
   const clearFilters = () => {
     setSearchTerm('');
     setFilterPlaylist('');
   };
-
 
   return (
     <div className="p-4 sm:p-6 text-white space-y-6">
@@ -554,7 +545,6 @@ export default function AdminSongsOverview() {
           </motion.div>
         )}
       </AnimatePresence>
-
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -583,7 +573,6 @@ export default function AdminSongsOverview() {
           </button>
         </div>
       </div>
-
 
       {/* Search and Filters */}
       <div className="bg-gray-800 p-3 sm:p-4 rounded-lg space-y-4">
@@ -620,7 +609,6 @@ export default function AdminSongsOverview() {
         </div>
       </div>
 
-
       {/* Create Form */}
       <AnimatePresence>
         {showCreateForm && (
@@ -634,7 +622,6 @@ export default function AdminSongsOverview() {
             <h3 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
               <Plus size={20} /> Create New Song
             </h3>
-
 
             {/* Form fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -682,7 +669,6 @@ export default function AdminSongsOverview() {
                 />
               </div>
 
-
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Description</label>
                 <input
@@ -713,7 +699,7 @@ export default function AdminSongsOverview() {
                 />
               </div>
               
-              {/* ✅ ADDED - Access Type Radio Group */}
+              {/* Access Type Radio Group */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Access Type</label>
                 <div className="flex gap-4">
@@ -758,7 +744,6 @@ export default function AdminSongsOverview() {
                 />
               </div>
             </div>
-
 
             {/* File Uploads with Progress Bars */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -837,7 +822,6 @@ export default function AdminSongsOverview() {
                 </div>
               </div>
 
-
               {/* Audio Upload */}
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Audio</label>
@@ -914,7 +898,6 @@ export default function AdminSongsOverview() {
               </div>
             </div>
 
-
             <div className="flex flex-col sm:flex-row justify-end gap-2">
               <button
                 type="button"
@@ -935,14 +918,12 @@ export default function AdminSongsOverview() {
         )}
       </AnimatePresence>
 
-
       {/* Loading/Error States */}
       {isLoading && (
         <div className="flex justify-center items-center py-12">
           <div className="text-gray-400">Loading songs...</div>
         </div>
       )}
-
 
       {isError && (
         <div className="bg-red-900/20 border border-red-600 p-4 rounded">
@@ -951,7 +932,6 @@ export default function AdminSongsOverview() {
           </p>
         </div>
       )}
-
 
       {/* Songs Grid/List */}
       {!isLoading && !isError && (
@@ -981,7 +961,6 @@ export default function AdminSongsOverview() {
               ))}
             </div>
           )}
-
 
           {/* Pagination */}
           {totalPages > 1 && (

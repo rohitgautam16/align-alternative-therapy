@@ -1,5 +1,5 @@
 // src/components/custom-ui/SongCard.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { Play, Lock, X } from 'lucide-react';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { setQueue, setTrack, setIsPlaying } from '../../store/playerSlice';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { canAccessContent } from '../../utils/permissions';
+import { useRecordPlayMutation } from '../../utils/api';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
@@ -21,7 +22,10 @@ export default function SongCard({ song, playlist }) {
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
 
-  const handlePlay = (e) => {
+  const lastRecordedRef = useRef({ songId: null, ts: 0 });
+  const [recordPlay] = useRecordPlayMutation();
+
+  const handlePlay = async (e) => {
     e.stopPropagation();
     if (locked) {
       setPopupMessage(
@@ -43,6 +47,19 @@ export default function SongCard({ song, playlist }) {
       })
     );
     dispatch(setIsPlaying(true));
+
+    const now = Date.now();
+    if (lastRecordedRef.current.songId === song.id && (now - lastRecordedRef.current.ts) < RECORD_DEBOUNCE_MS) {
+      return;
+    }
+    lastRecordedRef.current = { songId: song.id, ts: now };
+
+    try {
+      const sourcePlaylistId = playlist?.id ?? null;
+      await recordPlay({ songId: song.id, sourcePlaylistId }).unwrap();
+    } catch (err) {
+      console.error('recordPlay failed from SongCard', err);
+    }
   };
 
   const handleCardClick = () => {

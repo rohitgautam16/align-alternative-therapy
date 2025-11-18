@@ -16,6 +16,7 @@ import {
   useGetDashboardFreePlaylistsQuery,
   useGetDashboardNewReleasesQuery,
   useGetRecentPlaysQuery,
+  useGetRecentPlaylistsQuery
 } from '../utils/api';
 
 const DashboardHome = () => {
@@ -54,6 +55,15 @@ const DashboardHome = () => {
    slug: s?.slug ?? s?.song_slug ?? s?.id?.toString(),
  }));
 
+ const { data: rplRaw, isLoading: rplL, isError: rplE } = useGetRecentPlaylistsQuery(8);
+  const recentPlaylists = Array.isArray(rplRaw) ? rplRaw : (rplRaw?.items ?? []);
+  // ensure slug fallback if API uses different key names
+  const normalizedRecentPlaylists = recentPlaylists.map(p => ({
+    ...p,
+    slug: p?.slug ?? p?.playlist_slug ?? p?.id?.toString(),
+  }));
+
+
   return (
       <div className="space-y-1 sm:space-y-6 rounded-2xl">
       <CategorySection />
@@ -76,9 +86,9 @@ const DashboardHome = () => {
       )}
 
       {/* Recently Played */}
-      {!isRecommendationOnly && !rpL && !rpE && recentItems.length > 0 && (
+      {/* {!isRecommendationOnly && !rpL && !rpE && recentItems.length > 0 && (
         <CarouselSection
-          title="Recently Played"
+          title="Recently Played Songs"
           items={recentItems}
           renderItem={(song) => (
             <SongCard
@@ -86,6 +96,16 @@ const DashboardHome = () => {
               song={song}
               onPlay={() => {}}
             />
+          )}
+        />
+      )} */}
+
+      {!isRecommendationOnly && !rplL && !rplE && normalizedRecentPlaylists.length > 0 && (
+        <CarouselSection
+          title="Recently Played"
+          items={normalizedRecentPlaylists}
+          renderItem={(pl) => (
+            <PlaylistCard key={`rpl-${pl.id}`} playlist={pl} />
           )}
         />
       )}

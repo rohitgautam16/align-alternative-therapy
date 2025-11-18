@@ -21,7 +21,7 @@ export const api = createApi({
       return headers;
     }
   }),
-  tagTypes: ['User', 'Categories', 'Playlists', 'Songs', 'PQ', 'REC', 'FU', 'PB', 'PB_REC', 'PB_ITEM', 'PersonalizeUser'],
+  tagTypes: ['User', 'Categories', 'Playlists', 'Songs', 'PQ', 'REC', 'FU', 'PB', 'PB_REC', 'PB_ITEM', 'PersonalizeUser', 'RecentPlays', 'RecentPlaylists'],
   endpoints: (build) => ({
 
     getR2PresignUrl: build.query({
@@ -604,17 +604,32 @@ export const api = createApi({
     }),
 
     recordPlay: build.mutation({
-      query: (songId) => ({
-        url: 'user/plays',
-        method: 'POST',
-        body: { songId },
-      }),
-      invalidatesTags: ['RecentPlays'],
+      query: (payload) => {
+        // normalize payload to { songId, sourcePlaylistId? }
+        const body =
+          typeof payload === 'number' ? { songId: payload } : { songId: payload.songId, ...('sourcePlaylistId' in payload ? { sourcePlaylistId: payload.sourcePlaylistId } : {}) };
+
+        return {
+          url: 'user/plays',
+          method: 'POST',
+          body,
+        };
+      },
+      // When a play is recorded we want both lists refreshed
+      invalidatesTags: ['RecentPlays', 'RecentPlaylists'],
+      // Optional: provide a small optimistic update for UI if you want (see notes below)
     }),
-    // get recent plays
+
+    // Get recent song plays
     getRecentPlays: build.query({
       query: (limit = 20) => `user/recent-plays?limit=${limit}`,
-      providesTags: ['RecentPlays'],
+      providesTags: (result) => result ? [{ type: 'RecentPlays', id: 'LIST' }] : [{ type: 'RecentPlays', id: 'LIST' }],
+    }),
+
+    // Get recent playlists (new)
+    getRecentPlaylists: build.query({
+      query: (limit = 20) => `user/recent-playlists?limit=${limit}`,
+      providesTags: (result) => result ? [{ type: 'RecentPlaylists', id: 'LIST' }] : [{ type: 'RecentPlaylists', id: 'LIST' }],
     }),
 
     toggleFavoriteSong: build.mutation({
@@ -1124,6 +1139,7 @@ export const {
   useGetSearchResultsQuery,
   useRecordPlayMutation,
   useGetRecentPlaysQuery,
+  useGetRecentPlaylistsQuery,
   useToggleFavoriteSongMutation,
   useGetFavoriteSongsQuery,
   useToggleFavoritePlaylistMutation,

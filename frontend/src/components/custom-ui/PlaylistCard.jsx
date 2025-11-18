@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { Play, Lock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { setQueue, setTrack, setIsPlaying } from '../../store/playerSlice';
-import { useGetSongsQuery } from '../../utils/api';
+import { useGetSongsQuery, useRecordPlayMutation  } from '../../utils/api';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { canAccessContent } from '../../utils/permissions';
 
@@ -20,14 +20,17 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false }) {
 
   const locked = !canAccessContent(userTier, playlist);
 
+  const [recordPlay] = useRecordPlayMutation();
+
   // Popup state
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
 
-  const handlePlaySong = (e, song) => {
+  const lastRecordedRef = useRef({ songId: null, ts: 0 });
+
+  const handlePlaySong = async (e, song) => {
     e.stopPropagation();
 
-    // 🔹 Block play for locked playlists
     if (locked || isLockedOverlay) {
       setPopupMessage(
         'This content is not included in your plan. Subscribe to a premium plan.'
@@ -48,11 +51,23 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false }) {
       })
     );
     dispatch(setIsPlaying(true));
+
+    const now = Date.now();
+    if (lastRecordedRef.current.songId === song.id && (now - lastRecordedRef.current.ts) < RECORD_DEBOUNCE_MS) {
+      return;
+    }
+    lastRecordedRef.current = { songId: song.id, ts: now };
+
+    try {
+      await recordPlay({ songId: song.id, sourcePlaylistId: playlist?.id ?? null }).unwrap();
+    } catch (err) {
+      console.error('recordPlay failed from PlaylistCard', err);
+    }
   };
+
 
   const handleCardClick = () => {
     if (locked || isLockedOverlay) {
-      // 🔸 Overlay lock message
       const msg = isLockedOverlay
         ? 'This content is not included in your plan. Subscribe to a premium plan.'
         : 'This playlist is available only for premium subscribers.';

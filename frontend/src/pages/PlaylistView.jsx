@@ -1,5 +1,5 @@
 // src/pages/PlaylistView.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Play, Plus, Share2, Clock, ArrowLeft, ArrowRight, X, Eye,
@@ -36,6 +36,7 @@ export default function PlaylistView() {
   const playlist = allPlaylists.find(p => p.slug === slug);
 
   const [recordPlay] = useRecordPlayMutation();
+  const lastRecordedRef = useRef({ songId: null, ts: 0 });
 
   const { data: songs = [], isLoading: songsLoading, isError: songsError } = useGetSongsQuery(playlist?.id);
   const { data: categories = [] } = useGetCategoriesQuery();
@@ -93,7 +94,9 @@ export default function PlaylistView() {
     return `${m}:${s}`;
   };
 
-  const handlePlaySong = (song) => {
+  const handlePlaySong = async (song, idx) => {
+    if (!song) return;
+
     dispatch(setQueue(songs));
     dispatch(setTrack({
       id:       song.id,
@@ -105,8 +108,26 @@ export default function PlaylistView() {
       description: song.description,
     }));
     dispatch(setIsPlaying(true));
-    recordPlay(song.id);
+
+    const now = Date.now();
+    if (lastRecordedRef.current.songId === song.id && (now - lastRecordedRef.current.ts) < RECORD_DEBOUNCE_MS) {
+      return;
+    }
+    lastRecordedRef.current = { songId: song.id, ts: now };
+
+    try {
+      await recordPlay({ songId: song.id, sourcePlaylistId: playlist?.id }).unwrap();
+    } catch (err) {
+      
+      console.error('recordPlay failed', err);
+    }
   };
+
+  const handlePlayFirst = () => {
+    if (!songs || songs.length === 0) return;
+    handlePlaySong(songs[0], 0);
+  };
+
 
   const toggleSelect = mplId =>
     setSelectedIds(prev => prev.includes(mplId) ? prev.filter(x => x !== mplId) : [...prev, mplId]);

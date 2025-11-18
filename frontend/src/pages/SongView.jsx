@@ -1,5 +1,5 @@
 // src/pages/SongView.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Play, Share2, ArrowLeft, X, Clock } from 'lucide-react';
 import {
@@ -59,19 +59,36 @@ export default function SongView() {
   //   return () => { cancelled = true; };
   // }, [song?.image]);
 
-  const handlePlay = () => {
+
+  const lastRecordedRef = useRef({ songId: null, ts: 0 });
+
+  
+  const handlePlay = async () => {
     if (!song) return;
+
     dispatch(setQueue([song]));
     dispatch(setTrack({
       id:       song.id,
       title:    song.title || song.name,
       artist:   song.artist,
-      image:    heroImg,        // use the resolved image
+      image:    heroImg,
       audioUrl: song.audioUrl,
       description: song.description,
     }));
     dispatch(setIsPlaying(true));
-    recordPlay(song.id);
+
+    const now = Date.now();
+    if (lastRecordedRef.current.songId === song.id && (now - lastRecordedRef.current.ts) < RECORD_DEBOUNCE_MS) {
+      return;
+    }
+    lastRecordedRef.current = { songId: song.id, ts: now };
+
+    try {
+      const sourcePlaylistId = song.playlist ?? song.playlist_id ?? null;
+      await recordPlay({ songId: song.id, sourcePlaylistId }).unwrap();
+    } catch (err) {
+      console.error('recordPlay failed', err);
+    }
   };
 
   const [showDescModal, setShowDescModal] = useState(false);
