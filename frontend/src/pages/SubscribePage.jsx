@@ -171,7 +171,7 @@ export default function SubscribePage() {
             <div className="relative h-full bg-gradient-to-br from-white/[0.12] to-white/[0.05] backdrop-blur-xl rounded-3xl border-2 border-white/20 p-8 transition-all duration-300 group-hover:border-white/30 group-hover:scale-[1.02] shadow-2xl">
 
               <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-green-500/20 border border-green-400/40 backdrop-blur-sm">
-                <span className="text-xs font-semibold text-green-300 tracking-wider">SAVE 50%</span>
+                <span className="text-xs font-semibold text-green-300 tracking-wider">SAVE 33.3%</span>
               </div>
 
               {/* Title */}
@@ -183,8 +183,8 @@ export default function SubscribePage() {
               {/* Pricing */}
               <div className="mb-8">
                 <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-5xl font-light text-gray-500 line-through">$1499</span>
-                  <span className="text-3xl font-light tracking-tight">$999</span>
+                  <span className="text-4xl font-light text-gray-500 line-through">$1499</span>
+                  <span className="text-6xl font-light tracking-tight">$999</span>
                 </div>
                 <p className="text-sm text-gray-400">Billed annually · Save $500</p>
               </div>
