@@ -38,14 +38,16 @@ async function validateUser(email, password) {
  * @param {string} token 
  * @param {Date} expiresAt 
  */
-async function saveRefreshToken(userId, token, expiresAt) {
-  console.log('Attempting DB INSERT into user_refresh_tokens for user:', userId);
+async function saveRefreshToken(userId, token, expiresAt = null) {
+  if (!expiresAt) {
+    expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  }
   const [result] = await db.query(
     `INSERT INTO user_refresh_tokens (user_id, token, expires_at)
-      VALUES (?, ?, ?)`,
+     VALUES (?, ?, ?)`,
     [userId, token, expiresAt]
   );
-  console.log('DB INSERT result:', result);
+  return result;
 }
 
 /**

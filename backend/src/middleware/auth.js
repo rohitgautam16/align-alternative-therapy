@@ -15,12 +15,18 @@ function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, ACCESS_SECRET);
-    req.user = payload; // Now available in route handlers
+    req.user = payload; 
     next();
   } catch (err) {
+    try {
+      const decoded = jwt.decode(token);
+      console.log('Token decode:', decoded, 'serverNow:', Math.floor(Date.now()/1000));
+    } catch(e){}
+    console.warn('Token verify failed:', err.message);
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
+
 
 /**
  * Requires that user is authenticated **and** has user_roles === 1

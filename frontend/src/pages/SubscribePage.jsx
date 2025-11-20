@@ -1,41 +1,39 @@
 // src/pages/SubscribePage.jsx
-import React, { useRef, useEffect } from 'react';
-import { Check, X, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import PlanImg from '../assets/images/girl-piano.jpg';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { X, Check, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCheckoutSubscriptionMutation } from '../utils/api';
 import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated';
 
-
-
 const cardVariants = {
-  offscreen: { opacity: 0, y: 20 },
-  onscreen: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  offscreen: { opacity: 0, y: 50 },
+  onscreen: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: 'easeOut' }
+  }
 };
 
 // ---------- auth gate ----------
 function useAuthGate() {
   const isAuthenticated = useIsAuthenticated();
   const navigate = useNavigate();
-  const location = useLocation();
   const [loginPromptOpen, setLoginPromptOpen] = React.useState(false);
 
-  const requireAuthThen = React.useCallback(
-    (actionFn) => {
-      if (isAuthenticated) {
-        actionFn?.();
-      } else {
-        const current = location.pathname + location.search;
-        sessionStorage.setItem('returnToPath', current);
+  const requireAuthThen = useCallback(
+    (fn) => {
+      if (isAuthenticated) fn?.();
+      else {
+        sessionStorage.setItem('returnToPath', window.location.pathname + window.location.search);
         sessionStorage.setItem('loginRedirect', 'return');
         setLoginPromptOpen(true);
       }
     },
-    [isAuthenticated, location.pathname, location.search]
+    [isAuthenticated]
   );
 
-  const proceedToLogin = React.useCallback(() => {
+  const proceedToLogin = useCallback(() => {
     setLoginPromptOpen(false);
     navigate('/login');
   }, [navigate]);
@@ -43,266 +41,324 @@ function useAuthGate() {
   return { requireAuthThen, loginPromptOpen, setLoginPromptOpen, proceedToLogin };
 }
 
-// ---------- tiny atoms ----------
-const PlanFeature = ({ text }) => (
-  <li className="flex items-center">
-    <Check className="h-5 w-5 text-gray-400 mr-3" />
-    <span className="text-gray-300">{text}</span>
-  </li>
-);
-
-const Plan = ({ name, price, originalPrice, discountedPrice, features, buttonText, onSelect, loading }) => (
-  <motion.div
-    variants={cardVariants}
-    initial="offscreen"
-    whileInView="onscreen"
-    viewport={{ once: true, amount: 0.5 }}
-    whileHover={{ scale: 1.05, transition: { type: 'spring', stiffness: 300 } }}
-    className="relative bg-[#0A0A0A] rounded-3xl p-6 border border-gray-800 h-full flex flex-col"
-  >
-    <div className="mb-6">
-      <div className="flex items-baseline flex-wrap">
-        {discountedPrice != null ? (
-          <>
-            <span className="text-2xl font-light line-through text-gray-400">
-              CA${originalPrice}
-            </span>
-            <span className="text-3xl font-light ml-2">CA${discountedPrice}</span>
-          </>
-        ) : (
-          <span className="text-3xl font-light">{price === 0 ? 'CA$0' : `CA$${price}`}</span>
-        )}
-        <span className="ml-2 text-gray-400 whitespace-nowrap">
-          {name.includes('Monthly') ? '/ Month' : name.includes('Yearly') ? '/ Year' : ''}
-        </span>
-      </div>
-      <h3 className="text-xl font-light mt-4 mb-6">{name}</h3>
-    </div>
-
-    <ul className="space-y-4 mb-6 flex-grow">
-      {features.map((feat, i) => (
-        <PlanFeature key={i} text={feat.text} />
-      ))}
-    </ul>
-
-    <button
-      onClick={onSelect}
-      disabled={loading}
-      className="w-full bg-white text-black py-3 rounded-full cursor-pointer font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
-    >
-      {loading ? 'Processing…' : buttonText}
-    </button>
-  </motion.div>
-);
-
-function Modal({ open, onClose, children }) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 20 } }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="relative w-full max-w-md bg-[#0B0B0B] rounded-2xl border border-gray-800 p-6 shadow-xl"
-          >
-            {children}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ---------- page ----------
 export default function SubscribePage() {
   const navigate = useNavigate();
+
   const { requireAuthThen, loginPromptOpen, setLoginPromptOpen, proceedToLogin } = useAuthGate();
   const [checkout, { isLoading, error }] = useCheckoutSubscriptionMutation();
 
-  // Checkout logic
-  async function startBaseCheckout({ plan, trial = false }) {
+  // checkout
+  async function startCheckout(plan) {
     try {
-      const result = await checkout({ plan, trial }).unwrap();
-      if (result.url) {
-        window.location.href = result.url;
-      } else {
-        navigate('/dashboard');
-      }
+      const result = await checkout({ plan }).unwrap();
+      if (result.url) window.location.href = result.url;
+      else navigate('/dashboard');
     } catch (err) {
-      console.error('Checkout failed:', err);
       alert(err?.data?.error || 'Checkout failed');
     }
   }
 
-  const handleBasePlanClick = (plan, trial = false) => {
-    requireAuthThen(() => startBaseCheckout({ plan, trial }));
-  };
+  const handleBasePlanClick = (plan) =>
+    requireAuthThen(() => startCheckout(plan));
 
   const handeConatctSales = () => navigate('/contact-us');
 
-
-  const plans = [
-    // {
-    //   name: '1 Month Free Access',
-    //   price: 0,
-    //   features: [
-    //     { text: 'Basic Audio Quality' },
-    //     { text: 'Limited Content' },
-    //     { text: '24/7 Customer Support' },
-    //     { text: 'Personalized Recommendations' },
-    //   ],
-    //   buttonText: 'Get 1-Month Free',
-    //   onSelect: () => handleBasePlanClick('monthly', true),
-    // },
-    {
-      name: 'Monthly Plan',
-      price: 144,
-      features: [
-        { text: 'Basic Audio Quality' },
-        { text: 'Unlimited Content' },
-        { text: '24/7 Customer Support' },
-        { text: 'Personalized Recommendations' },
-      ],
-      buttonText: 'Subscribe Monthly',
-      onSelect: () => handleBasePlanClick('monthly'),
-    },
-    {
-      name: 'Yearly Plan',
-      originalPrice: 1499,
-      discountedPrice: 749,
-      features: [
-        { text: 'High Audio Quality' },
-        { text: 'Exclusive Content' },
-        { text: 'Priority Support' },
-        { text: 'Early Access Releases' },
-      ],
-      buttonText: 'Subscribe Yearly',
-      onSelect: () => handleBasePlanClick('annual'),
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-black  text-white py-12 px-4 sm:px-6 lg:px-8 relative">
-      {/* Top-right cross button */}
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+
+      {/* Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black opacity-50"></div>
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
+
+      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
-        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20"
+        className="absolute top-8 right-8 z-50 p-3 cursor-pointer rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 transition-all duration-300 group"
       >
-        <X className="w-5 h-5 text-white" />
+        <X className="w-5 h-5 text-white group-hover:rotate-90 transition-transform duration-300" />
       </button>
 
-      <div className="max-w-screen mx-auto flex flex-col justify-center">
+      <div className="max-w-7xl mx-auto relative z-10">
+
         {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-light mb-4">Our Pricing Plan</h2>
-          <p className="text-base text-gray-400 max-w-3xl mx-auto">
-            Unlock Your Inner Calm with Align
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-20"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-6">
+            <Sparkles className="w-4 h-4 text-white" />
+            <span className="text-sm font-medium tracking-wide">PRICING PLANS</span>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-light mb-6 tracking-tight">
+            Choose Your <span className="font-medium">Plan</span>
+          </h1>
+
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto font-light">
+            Unlock your inner calm with Align
           </p>
-        </div>
+        </motion.div>
 
-        {/* Featured + Plans */}
-        <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
-          {/* Featured Card */}
-          <motion.div
-            variants={cardVariants}
-            initial="offscreen"
-            whileInView="onscreen"
-            viewport={{ once: true, amount: 0.5 }}
-            whileHover={{ scale: 1.05, transition: { type: 'spring', stiffness: 300 } }}
-            className="relative bg-white/90 rounded-3xl p-6 overflow-hidden h-full flex flex-col border border-gray-800 w-full"
-          >
-            <div className="aspect-video mb-6 w-full">
-              <img src={PlanImg} alt="Featured" className="w-full h-full object-cover rounded-2xl" />
+        {/* Cards */}
+        <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto mb-24">
+
+          {/* MONTHLY */}
+          <motion.div variants={cardVariants} initial="offscreen" whileInView="onscreen" viewport={{ once: true }} className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100"></div>
+
+            <div className="relative h-full bg-gradient-to-br from-white/[0.07] to-white/[0.02] backdrop-blur-xl rounded-3xl border border-white/10 p-8 transition-all duration-300 group-hover:border-white/20 group-hover:scale-[1.02]">
+
+              {/* Badge */}
+              <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
+                <span className="text-xs font-semibold text-blue-300 tracking-wider">POPULAR</span>
+              </div>
+
+              {/* Title */}
+              <div className="mb-8">
+                <h3 className="text-2xl font-medium mb-2">Monthly</h3>
+                <p className="text-sm text-gray-400">Perfect for getting started</p>
+              </div>
+
+              {/* Pricing */}
+              <div className="mb-8">
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-6xl font-light tracking-tight">$151</span>
+                  <span className="text-gray-400 text-lg font-light">/month</span>
+                </div>
+                <p className="text-sm text-gray-500">Billed monthly</p>
+              </div>
+
+              {/* Features */}
+              {/* <div className="space-y-4 mb-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-sm">Full access to meditation library</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-sm">Personalized recommendations</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-sm">Progress tracking</span>
+                </div>
+              </div> */}
+
+              <button
+                onClick={() => handleBasePlanClick('monthly')}
+                disabled={isLoading}
+                className="w-full py-4 rounded-full bg-white text-black cursor-pointer font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg disabled:opacity-50"
+              >
+                {isLoading ? 'Processing...' : 'Subscribe Monthly'}
+              </button>
             </div>
-
-            <h3 className="text-xl text-gray-800 font-light mb-4 flex-grow">
-              Discover tranquility through a curated selection of music and experiences.
-            </h3>
           </motion.div>
 
-          {/* Plan Cards */}
-          {plans.map((p, i) => (
-            <Plan key={i} {...p} loading={isLoading} />
-          ))}
+          {/* YEARLY */}
+          <motion.div variants={cardVariants} initial="offscreen" whileInView="onscreen" viewport={{ once: true }} className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 to-secondary-500/10 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+
+            <div className="relative h-full bg-gradient-to-br from-white/[0.12] to-white/[0.05] backdrop-blur-xl rounded-3xl border-2 border-white/20 p-8 transition-all duration-300 group-hover:border-white/30 group-hover:scale-[1.02] shadow-2xl">
+
+              <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-green-500/20 border border-green-400/40 backdrop-blur-sm">
+                <span className="text-xs font-semibold text-green-300 tracking-wider">SAVE 50%</span>
+              </div>
+
+              {/* Title */}
+              <div className="mb-8">
+                <h3 className="text-2xl font-medium mb-2">Yearly</h3>
+                <p className="text-sm text-gray-400">Best value for committed members</p>
+              </div>
+
+              {/* Pricing */}
+              <div className="mb-8">
+                <div className="flex items-baseline gap-3 mb-2">
+                  <span className="text-5xl font-light text-gray-500 line-through">$1499</span>
+                  <span className="text-3xl font-light tracking-tight">$999</span>
+                </div>
+                <p className="text-sm text-gray-400">Billed annually · Save $500</p>
+              </div>
+
+              {/* Features */}
+              {/* <div className="space-y-4 mb-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-green-400" />
+                  </div>
+                  <span className="text-gray-200 text-sm font-medium">Everything in Monthly</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-green-400" />
+                  </div>
+                  <span className="text-gray-200 text-sm font-medium">Priority support</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-green-400" />
+                  </div>
+                  <span className="text-gray-200 text-sm font-medium">Exclusive content access</span>
+                </div>
+              </div> */}
+
+              <button
+                onClick={() => handleBasePlanClick('annual')}
+                disabled={isLoading}
+                className="w-full py-4 rounded-full bg-white text-black cursor-pointer font-medium hover:bg-gray-100 transition-all duration-300 shadow-xl disabled:opacity-50"
+              >
+                {isLoading ? 'Processing...' : 'Subscribe Yearly'}
+              </button>
+            </div>
+          </motion.div>
+
+          {/* ALIGN+ */}
+          <motion.div variants={cardVariants} initial="offscreen" whileInView="onscreen" viewport={{ once: true }} className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-yellow-500/5 rounded-3xl blur-xl transition-all duration-500 opacity-50"></div>
+
+            <div className="relative h-full bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl rounded-3xl border border-white/[0.08] p-8 transition-all duration-300">
+
+              <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
+                <span className="text-xs font-semibold text-amber-300 tracking-wider">SOON</span>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-2xl font-medium mb-2 text-gray-300">ALIGN+</h3>
+                <p className="text-sm text-gray-500">Exclusive elite access</p>
+              </div>
+
+              <div className="mb-8">
+                <span className="text-4xl font-light text-gray-400">Premium</span>
+                <p className="text-sm text-gray-600 mt-2">Coming soon</p>
+              </div>
+
+              {/* <div className="space-y-4 mb-10 opacity-50">
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-gray-600" />
+                  </div>
+                  <span className="text-gray-500 text-sm">Everything in Yearly</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-gray-600" />
+                  </div>
+                  <span className="text-gray-500 text-sm">1-on-1 coaching sessions</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-gray-600" />
+                  </div>
+                  <span className="text-gray-500 text-sm">Custom meditation programs</span>
+                </div>
+              </div> */}
+
+              <button
+                disabled
+                className="w-full py-4 rounded-full bg-white/5 text-gray-500 font-medium border border-white/10 cursor-not-allowed"
+              >
+                Coming Soon
+              </button>
+            </div>
+          </motion.div>
+
         </div>
 
-        {/* Error Display */}
+        {/* Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl max-w-6xl mx-auto"
+        >
+          <div className="absolute inset-0">
+            <img
+              src="https://images.unsplash.com/photo-1545132059-a90e55c5286c?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=1200"
+              alt="Music Banner"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent"></div>
+          </div>
+
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 px-10 md:px-16 py-16">
+            <div className="flex-1 text-center md:text-left space-y-6">
+              <h3 className="text-3xl md:text-4xl font-light leading-tight">
+                Personalized Songs &<br />
+                <span className="font-medium">Tailored Recommendations</span>
+              </h3>
+
+              <p className="text-gray-300 text-base max-w-md leading-relaxed">
+                Discover melodies crafted to match your mood, preferences, and emotions.
+                Experience a truly unique musical journey.
+              </p>
+
+              <button
+                onClick={handeConatctSales}
+                className="inline-flex items-center gap-2 bg-white cursor-pointer text-black px-8 py-4 rounded-full font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-white/20 group"
+              >
+                Contact Sales
+                <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Error */}
         {error && (
-          <p className="mt-6 text-center text-red-400">
-            {error.data?.error || error.error}
-          </p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-8 text-center">
+            <p className="text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-6 py-3 inline-block">
+              {error.data?.error || error.error}
+            </p>
+          </motion.div>
         )}
+
       </div>
 
-<motion.div
-  initial={{ opacity: 0, y: 50 }}
-  whileInView={{ opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } }}
-  viewport={{ once: true }}
-  className="relative mt-20 overflow-hidden rounded-3xl border border-gray-800 shadow-2xl"
->
-  {/* Background Image */}
-  <div className="absolute inset-0">
-    <img
-      src="https://images.unsplash.com/photo-1545132059-a90e55c5286c?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1170"
-      alt="Music Banner"
-      className="w-full h-full object-cover"
-    />
-  
-    <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent"></div>
-  </div>
+      {/* Login modal */}
+      {loginPromptOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl"
+          >
+            <h4 className="text-2xl font-medium mb-3">Login Required</h4>
+            <p className="text-gray-400 mb-8">Please log in to continue to checkout.</p>
 
-  {/* Content */}
-  <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 px-8 md:px-16 py-16">
-    {/* Text Section (Left) */}
-    <div className="flex-1 text-center md:text-left space-y-5">
-      <h3 className="text-3xl md:text-4xl font-light leading-tight">
-        Personalized Songs & Recommendations <br />
-        <span className="font-medium text-white/90">Tailored Just for You</span>
-      </h3>
-      <p className="text-gray-300 text-base max-w-md">
-        Discover melodies crafted to match your mood, preferences, and emotions. 
-        Experience a truly unique musical journey.
-      </p>
-      <button
-        onClick={handeConatctSales}
-        className="bg-white text-black px-8 py-3 rounded-full font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-white/20"
-      >
-        Contact Us
-      </button>
-    </div>
-  </div>
-</motion.div>
+            <div className="flex gap-3">
+              <button
+                onClick={proceedToLogin}
+                className="flex-1 px-6 py-3 rounded-full bg-white text-black font-medium hover:bg-gray-100 transition-all duration-300"
+              >
+                Go to Login
+              </button>
 
-      
-
-      {/* Login Modal */}
-      <Modal open={loginPromptOpen} onClose={() => setLoginPromptOpen(false)}>
-        <div className="space-y-4">
-          <h4 className="text-lg font-medium">Login Required</h4>
-          <p className="text-sm text-gray-400">Please log in to continue to checkout.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={proceedToLogin}
-              className="flex-1 px-4 py-2 rounded-lg cursor-pointer bg-white text-black font-medium hover:bg-gray-100"
-            >
-              Go to Login
-            </button>
-            <button
-              onClick={() => setLoginPromptOpen(false)}
-              className="flex-1 px-4 py-2 rounded-lg cursor-pointer bg-transparent border border-gray-700 hover:border-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
+              <button
+                onClick={() => setLoginPromptOpen(false)}
+                className="flex-1 px-6 py-3 rounded-full bg-transparent border border-white/20 hover:border-white/40 transition-all duration-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
         </div>
-      </Modal>
+      )}
+
     </div>
   );
 }

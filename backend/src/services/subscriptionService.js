@@ -9,6 +9,12 @@ let cachedPriceMap = null;
 let lastPriceMapLoad = 0;
 const PRICE_MAP_CACHE_TTL_MS = 1000 * 60 * 15; 
 
+const YEARLY_PROMO_COUPON_ID = process.env.STRIPE_ANNUAL_PROMO_COUPON_ID || null;
+
+function isAnnualPromoActive(plan) {
+  return plan === 'annual' && !!YEARLY_PROMO_COUPON_ID;
+}
+
 async function ensureCachedPriceMap(force = false) {
   if (!cachedPriceMap || force || Date.now() - lastPriceMapLoad > PRICE_MAP_CACHE_TTL_MS) {
     cachedPriceMap = await getProductPriceMap();
@@ -86,12 +92,33 @@ async function createOrUpdateSubscriptionSession(userId, plan, trial = false) {
       return { type: 'no_change', subscription: sub };
     }
 
+    // const baseItem = sub.items.data[0];
+    // const updated = await stripe.subscriptions.update(existing.stripe_subscription_id, {
+    //   cancel_at_period_end: false,
+    //   proration_behavior: 'create_prorations',
+    //   items: [{ id: baseItem.id, price: basePriceId }],
+    // });
+
+
     const baseItem = sub.items.data[0];
-    const updated = await stripe.subscriptions.update(existing.stripe_subscription_id, {
+
+    const applyAnnualPromo = isAnnualPromoActive(plan);
+
+    const updatePayload = {
       cancel_at_period_end: false,
       proration_behavior: 'create_prorations',
       items: [{ id: baseItem.id, price: basePriceId }],
-    });
+    };
+
+    if (applyAnnualPromo) {
+      updatePayload.coupon = YEARLY_PROMO_COUPON_ID;
+    }
+
+    const updated = await stripe.subscriptions.update(
+      existing.stripe_subscription_id,
+      updatePayload
+    );
+
 
     await db.query(
       `UPDATE subscriptions
@@ -117,9 +144,24 @@ async function createOrUpdateSubscriptionSession(userId, plan, trial = false) {
     return { type: 'update_existing', subscription: updated };
   }
 
+  // const userEmail = await getUserEmail(userId);
+
+  // const session = await stripe.checkout.sessions.create({
+  //   mode: 'subscription',
+  //   customer_email: userEmail,
+  //   client_reference_id: String(userId),
+  //   line_items: [{ price: basePriceId, quantity: 1 }],
+  //   metadata: { user_id: String(userId), plan, purpose: 'premium_subscription' },
+  //   success_url: `${process.env.FRONTEND_URL}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
+  //   cancel_url: `${process.env.FRONTEND_URL}/subscribe/cancel`,
+  //   ...(trial ? { subscription_data: { trial_period_days: 30 } } : {}),
+  // });
+
   const userEmail = await getUserEmail(userId);
 
-  const session = await stripe.checkout.sessions.create({
+  const applyAnnualPromo = isAnnualPromoActive(plan);
+
+  const sessionPayload = {
     mode: 'subscription',
     customer_email: userEmail,
     client_reference_id: String(userId),
@@ -128,7 +170,13 @@ async function createOrUpdateSubscriptionSession(userId, plan, trial = false) {
     success_url: `${process.env.FRONTEND_URL}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.FRONTEND_URL}/subscribe/cancel`,
     ...(trial ? { subscription_data: { trial_period_days: 30 } } : {}),
-  });
+  };
+
+  if (applyAnnualPromo) {
+    sessionPayload.discounts = [{ coupon: YEARLY_PROMO_COUPON_ID }];
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionPayload);
 
 
   await db.query(

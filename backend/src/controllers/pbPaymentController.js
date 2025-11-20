@@ -12,7 +12,7 @@ exports.createPaymentLink = async function createPaymentLink(req, res) {
     const adminId = req.user?.id || null;
 
     // 🔹 Default currency & product from env
-    const DEFAULT_CURRENCY = process.env.STRIPE_DEFAULT_CURRENCY || 'CAD';
+    const DEFAULT_CURRENCY = process.env.STRIPE_DEFAULT_CURRENCY || 'USD';
     const GLOBAL_PRODUCT_ID = process.env.STRIPE_PERSONALIZE_PRODUCT_ID;
 
     if (!recommendationId) {

@@ -192,7 +192,7 @@ function DeletedRecommendationsModal({ isOpen, onClose, userId, onRestore, onHar
                         <span>ID: #{rec.id}</span>
                         {rec.payment_status && rec.payment_status !== 'free' && (
                           <span className="px-2 py-1 rounded bg-yellow-600/20 text-yellow-300">
-                            {rec.payment_status} • {rec.currency || 'CAD'} {rec.price_cents ? (rec.price_cents / 100) : '0'}
+                            {rec.payment_status} • {rec.currency || 'USD'} {rec.price_cents ? (rec.price_cents / 100) : '0'}
                           </span>
                         )}
                       </div>
@@ -257,7 +257,7 @@ function PaymentStatusBadge({ status, price, currency }) {
     paid: 'bg-green-600/30 text-green-200',
   };
 
-  const displayPrice = price ? `${currency || 'CAD'} ${price}` : '';
+  const displayPrice = price ? `${currency || 'USD'} ${price}` : '';
   const label = status === 'paid' ? `Paid ${displayPrice}` : `Pending ${displayPrice}`;
 
   return (
@@ -355,7 +355,7 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
             <div>
               <span className="text-base font-medium text-green-200">Payment Link Generated</span>
               <div className="text-sm text-gray-300">
-                Amount: {currentPaymentData.currency || 'CAD'} {currentPaymentData.price}
+                Amount: {currentPaymentData.currency || 'USD'} {currentPaymentData.price}
               </div>
             </div>
           </div>
@@ -432,7 +432,7 @@ function PaymentLinkCreator({ recommendationId, currentPaymentData, onSuccess })
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder={`e.g., ${displayCurrency === 'CAD' ? '29.99' : '299.00'} or leave empty for free`}
+                placeholder={`e.g., ${displayCurrency === 'USD' ? '29.99' : '299.00'} or leave empty for free`}
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
               />
@@ -1334,7 +1334,7 @@ export default function BasicPersonalize() {
                   
                   const hasPayment = r.payment_status && r.payment_status !== 'free';
                   const paymentPrice = r.price_cents ? r.price_cents / 100 : 0;
-                  const paymentCurrency = r.currency || 'CAD';
+                  const paymentCurrency = r.currency || 'USD';
 
                   return (
                     <div
