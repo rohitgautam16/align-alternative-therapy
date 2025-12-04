@@ -7,28 +7,25 @@ import {
   useListCategoriesQuery,
   useListPlaylistsQuery,
   useUploadR2FilesMutation,
-  useGetR2PresignUrlQuery, 
+  useGetR2PresignUrlQuery,
+  useUpdateSongVisibilityMutation, // ✅ NEW
 } from '../../utils/api';
-import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle, Eye, EyeOff } from 'lucide-react'; // ✅ Added Eye, EyeOff
 import { AnimatePresence, motion } from 'framer-motion';
-
 
 // Enhanced placeholder image for better UX
 const DEFAULT_PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjMzc0MTUxIi8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIyNCIgZmlsbD0iIzZCNzI4MCIvPjxwYXRoIGQ9Ik0xNDQgNzZIMTc2VjEwNEgxNDRWNzZaTTE1MiA4NEgxNjhWOTZIMTUyVjg0WiIgZmlsbD0iIzlDQTNBRiIvPjx0ZXh0IHg9IjE2MCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPg==';
-
 
 // Custom Image Dropdown Component (Updated with improved placeholders)
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(opt => opt.id === Number(value));
 
-
   const getPlaceholderForType = (type) => {
     return type === 'playlist' 
       ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBNEFGIiBmb250LXNpemU9IjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5QPC90ZXh0Pgo8L3N2Zz4='
       : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgZmlsbD0iIzlDQTRBRiIvPgo8L3N2Zz4=';
   };
-
 
   return (
     <div className="relative">
@@ -63,7 +60,6 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-
 
       {isOpen && (
         <>
@@ -113,33 +109,25 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   );
 };
 
-
 export default function AdminSongDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-
-  // File upload - Updated for presigned URLs
+  // File upload
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
   const [selectedAudioFile, setSelectedAudioFile] = useState(null);
   
-  // New state for presigned upload tracking
   const [artworkKey, setArtworkKey] = useState(null);
   const [audioKey, setAudioKey] = useState(null);
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
-
-  // Progress tracking state
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
 
-
-  // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
-
 
   // Fetch song data
   const { 
@@ -149,21 +137,16 @@ export default function AdminSongDetail() {
     refetch: refetchSong 
   } = useGetAdminSongQuery(id);
 
-
-  // Fetch categories and playlists for dropdowns (keeping categories for existing data display)
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({ page: 1, pageSize: 100 });
   const { data: plRaw = { data: [] } } = useListPlaylistsQuery({ page: 1, pageSize: 100 });
 
-
-  // Ensure arrays for safe operations
   const categories = catRaw.data || [];
   const playlists = plRaw.data || [];
-
 
   // Mutations
   const [updateSong, { isLoading: saving }] = useUpdateAdminSongMutation();
   const [deleteSong] = useDeleteAdminSongMutation();
-
+  const [updateVisibility] = useUpdateSongVisibilityMutation(); // ✅ NEW
 
   // Local form & UI state
   const [form, setForm] = useState(null);
@@ -171,8 +154,6 @@ export default function AdminSongDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-
-  // Use existing hook with conditional skip for presigned URLs
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
       filename: "",
@@ -181,7 +162,6 @@ export default function AdminSongDetail() {
     },
     { skip: !artworkPresignParams }
   );
-
 
   const { data: audioPresign } = useGetR2PresignUrlQuery(
     audioPresignParams || {
@@ -192,8 +172,7 @@ export default function AdminSongDetail() {
     { skip: !audioPresignParams }
   );
 
-
-  // ✅ UPDATED - Initialize form with is_free field
+  // ✅ UPDATED - Initialize form with is_free and is_discoverable
   useEffect(() => {
     if (song) {
       setForm({
@@ -207,13 +186,12 @@ export default function AdminSongDetail() {
         playlist: song.playlistId || song.playlist_id || song.playlist || '',
         artwork_filename: song.image || song.artwork_filename || '',
         cdn_url: song.audioUrl || song.cdn_url || '',
-        is_free: song.is_free ?? 0, // ✅ ADDED - Default to 0 (paid) if not set
+        is_free: song.is_free ?? 0,
+        is_discoverable: song.is_discoverable ?? 1, // ✅ NEW
       });
     }
   }, [song]);
 
-
-  // Auto‑clear flash messages
   useEffect(() => {
     if (flash.txt) {
       const t = setTimeout(() => setFlash({ txt: '', ok: true }), 3000);
@@ -221,8 +199,6 @@ export default function AdminSongDetail() {
     }
   }, [flash]);
 
-
-  // Manual artwork upload handler with progress
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
@@ -236,7 +212,6 @@ export default function AdminSongDetail() {
         contentType: selectedArtFile.type,
         folder: "align-images/songs",
       });
-      
     } catch (err) {
       console.error('Upload error:', err);
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
@@ -245,8 +220,6 @@ export default function AdminSongDetail() {
     }
   };
 
-
-  // Manual audio upload handler with progress
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
     
@@ -260,7 +233,6 @@ export default function AdminSongDetail() {
         contentType: selectedAudioFile.type,
         folder: "align-audio/songs",
       });
-      
     } catch (err) {
       console.error('Upload error:', err);
       setFlash({ txt: `Audio upload failed: ${err.message}`, ok: false });
@@ -269,11 +241,8 @@ export default function AdminSongDetail() {
     }
   };
 
-
-  // Handle artwork presign response with progress tracking
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
-
 
     const uploadArtwork = async () => {
       try {
@@ -283,13 +252,11 @@ export default function AdminSongDetail() {
           fileName: selectedArtFile.name,
         });
 
-
         setFlash({ txt: "Uploading artwork...", ok: true });
         setArtworkUploadProgress(10);
         
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
@@ -297,8 +264,6 @@ export default function AdminSongDetail() {
           }
         });
 
-
-        // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
@@ -309,13 +274,11 @@ export default function AdminSongDetail() {
             setFlash({ txt: "Artwork uploaded successfully!", ok: true });
             setArtworkUploadProgress(100);
             
-            // Clear file selection
             setSelectedArtFile(null);
             setArtworkPresignParams(null);
             const artInput = document.getElementById('song-artwork-upload');
             if (artInput) artInput.value = '';
             
-            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setArtworkUploading(false);
               setArtworkUploadProgress(0);
@@ -326,14 +289,10 @@ export default function AdminSongDetail() {
           }
         });
 
-
-        // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
 
-
-        // Start the upload
         xhr.open('PUT', artworkPresign.url);
         xhr.setRequestHeader('Content-Type', selectedArtFile.type);
         xhr.send(selectedArtFile);
@@ -346,15 +305,11 @@ export default function AdminSongDetail() {
       }
     };
 
-
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-
-  // Handle audio presign response with progress tracking
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
-
 
     const uploadAudio = async () => {
       try {
@@ -363,7 +318,6 @@ export default function AdminSongDetail() {
         
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
@@ -371,8 +325,6 @@ export default function AdminSongDetail() {
           }
         });
 
-
-        // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
@@ -381,13 +333,11 @@ export default function AdminSongDetail() {
             setFlash({ txt: "Audio file uploaded successfully!", ok: true });
             setAudioUploadProgress(100);
             
-            // Clear file selection
             setSelectedAudioFile(null);
             setAudioPresignParams(null);
             const audioInput = document.getElementById('song-audio-upload');
             if (audioInput) audioInput.value = '';
             
-            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setAudioUploading(false);
               setAudioUploadProgress(0);
@@ -398,14 +348,10 @@ export default function AdminSongDetail() {
           }
         });
 
-
-        // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
 
-
-        // Start the upload
         xhr.open('PUT', audioPresign.url);
         xhr.setRequestHeader('Content-Type', selectedAudioFile.type);
         xhr.send(selectedAudioFile);
@@ -418,20 +364,30 @@ export default function AdminSongDetail() {
       }
     };
 
-
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
-
 
   if (isLoading) return <div className="p-6 text-white">Loading…</div>;
   if (isError || !song) return <div className="p-6 text-red-500">Error loading song</div>;
   if (!form) return null;
 
-
-  // Handlers   
+  // ✅ UPDATED - Separate is_discoverable from update
   const handleSave = async () => {
     try {
-      await updateSong({ id, ...form }).unwrap();
+      // Separate is_discoverable from other fields
+      const { is_discoverable, ...songData } = form;
+      
+      // Save song details
+      await updateSong({ id, ...songData }).unwrap();
+      
+      // If visibility changed, update it separately
+      if (is_discoverable !== song.is_discoverable) {
+        await updateVisibility({
+          id,
+          isDiscoverable: Boolean(is_discoverable),
+        }).unwrap();
+      }
+      
       setFlash({ txt: 'Song updated.', ok: true });
       setEditMode(false);
       await refetchSong();
@@ -441,10 +397,38 @@ export default function AdminSongDetail() {
     }
   };
 
+  // ✅ NEW: Toggle visibility handler
+  const handleToggleVisibility = async () => {
+    try {
+      const newVisibility = !form.is_discoverable;
+      
+      // Optimistically update local state
+      setForm(f => ({ ...f, is_discoverable: newVisibility ? 1 : 0 }));
+      
+      await updateVisibility({
+        id,
+        isDiscoverable: newVisibility,
+      }).unwrap();
+      
+      setFlash({
+        txt: `Song ${newVisibility ? 'shown' : 'hidden'} successfully!`,
+        ok: true,
+      });
+      
+      await refetchSong();
+    } catch (err) {
+      console.error('Toggle visibility error:', err);
+      // Revert on error
+      setForm(f => ({ ...f, is_discoverable: f.is_discoverable ? 0 : 1 }));
+      setFlash({
+        txt: 'Failed to update visibility.',
+        ok: false,
+      });
+    }
+  };
 
   const confirmDelete = () => setShowDeleteModal(true);
   const cancelDelete = () => setShowDeleteModal(false);
-
 
   const handleDelete = async () => {
     try {
@@ -456,7 +440,6 @@ export default function AdminSongDetail() {
       setFlash({ txt: 'Failed to delete song.', ok: false });
     }
   };
-
 
   return (
     <div className="p-6 text-white space-y-8">
@@ -474,22 +457,46 @@ export default function AdminSongDetail() {
         )}
       </AnimatePresence>
 
-
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* ✅ UPDATED Header with Quick Visibility Toggle */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-gray-300 hover:text-white"
         >
           <ArrowLeft size={20} /> Back
         </button>
-        <div className="flex items-center gap-4">
+        
+        <div className="flex flex-wrap items-center gap-2">
+          {/* ✅ NEW: Quick Visibility Toggle */}
+          <button
+            onClick={handleToggleVisibility}
+            className={`flex items-center gap-1 px-3 py-1 rounded transition-colors ${
+              form?.is_discoverable === 1
+                ? 'bg-green-600 hover:bg-green-500'
+                : 'bg-gray-600 hover:bg-gray-500'
+            }`}
+            title={form?.is_discoverable === 1 ? 'Hide from users' : 'Show to users'}
+          >
+            {form?.is_discoverable === 1 ? (
+              <>
+                <Eye size={16} />
+                <span className="hidden sm:inline">Visible</span>
+              </>
+            ) : (
+              <>
+                <EyeOff size={16} />
+                <span className="hidden sm:inline">Hidden</span>
+              </>
+            )}
+          </button>
+          
           <button
             onClick={() => setEditMode(e => !e)}
             className="flex items-center gap-1 bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
           >
             <Edit3 size={16} /> {editMode ? 'Cancel' : 'Edit'}
           </button>
+          
           {editMode && (
             <button
               onClick={handleSave}
@@ -499,6 +506,7 @@ export default function AdminSongDetail() {
               <Save size={16} /> {saving ? 'Saving…' : 'Save'}
             </button>
           )}
+          
           <button
             onClick={confirmDelete}
             className="flex items-center gap-1 bg-red-600 px-3 py-1 rounded hover:bg-red-500"
@@ -507,7 +515,6 @@ export default function AdminSongDetail() {
           </button>
         </div>
       </div>
-
 
       {/* Form & Artwork */}
       <div className="bg-gray-800 rounded-lg flex flex-col md:flex-row gap-6">
@@ -528,7 +535,6 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-
             {/* Title */}
             <div>
               <label className="block text-gray-400 mb-1">Title</label>
@@ -542,7 +548,6 @@ export default function AdminSongDetail() {
                 <p>{song.title || '—'}</p>
               )}
             </div>
-
 
             {/* Slug */}
             <div>
@@ -558,7 +563,6 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-
             <div className="md:col-span-2">
               <label className="block text-gray-400 mb-1">Description</label>
               {editMode ? (
@@ -571,7 +575,6 @@ export default function AdminSongDetail() {
                 <p>{song.description || '—'}</p>
               )}
             </div>
-
 
             {/* Artist */}
             <div>
@@ -587,7 +590,6 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-
             {/* Tags */}
             <div className="md:col-span-2">
               <label className="block text-gray-400 mb-1">Tags</label>
@@ -602,8 +604,7 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-
-            {/* ✅ ADDED - Access Type Field */}
+            {/* Access Type */}
             <div>
               <label className="block text-gray-400 mb-2">Access Type</label>
               {editMode ? (
@@ -651,6 +652,40 @@ export default function AdminSongDetail() {
               )}
             </div>
 
+            {/* ✅ NEW: Visibility Field */}
+            <div>
+              <label className="block text-gray-400 mb-1">Visibility</label>
+              {editMode ? (
+                <select
+                  value={form.is_discoverable !== undefined ? form.is_discoverable : 1}
+                  onChange={(e) => setForm(f => ({ ...f, is_discoverable: Number(e.target.value) }))}
+                  className="w-full p-2 bg-gray-700 rounded text-white"
+                >
+                  <option value={1}>Discoverable</option>
+                  <option value={0}>Hidden</option>
+                </select>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm ${
+                    song.is_discoverable === 1 
+                      ? 'bg-green-600/20 text-green-400' 
+                      : 'bg-gray-600/20 text-gray-400'
+                  }`}>
+                    {song.is_discoverable === 1 ? (
+                      <>
+                        <Eye size={14} />
+                        <span>Discoverable</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff size={14} />
+                        <span>Hidden</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Category - only show in read-only mode for existing data */}
             {!editMode && form.category && (
@@ -669,7 +704,6 @@ export default function AdminSongDetail() {
                 </div>
               </div>
             )}
-
 
             {/* Playlist Dropdown with Images */}
             <div>
@@ -697,11 +731,9 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-
             {/* Artwork Upload with Progress Bar */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Artwork URL</label>
-
 
               {editMode ? (
                 <div className="space-y-2">
@@ -712,7 +744,6 @@ export default function AdminSongDetail() {
                     placeholder="https://cdn.example.com/img.jpg"
                     className="w-full p-2 bg-gray-700 rounded text-white"
                   />
-
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
@@ -732,7 +763,6 @@ export default function AdminSongDetail() {
                       </span>
                     </label>
                     
-                    {/* Status indicator */}
                     {artworkKey && (
                       <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                         <CheckCircle size={14} />
@@ -741,8 +771,6 @@ export default function AdminSongDetail() {
                     )}
                   </div>
 
-
-                  {/* Progress bar */}
                   {artworkUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -763,8 +791,6 @@ export default function AdminSongDetail() {
                     </div>
                   )}
 
-
-                  {/* Upload button */}
                   {selectedArtFile && !artworkKey && (
                     <button
                       type="button"
@@ -781,7 +807,6 @@ export default function AdminSongDetail() {
               )}
             </div>
 
-
             {/* Audio Upload with Progress Bar */}
             <div className="md:col-span-2 overflow-clip">
               <label className="block text-gray-400 mb-1">Audio URL</label>
@@ -795,7 +820,6 @@ export default function AdminSongDetail() {
                     placeholder="https://cdn.example.com/audio.mp3"
                     className="w-full p-2 bg-gray-700 rounded text-white"
                   />
-
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
@@ -815,7 +839,6 @@ export default function AdminSongDetail() {
                       </span>
                     </label>
                     
-                    {/* Status indicator */}
                     {audioKey && (
                       <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                         <CheckCircle size={14} />
@@ -824,8 +847,6 @@ export default function AdminSongDetail() {
                     )}
                   </div>
 
-
-                  {/* Progress bar */}
                   {audioUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -846,8 +867,6 @@ export default function AdminSongDetail() {
                     </div>
                   )}
 
-
-                  {/* Upload button */}
                   {selectedAudioFile && !audioKey && (
                     <button
                       type="button"
@@ -879,8 +898,7 @@ export default function AdminSongDetail() {
           </div>
         </div>
 
-
-        {/* Enhanced Artwork Preview with better placeholder handling */}
+        {/* Enhanced Artwork Preview */}
         <div className="w-full md:w-80 h-48 md:h-auto rounded overflow-hidden order-first md:order-last">
           <img
             src={form?.artwork_filename || song.image || song.artwork_filename || DEFAULT_PLACEHOLDER}
@@ -893,8 +911,7 @@ export default function AdminSongDetail() {
         </div>
       </div>
 
-
-      {/* Delete Modal    */}
+      {/* Delete Modal */}
       <AnimatePresence>
         {showDeleteModal && (
           <>

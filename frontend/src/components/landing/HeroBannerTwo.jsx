@@ -1,9 +1,17 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdArrowOutward } from "react-icons/md";
-// import Preloader from "../custom-ui/Preloader"; 
+import { useGetHeroQuery } from "../../utils/api";
 
-const videoUrl = "https://cdn.align-alternativetherapy.com/static-pages-media/13115940_3840_2160_60fps.mp4";
+
+const FALLBACK = {
+  video_url: "https://cdn.align-alternativetherapy.com/static-pages-media/13115940_3840_2160_60fps.mp4",
+  mobile_video_url: null,
+  marquee_text: "• Welcome to Align Alternative Therapy •",
+  column_2_text: "Experience a unique therapy designed to bring you rapid alignment and incredible personal growth.",
+  column_3_text: "Login to explore personalized sound therapy for mind-body harmony.",
+  overlay_opacity: 0.2
+};
 
 const HeroBannerTwo = () => {
   const videoRef = useRef(null);
@@ -15,18 +23,41 @@ const HeroBannerTwo = () => {
   const playAttemptRef = useRef(false);
   const animationFrameRef = useRef(null);
 
-  const MIN_LOADING_TIME = 2000; // Minimum 2 seconds
+  const MIN_LOADING_TIME = 2000;
 
-  // Detect mobile device
+
+  const { data: hero } = useGetHeroQuery();
+
+
   const isMobile = useCallback(() => {
-    return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    return (
+      window.innerWidth <= 768 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      )
+    );
   }, []);
 
-  // Handle preloader completion
-  // const handlePreloaderComplete = useCallback(() => {
-  //   setIsVideoLoaded(true);
-  //   setShowPreloader(false);
-  // }, []);
+  // Helper to resolve config values with fallback
+  const getValue = (key) => {
+    if (hero && Object.prototype.hasOwnProperty.call(hero, key)) {
+      // explicit check to allow empty string/null from DB to fall back if needed
+      const val = hero[key];
+      return val === null || val === undefined || val === "" ? FALLBACK[key] : val;
+    }
+    return FALLBACK[key];
+  };
+
+  // Determine video source (use mobile_video_url if available on mobile)
+  const getVideoSource = () => {
+    if (isMobile()) {
+      const mobile = getValue("mobile_video_url");
+      if (mobile) return mobile;
+      // fallback to desktop video if mobile not provided
+      return getValue("video_url");
+    }
+    return getValue("video_url");
+  };
 
   // Optimized Video Loading Strategy with Better Error Handling
   useEffect(() => {
@@ -39,7 +70,7 @@ const HeroBannerTwo = () => {
 
     const completeLoading = () => {
       if (hasCompletedLoading) return;
-      
+
       const elapsed = Date.now() - loadStartTime;
       const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
 
@@ -51,48 +82,42 @@ const HeroBannerTwo = () => {
     };
 
     const attemptPlay = async () => {
-      // Prevent multiple simultaneous play attempts
       if (playAttemptRef.current) return;
-      
+
       try {
         playAttemptRef.current = true;
-        
-        // Check if video is ready to play
+
         if (video.readyState >= 2) {
           const playPromise = video.play();
-          
+
           if (playPromise !== undefined) {
             await playPromise;
-            console.log("Video playing successfully");
+            // console.log("Video playing successfully");
             completeLoading();
           }
         }
       } catch (error) {
-        console.log("Autoplay prevented:", error.name);
-        
-        // Handle different error types gracefully
-        if (error.name === 'AbortError' || error.name === 'NotAllowedError') {
-          // Show interface even if autoplay fails
+        // console.log("Autoplay prevented:", error.name);
+        if (error && (error.name === "AbortError" || error.name === "NotAllowedError")) {
           completeLoading();
-          
-          // Try to play on any user interaction
+
           const playOnInteraction = () => {
-            video.play().catch(e => console.log("Play after interaction failed:", e));
+            video.play().catch((e) => {
+              // console.log("Play after interaction failed:", e);
+            });
           };
-          
-          const interactions = ['click', 'touchstart', 'keydown'];
-          interactions.forEach(event => {
+
+          const interactions = ["click", "touchstart", "keydown"];
+          interactions.forEach((event) => {
             document.addEventListener(event, playOnInteraction, { once: true, passive: true });
           });
-          
-          // Cleanup after 10 seconds
+
           setTimeout(() => {
-            interactions.forEach(event => {
+            interactions.forEach((event) => {
               document.removeEventListener(event, playOnInteraction);
             });
           }, 10000);
         } else {
-          // For other errors, still show the interface
           completeLoading();
         }
       } finally {
@@ -100,41 +125,38 @@ const HeroBannerTwo = () => {
       }
     };
 
-    // Event handlers
     const handleCanPlay = () => attemptPlay();
     const handleLoadedData = () => attemptPlay();
-    
-    // Handle visibility changes (tab switching)
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && video.paused && isVideoLoaded) {
-        video.play().catch(e => console.log("Resume play failed:", e));
+      if (document.visibilityState === "visible" && video.paused && isVideoLoaded) {
+        video.play().catch((e) => {
+          // console.log("Resume play failed:", e);
+        });
       }
     };
 
-    // Try to play immediately if already loaded
     if (video.readyState >= 2) {
       attemptPlay();
     }
 
-    // Add event listeners
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('loadeddata', handleLoadedData);
-    video.addEventListener('loadedmetadata', handleCanPlay);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("loadedmetadata", handleCanPlay);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Fallback: Ensure UI loads after max wait time
     const fallbackTimeout = setTimeout(() => {
       if (!hasCompletedLoading) {
-        console.log("Loading timeout - showing interface");
+        // console.log("Loading timeout - showing interface");
         completeLoading();
       }
     }, MIN_LOADING_TIME + 2000);
 
     return () => {
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('loadeddata', handleLoadedData);
-      video.removeEventListener('loadedmetadata', handleCanPlay);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("loadedmetadata", handleCanPlay);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearTimeout(fallbackTimeout);
     };
   }, [MIN_LOADING_TIME, isVideoLoaded]);
@@ -154,12 +176,12 @@ const HeroBannerTwo = () => {
           }
         });
       },
-      { 
+      {
         threshold: 0.1,
-        rootMargin: '50px'
+        rootMargin: "50px"
       }
     );
-    
+
     observer.observe(video);
     return () => observer.disconnect();
   }, []);
@@ -173,7 +195,7 @@ const HeroBannerTwo = () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      
+
       animationFrameRef.current = requestAnimationFrame(() => {
         cursor.style.transform = `translate(${e.pageX - 40}px, ${e.pageY - 40}px)`;
       });
@@ -189,12 +211,12 @@ const HeroBannerTwo = () => {
       }
     };
 
-    document.addEventListener('mousemove', handleGlobalMouseMove, { passive: true });
-    document.addEventListener('click', handleGlobalClick);
+    document.addEventListener("mousemove", handleGlobalMouseMove, { passive: true });
+    document.addEventListener("click", handleGlobalClick);
 
     return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('click', handleGlobalClick);
+      document.removeEventListener("mousemove", handleGlobalMouseMove);
+      document.removeEventListener("click", handleGlobalClick);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -211,17 +233,53 @@ const HeroBannerTwo = () => {
     setIsHovering(false);
   }, []);
 
-  // Determine video source based on device
-  const getVideoSource = () => {
-    if (isMobile()) {
-      return videoUrl.replace('3840_2160_60fps', '3840_2160_60fps');
-    }
-    return videoUrl;
-  };
+
+const prevUpdatedAtRef = useRef(null);
+
+useEffect(() => {
+  const newUpdatedAt = hero?.updated_at ?? null;
+  if (prevUpdatedAtRef.current === newUpdatedAt) return;
+  prevUpdatedAtRef.current = newUpdatedAt;
+
+  const videoEl = videoRef.current;
+  if (!videoEl) return;
+
+  const baseUrl = isMobile() ? (hero?.mobile_video_url || hero?.video_url) : (hero?.video_url || FALLBACK.video_url);
+
+  if (!baseUrl) return;
+
+  setIsVideoLoaded(false);
+  setShowPreloader(true);
+
+  const cacheBustedUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+
+  try {
+    videoEl.src = cacheBustedUrl;
+    const firstSource = videoEl.querySelector('source');
+    if (firstSource) firstSource.src = cacheBustedUrl;
+
+    videoEl.load();
+    videoEl.play().catch(() => {
+    });
+
+    const t = setTimeout(() => {
+      setIsVideoLoaded(true);
+      setShowPreloader(false);
+    }, 3500);
+    return () => clearTimeout(t);
+  } catch (err) {
+    console.error("Error applying new hero video source:", err);
+    setTimeout(() => {
+      setIsVideoLoaded(true);
+      setShowPreloader(false);
+    }, 500);
+  }
+}, [hero, isMobile]);
+
 
   return (
     <>
-      {/* Preloader Component */}
+      {/* Preloader Component (kept commented as before) */}
       {/* <Preloader 
         isVisible={showPreloader}
         onComplete={handlePreloaderComplete}
@@ -255,20 +313,22 @@ const HeroBannerTwo = () => {
           backdropFilter: "blur(10px)",
           boxShadow: "0 2px 15px rgba(0, 0, 0, 0.2)",
           opacity: 1,
-          willChange: "transform",
+          willChange: "transform"
         }}
       >
-        LOGIN TO<br />LISTEN
+        LOGIN TO
+        <br />
+        LISTEN
       </div>
 
-      <section 
-        style={{ 
-          width: "100vw", 
-          height: "100svh", 
-          position: "relative", 
+      <section
+        style={{
+          width: "100vw",
+          height: "100svh",
+          position: "relative",
           overflow: "hidden",
           minHeight: "100svh",
-          backgroundColor: "#000",
+          backgroundColor: "#000"
         }}
       >
         {/* Video Background */}
@@ -281,7 +341,7 @@ const HeroBannerTwo = () => {
             height: "100%",
             zIndex: 1,
             opacity: isVideoLoaded ? 1 : 0,
-            transition: "opacity 0.8s ease-in",
+            transition: "opacity 0.8s ease-in"
           }}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -297,11 +357,15 @@ const HeroBannerTwo = () => {
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              backgroundColor: "#000",
+              backgroundColor: "#000"
             }}
           >
             <source src={getVideoSource()} type="video/mp4" />
-            <source src={videoUrl.replace('3840_2160_60fps', '1920_1080_30fps')} type="video/mp4" />
+            {/* second source: try the lower-res version if available */}
+            <source
+              src={(getValue("video_url") || FALLBACK.video_url).replace("3840_2160_60fps", "1920_1080_30fps")}
+              type="video/mp4"
+            />
             Your browser does not support the video tag.
           </video>
 
@@ -313,9 +377,9 @@ const HeroBannerTwo = () => {
               left: 0,
               width: "100%",
               height: "100%",
-              background: "rgba(0, 0, 0, 0.2)",
+              background: `rgba(0, 0, 0, ${getValue("overlay_opacity") ?? FALLBACK.overlay_opacity})`,
               transition: "background 0.3s ease-out",
-              ...(isHovering && { background: "rgba(0, 0, 0, 0.4)" }),
+              ...(isHovering && { background: `rgba(0, 0, 0, ${Math.min(1, (getValue("overlay_opacity") ?? FALLBACK.overlay_opacity) + 0.2)})` })
             }}
           />
         </div>
@@ -333,26 +397,20 @@ const HeroBannerTwo = () => {
             pointerEvents: "none",
             opacity: isVideoLoaded ? 1 : 0,
             transform: isVideoLoaded ? "translateY(0)" : "translateY(20px)",
-            transition: "all 0.8s ease-in-out 0.4s",
+            transition: "all 0.8s ease-in-out 0.4s"
           }}
         >
           {/* Responsive Marquee */}
-          <div 
-            style={{ 
-              width: "100vw", 
-              overflow: "hidden", 
-              marginBottom: "clamp(0.5rem, 2vw, 1rem)"
-            }}
-          >
+          <div style={{ width: "100vw", overflow: "hidden", marginBottom: "clamp(0.5rem, 2vw, 1rem)" }}>
             <div
               style={{
                 display: "flex",
                 animation: isVideoLoaded ? "scroll 20s linear infinite" : "none",
                 whiteSpace: "nowrap",
-                willChange: "transform",
+                willChange: "transform"
               }}
             >
-              {[...Array(2)].map((_, index) => (
+              {[...Array(10)].map((_, index) => (
                 <h2
                   key={index}
                   style={{
@@ -361,10 +419,10 @@ const HeroBannerTwo = () => {
                     letterSpacing: "0.10em",
                     fontWeight: 200,
                     paddingRight: "clamp(2rem, 5vw, 4rem)",
-                    flexShrink: 0,
+                    flexShrink: 0
                   }}
                 >
-                  • Welcome to Align Alternative Therapy •
+                  {getValue("marquee_text")}
                 </h2>
               ))}
             </div>
@@ -385,15 +443,11 @@ const HeroBannerTwo = () => {
               </div>
 
               <div className="column column-2">
-                <p className="column-text">
-                  Experience a unique therapy designed to bring you rapid alignment and incredible personal growth.
-                </p>
+                <p className="column-text">{getValue("column_2_text")}</p>
               </div>
 
               <div className="column column-3">
-                <p className="column-text">
-                  Login to explore personalized sound therapy for mind-body harmony.
-                </p>
+                <p className="column-text">{getValue("column_3_text")}</p>
               </div>
             </div>
           </div>

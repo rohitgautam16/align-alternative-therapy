@@ -164,7 +164,7 @@ export default function Login() {
                   Already have an account?{' '}
                   <button
                     type="button"
-                    className="underline hover:text-secondary"
+                    className="underline cursor-pointer hover:text-secondary"
                     onClick={() => setIsSignup(false)}
                   >
                     Sign in
@@ -205,6 +205,16 @@ export default function Login() {
                   />
                 </div>
 
+                <div className="mt-1 text-right">
+                  <button
+                    type="button"
+                    className="text-xs text-white/70 underline cursor-pointer hover:text-secondary"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
                 <button
                   type="submit"
                   // disabled={loggingIn}
@@ -219,7 +229,7 @@ export default function Login() {
                   Don’t have an account?{' '}
                   <button
                     type="button"
-                    className="underline hover:text-secondary"
+                    className="underline cursor-pointer hover:text-secondary"
                     onClick={() => setIsSignup(true)}
                   >
                     Sign up

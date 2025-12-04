@@ -4,7 +4,8 @@ const {
   getSongById,
   createSongAdmin,
   updateSongAdmin,
-  deleteSongAdmin
+  deleteSongAdmin,
+  setSongDiscoverability
 } = require('../../services/admin services/adminSongService');
 
 /**
@@ -45,7 +46,8 @@ async function createSongController(req, res, next) {
       playlist,
       artwork_filename,
       cdn_url,
-      is_free // ✅ include this
+      is_free,
+      is_discoverable
     } = req.body;
 
     if (!title || !slug) {
@@ -63,7 +65,10 @@ async function createSongController(req, res, next) {
       playlist,
       artwork_filename,
       cdn_url,
-      is_free // ✅ pass through
+      is_free, // pass through
+      is_discoverable: typeof is_discoverable === 'boolean'
+        ? is_discoverable
+        : undefined,  // default to service’s 1 if not provided
     });
 
     res.status(201).json(newSong);
@@ -98,10 +103,52 @@ async function deleteSongController(req, res, next) {
   }
 }
 
+
+/**
+ * 👇 NEW: PATCH /api/admin/songs/:id/visibility
+ * Body: { is_discoverable: boolean | 0 | 1 | '0' | '1' }
+ */
+async function updateSongVisibilityController(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid song id' });
+    }
+
+    const { is_discoverable } = req.body || {};
+    if (
+      typeof is_discoverable !== 'boolean' &&
+      is_discoverable !== 0 &&
+      is_discoverable !== 1 &&
+      is_discoverable !== '0' &&
+      is_discoverable !== '1'
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'is_discoverable must be boolean or 0/1' });
+    }
+
+    const normalized =
+      is_discoverable === true ||
+      is_discoverable === 1 ||
+      is_discoverable === '1';
+
+    const song = await setSongDiscoverability(id, normalized);
+    if (!song) return res.status(404).json({ error: 'Not found' });
+
+    res.json(song);
+  } catch (err) {
+    console.error('updateSongVisibilityController error:', err);
+    next(err);
+  }
+}
+
+
 module.exports = {
   listSongsController,
   getSongController,
   createSongController,
   updateSongController,
-  deleteSongController
+  deleteSongController,
+  updateSongVisibilityController
 };

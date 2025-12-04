@@ -58,7 +58,7 @@ const router = express.Router();
 
 router.get("/admin/r2/presign", async (req, res, next) => {
   try {
-    const { filename, contentType, folder = "uploads" } = req.query;
+    const { filename, contentType, folder = "uploads", cacheControl = "public, max-age=31536000" } = req.query;
     const key = `${folder}/${Date.now()}-${filename}`;
 
     console.log('🔑 Generating presigned URL:', {
@@ -304,6 +304,10 @@ router.get('/subscribe/summary', requireAuth, subscriptionSummaryController);
 router.post('/billing/portal', requireAuth, createBillingPortalSession);
 router.post('/admin/repair-stripe-links', requireAuth, repairStripeLinksController);
 
+const { validatePromoCode } = require('./controllers/promoController');
+
+router.post('/subscribe/validate-code', validatePromoCode);
+
 // Add-on Personalized Service
 const personalize = require('./controllers/personalizeController');
 
@@ -405,7 +409,8 @@ const {
   getPlaylistController,
   createPlaylistController,
   updatePlaylistController,
-  deletePlaylistController
+  deletePlaylistController,
+  updatePlaylistVisibilityController
 } = require('./controllers/admin Controllers/adminPlaylistController');
 
 router.get(   '/admin/playlists',       requireAuth, requireAdmin, listPlaylistsController);
@@ -413,13 +418,15 @@ router.get(   '/admin/playlists/:id',   requireAuth, requireAdmin, getPlaylistCo
 router.post(  '/admin/playlists',       requireAuth, requireAdmin, createPlaylistController);
 router.put(   '/admin/playlists/:id',   requireAuth, requireAdmin, updatePlaylistController);
 router.delete('/admin/playlists/:id',   requireAuth, requireAdmin, deletePlaylistController);
+router.patch( '/admin/playlists/:id/visibility', requireAuth, requireAdmin, updatePlaylistVisibilityController);
 
 const {
   listSongsController,
   getSongController,
   createSongController,
   updateSongController,
-  deleteSongController
+  deleteSongController,
+  updateSongVisibilityController
 } = require('./controllers/admin Controllers/adminSongController');
 
 router.get(   '/admin/songs',           requireAuth, requireAdmin, listSongsController);
@@ -427,7 +434,15 @@ router.get(   '/admin/songs/:id',       requireAuth, requireAdmin, getSongContro
 router.post(  '/admin/songs',           requireAuth, requireAdmin, createSongController);
 router.put(   '/admin/songs/:id',       requireAuth, requireAdmin, updateSongController);
 router.delete('/admin/songs/:id',       requireAuth, requireAdmin, deleteSongController);
+router.patch( '/admin/songs/:id/visibility', requireAuth, requireAdmin, updateSongVisibilityController);
 
+const {
+  getHeroController,
+  updateHeroController
+} = require('./controllers/admin Controllers/adminHeroBannerController');
+
+router.get('/hero-banner', getHeroController);
+router.patch('/admin/hero-banner', requireAuth, requireAdmin, updateHeroController);
 
 const { listR2Controller }         = require('./controllers/admin Controllers/r2Controller');
 

@@ -36,6 +36,7 @@ import AdminPlaylistsOverview from './pages/Admin/AdminPlaylistOverview'
 import AdminPlaylistDetail from './pages/Admin/AdminPlaylistDetail'
 import AdminSongsOverview from './pages/Admin/AdminSongsOverview'
 import AdminSongDetail from './pages/Admin/AdminSongDetail'
+import AdminHeroBannerEditor from './pages/Admin/AdminHeroBannerEditor'
 import AdminUpload from './pages/Admin/AdminR2FileManager'
 import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
 import AdminPersonalize from './pages/Admin/AdminPersonalize';
@@ -47,6 +48,10 @@ import Preloader from './components/custom-ui/Preloader'
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import ScrollToTop from './components/common/ScrollToTop'
 import useScrollToTop from './hooks/useScrollToTop';
+import PWAInstallBanner from "./components/common/PWAInstallBanner";
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import FAQPage from './pages/FaqPage';
 
 
 const WrappedLoginPage = TransitionWrapper(LoginPage)
@@ -77,6 +82,7 @@ export default function App() {
   return (
     <>
       <SubscriptionProvider>
+      {/* <PWAInstallBanner /> */}
       {/* {show && <Preloader isVisible onComplete={complete} />} */}
       <ScrollToTop delay={150} />
       <AnimatePresence initial={false} mode="wait">
@@ -85,11 +91,13 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Homepage />} />
           <Route path="/login" element={<LoginRoute />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/restore" element={<RestoreAccountPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact-us" element={<ContactPage />} />
-          <Route path="/blog" element={<BlogsPage />} />
-          <Route path="/blog/:slug" element={<BlogPostPage />} />
+          {/* <Route path="/blog" element={<BlogsPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} /> */}
           <Route path="/pricing" element={<SubscribePage />} />
           <Route path="/subscribe/success" element={<PaymentSuccesful />} />
         </Route>
@@ -114,6 +122,9 @@ export default function App() {
           <Route path="user-playlists/:slug" element={<UserPlaylistView />} />
           <Route path="user-activity/recent-plays" element={<RecentlyPlayed />} />
           <Route path="personalize" element={<PersonalizeSection />} />
+          <Route path="blog" element={<BlogsPage />} />
+          <Route path="blog/:slug" element={<BlogPostPage />} />
+          <Route path="faqs" element={<FAQPage />} />
         </Route>
 
         {/* Admin login (unprotected) */}
@@ -141,6 +152,7 @@ export default function App() {
          <Route path="playlists/:id" element={<AdminPlaylistDetail />} />
          <Route path="songs" element={<AdminSongsOverview />} /> 
          <Route path="songs/:id" element={<AdminSongDetail />} />
+         <Route path="hero-banner" element={<AdminHeroBannerEditor />} />
          <Route path="upload" element={<AdminUpload />} />
          <Route path="personalize" element={<AdminPersonalize />} />
          <Route path="personalize-basic" element={<BasicPersonalize />} />

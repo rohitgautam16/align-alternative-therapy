@@ -6,12 +6,14 @@ import {
   useListCategoriesQuery,
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
-  useGetAdminSongsQuery 
+  useGetAdminSongsQuery,
+  useUpdatePlaylistVisibilityMutation // ✅ NEW
 } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
-import { Grid3X3, List, Eye, Plus, Search, X, Upload, CheckCircle } from 'lucide-react';
+import { Grid3X3, List, Eye, EyeOff, Plus, Search, X, Upload, CheckCircle } from 'lucide-react'; // ✅ Added EyeOff
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminPlaylistCard from '../../components/custom-ui/AdminPlaylistCard';
+
 
 // Custom Image Dropdown Component (kept exactly the same)
 const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
@@ -91,6 +93,7 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
   );
 };
 
+
 export default function AdminPlaylistsOverview() {
   const navigate = useNavigate();
   const [page, setPage] = useState(() => {
@@ -101,33 +104,35 @@ export default function AdminPlaylistsOverview() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const frontendPageSize = 12;
 
-    useEffect(() => {
+  useEffect(() => {
     sessionStorage.setItem('adminPlaylistsPage', String(page));
   }, [page]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPaid, setFilterPaid] = useState('');
-
-
+  // ✅ NEW: Filter by discoverability
+  const [filterDiscoverable, setFilterDiscoverable] = useState('');
 
   useEffect(() => {
-    if (searchTerm !== '' || filterCategory !== '' || filterPaid !== '') setPage(1);
-  }, [searchTerm, filterCategory, filterPaid]);
+    if (searchTerm !== '' || filterCategory !== '' || filterPaid !== '' || filterDiscoverable !== '') setPage(1);
+  }, [searchTerm, filterCategory, filterPaid, filterDiscoverable]);
 
-  // File uploads - Updated for presigned URLs
+  // File uploads
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
 
-  // ✅ NEW: Presigned upload tracking state
+  // Presigned upload tracking state
   const [artworkKey, setArtworkKey] = useState(null);
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
-
-  // ✅ NEW: Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
 
-  // Fetch playlists - get more for client-side filtering (kept exactly the same)
+  // ✅ NEW: Visibility mutation
+  const [updateVisibility] = useUpdatePlaylistVisibilityMutation();
+  const [togglingIds, setTogglingIds] = useState(new Set());
+
+  // Fetch playlists
   const {
     data: plRaw,
     isLoading: plLoading,
@@ -136,21 +141,21 @@ export default function AdminPlaylistsOverview() {
     refetch: refetchPlaylists,
   } = useListPlaylistsQuery({ page: 1, pageSize: 200 });
 
-  // Fetch categories for dropdown (kept exactly the same)
+  // Fetch categories
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
     page: 1,
     pageSize: 100,
   });
 
-  // ✅ Fetch all songs for counting
+  // Fetch all songs
   const {
     data: allSongsRaw = { data: [] },
   } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
 
-  // Create new playlist (kept exactly the same)
+  // Create playlist
   const [createPlaylist, { isLoading: creating }] = useCreatePlaylistMutation();
 
-  // Form state (kept exactly the same)
+  // Form state - ✅ NEW: Added is_discoverable
   const [form, setForm] = useState({
     title: '',
     slug: '',
@@ -159,6 +164,7 @@ export default function AdminPlaylistsOverview() {
     artwork_filename: '',
     category_id: '',
     paid: 1,
+    is_discoverable: 1, // ✅ NEW: Default to discoverable
   });
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
@@ -172,7 +178,7 @@ export default function AdminPlaylistsOverview() {
     { skip: !artworkPresignParams }
   );
 
-  // Process data (kept exactly the same)
+  // Process data
   const allPlaylists = React.useMemo(() => {
     if (!plRaw) return [];
     
@@ -192,21 +198,18 @@ export default function AdminPlaylistsOverview() {
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
 
-  // ✅ FIXED: Process songs data the same way as AdminPlaylistDetail
   const allSongs = React.useMemo(() => {
     return Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
   }, [allSongsRaw]);
 
-  // ✅ FIXED: Create song count mapping for playlists overview
+  // Create song count mapping
   const songCounts = React.useMemo(() => {
     const counts = {};
     
-    // Initialize all playlists with 0 count
     allPlaylists.forEach(playlist => {
       counts[playlist.id] = 0;
     });
     
-    // Count songs per playlist using the same field names as AdminPlaylistDetail
     if (Array.isArray(allSongs)) {
       allSongs.forEach(song => {
         const playlistId = song.playlist_id || song.playlistId || song.playlist;
@@ -219,7 +222,7 @@ export default function AdminPlaylistsOverview() {
     return counts;
   }, [allPlaylists, allSongs]);
 
-  // Filter playlists (kept exactly the same)
+  // ✅ ENHANCED: Filter playlists with discoverability
   const filteredPlaylists = React.useMemo(() => {
     return allPlaylists.filter(playlist => {
       // Search filter
@@ -239,17 +242,22 @@ export default function AdminPlaylistsOverview() {
         (filterPaid === 'paid' && playlist.paid) ||
         (filterPaid === 'free' && !playlist.paid);
 
-      return matchesSearch && matchesCategory && matchesPaid;
-    });
-  }, [allPlaylists, searchTerm, filterCategory, filterPaid]);
+      // ✅ NEW: Discoverable filter
+      const matchesDiscoverable = !filterDiscoverable ||
+        (filterDiscoverable === 'discoverable' && playlist.is_discoverable) ||
+        (filterDiscoverable === 'hidden' && !playlist.is_discoverable);
 
-  // Pagination for filtered results (kept exactly the same)
+      return matchesSearch && matchesCategory && matchesPaid && matchesDiscoverable;
+    });
+  }, [allPlaylists, searchTerm, filterCategory, filterPaid, filterDiscoverable]);
+
+  // Pagination
   const totalItems = plRaw?.total || filteredPlaylists.length;
   const totalPages = Math.ceil(filteredPlaylists.length / frontendPageSize);
   const startIndex = (page - 1) * frontendPageSize;
   const paginatedPlaylists = filteredPlaylists.slice(startIndex, startIndex + frontendPageSize);
 
-  // Auto-clear flash messages (kept exactly the same)
+  // Auto-clear flash messages
   useEffect(() => {
     if (flash.txt) {
       const t = setTimeout(() => setFlash({ txt: '', ok: true }), 3000);
@@ -257,34 +265,32 @@ export default function AdminPlaylistsOverview() {
     }
   }, [flash]);
 
-  // Fixed auto-generate slug from title (kept exactly the same)
+  // Auto-generate slug
   const generateSlug = (title) => {
     if (!title) return '';
     return title
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
   };
 
-  // ✅ ENHANCED: Manual artwork upload handler with presigned URL
+  // Artwork upload handler
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
     setArtworkUploading(true);
-    setArtworkUploadProgress(5); // Set initial progress
+    setArtworkUploadProgress(5);
     setFlash({ txt: "Getting upload URL...", ok: true });
     
     try {
-      // Trigger the presign query by setting params
       setArtworkPresignParams({
         filename: selectedArtFile.name,
         contentType: selectedArtFile.type,
         folder: "align-images/playlist",
       });
-      
     } catch (err) {
       console.error('Upload error:', err);
       setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
@@ -293,7 +299,7 @@ export default function AdminPlaylistsOverview() {
     }
   };
 
-  // ✅ NEW: Handle artwork presign response with progress tracking
+  // Handle artwork presign response
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
 
@@ -306,20 +312,17 @@ export default function AdminPlaylistsOverview() {
         });
 
         setFlash({ txt: "Uploading artwork...", ok: true });
-        setArtworkUploadProgress(10); // Initial progress
+        setArtworkUploadProgress(10);
         
-        // Create XMLHttpRequest for progress tracking
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10; // 10-100%
+            const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
             setArtworkUploadProgress(percentComplete);
           }
         });
 
-        // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
@@ -330,29 +333,24 @@ export default function AdminPlaylistsOverview() {
             setFlash({ txt: "Artwork uploaded successfully!", ok: true });
             setArtworkUploadProgress(100);
             
-            // Clear file selection after successful upload
             setSelectedArtFile(null);
             setArtworkPresignParams(null);
             const artInput = document.getElementById('create-artwork-upload');
             if (artInput) artInput.value = '';
             
-            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setArtworkUploading(false);
               setArtworkUploadProgress(0);
-            }, 3000); // Keep visible for 3 seconds
-            
+            }, 3000);
           } else {
             throw new Error('Upload failed');
           }
         });
 
-        // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
 
-        // Start the upload
         xhr.open('PUT', artworkPresign.url);
         xhr.setRequestHeader('Content-Type', selectedArtFile.type);
         xhr.send(selectedArtFile);
@@ -361,9 +359,8 @@ export default function AdminPlaylistsOverview() {
         console.error('Artwork upload error:', err);
         setFlash({ txt: `Artwork upload failed: ${err.message}`, ok: false });
         setArtworkUploadProgress(0);
-        setArtworkUploading(false); // Reset immediately on error
+        setArtworkUploading(false);
       }
-      // No finally block to avoid immediate state reset
     };
 
     uploadArtwork();
@@ -373,6 +370,40 @@ export default function AdminPlaylistsOverview() {
     setViewType((prev) => (prev === 'grid' ? 'list' : 'grid'));
   };
 
+  const handleToggleVisibility = async (playlistId, currentDiscoverable) => {
+    if (togglingIds.has(playlistId)) return;
+
+    setTogglingIds(prev => new Set(prev).add(playlistId));
+    
+    try {
+      // The mutation will optimistically update the UI immediately
+      await updateVisibility({
+        id: playlistId,
+        isDiscoverable: !currentDiscoverable,
+      }).unwrap();
+      
+      setFlash({
+        txt: `Playlist ${!currentDiscoverable ? 'shown' : 'hidden'} successfully!`,
+        ok: true,
+      });
+    } catch (err) {
+      console.error('Toggle visibility error:', err);
+      setFlash({
+        txt: 'Failed to update visibility.',
+        ok: false,
+      });
+    } finally {
+      // Remove toggling state after a brief delay to show feedback
+      setTimeout(() => {
+        setTogglingIds(prev => {
+          const next = new Set(prev);
+          next.delete(playlistId);
+          return next;
+        });
+      }, 300);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     
@@ -380,7 +411,6 @@ export default function AdminPlaylistsOverview() {
       await createPlaylist(form).unwrap();
       setFlash({ txt: 'Playlist created successfully!', ok: true });
       
-      // Reset form and files
       setForm({
         title: '',
         slug: '',
@@ -389,15 +419,13 @@ export default function AdminPlaylistsOverview() {
         artwork_filename: '',
         category_id: '',
         paid: 1,
+        is_discoverable: 1, // ✅ Reset to default
       });
       setSelectedArtFile(null);
-      
-      // ✅ ADDED: Reset upload states
       setArtworkKey(null);
       setArtworkUploading(false);
       setArtworkUploadProgress(0);
       
-      // Clear file input
       const artInput = document.getElementById('create-artwork-upload');
       if (artInput) artInput.value = '';
       
@@ -413,6 +441,7 @@ export default function AdminPlaylistsOverview() {
     setSearchTerm('');
     setFilterCategory('');
     setFilterPaid('');
+    setFilterDiscoverable(''); // ✅ NEW
   };
 
   return (
@@ -437,7 +466,7 @@ export default function AdminPlaylistsOverview() {
           <h2 className="text-xl sm:text-2xl font-semibold">Playlists Overview</h2>
           <p className="text-gray-400 text-sm">
             {totalItems} playlist{totalItems !== 1 ? 's' : ''} total, {filteredPlaylists.length} shown
-            {(searchTerm || filterCategory || filterPaid) && ` (filtered)`}
+            {(searchTerm || filterCategory || filterPaid || filterDiscoverable) && ` (filtered)`}
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -472,7 +501,7 @@ export default function AdminPlaylistsOverview() {
               className="w-full pl-10 pr-4 py-2 bg-gray-700 rounded text-white placeholder-gray-400 text-sm sm:text-base"
             />
           </div>
-          {(searchTerm || filterCategory || filterPaid) && (
+          {(searchTerm || filterCategory || filterPaid || filterDiscoverable) && (
             <button
               onClick={clearFilters}
               className="flex items-center justify-center gap-1 text-gray-400 hover:text-white text-sm px-3 py-2 sm:px-0 sm:py-0"
@@ -482,7 +511,8 @@ export default function AdminPlaylistsOverview() {
           )}
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ✅ ENHANCED: Added Discoverability filter */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-gray-400 text-sm mb-1">Filter by Category</label>
             <ImageDropdown
@@ -503,6 +533,19 @@ export default function AdminPlaylistsOverview() {
               <option value="">All Types</option>
               <option value="free">Free</option>
               <option value="paid">Paid</option>
+            </select>
+          </div>
+          {/* ✅ NEW: Discoverability Filter */}
+          <div>
+            <label className="block text-gray-400 text-sm mb-1">Filter by Visibility</label>
+            <select
+              value={filterDiscoverable}
+              onChange={(e) => setFilterDiscoverable(e.target.value)}
+              className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+            >
+              <option value="">All Playlists</option>
+              <option value="discoverable">Discoverable</option>
+              <option value="hidden">Hidden</option>
             </select>
           </div>
         </div>
@@ -533,7 +576,6 @@ export default function AdminPlaylistsOverview() {
                     setForm(prevForm => ({ 
                       ...prevForm, 
                       title,
-                      // Only auto-generate slug if current slug is empty or was auto-generated
                       slug: prevForm.slug === '' || prevForm.slug === generateSlug(prevForm.title) 
                         ? generateSlug(title) 
                         : prevForm.slug,
@@ -597,9 +639,22 @@ export default function AdminPlaylistsOverview() {
                   <option value={1}>Paid</option>
                 </select>
               </div>
+
+              {/* ✅ NEW: Discoverability Toggle in Create Form */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Visibility</label>
+                <select
+                  value={form.is_discoverable}
+                  onChange={(e) => setForm({ ...form, is_discoverable: Number(e.target.value) })}
+                  className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                >
+                  <option value={1}>Discoverable</option>
+                  <option value={0}>Hidden</option>
+                </select>
+              </div>
             </div>
 
-            {/* ✅ Enhanced Artwork Upload with Progress Bar */}
+            {/* Artwork Upload */}
             <div>
               <label className="block text-gray-400 text-sm mb-1">Artwork</label>
               <input
@@ -611,7 +666,6 @@ export default function AdminPlaylistsOverview() {
               />
               
               <div className="space-y-2">
-                {/* File selection */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     id="create-artwork-upload"
@@ -630,7 +684,6 @@ export default function AdminPlaylistsOverview() {
                     </span>
                   </label>
                   
-                  {/* Status indicator */}
                   {artworkKey && (
                     <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                       <CheckCircle size={14} />
@@ -639,7 +692,6 @@ export default function AdminPlaylistsOverview() {
                   )}
                 </div>
 
-                {/* ✅ Progress bar */}
                 {artworkUploading && (
                   <div className="w-full">
                     <div className="flex justify-between items-center mb-1">
@@ -660,7 +712,6 @@ export default function AdminPlaylistsOverview() {
                   </div>
                 )}
                 
-                {/* Upload button */}
                 {selectedArtFile && !artworkKey && (
                   <button
                     type="button"
@@ -709,7 +760,7 @@ export default function AdminPlaylistsOverview() {
         </div>
       )}
 
-      {/* Playlists Grid/List using AdminPlaylistCard */}
+      {/* Playlists Grid/List */}
       {!plLoading && !plError && (
         <>
           {paginatedPlaylists.length === 0 ? (
@@ -724,18 +775,50 @@ export default function AdminPlaylistsOverview() {
                   : 'grid-cols-1'
               }`}
             >
-              {paginatedPlaylists.map((playlist) => (
-                <AdminPlaylistCard
-                  key={playlist.id}
-                  playlist={playlist}
-                  assigned={false}
-                  onView={() => navigate(`/admin/playlists/${playlist.id}`)}
-                  onToggle={() => {}}
-                  status={{}}
-                  hideToggleButton={true}
-                  songCount={songCounts[playlist.id] || 0} 
-                />
-              ))}
+              {paginatedPlaylists.map((playlist) => {
+
+                const isDiscoverable = Boolean(playlist.is_discoverable);
+                const isToggling = togglingIds.has(playlist.id);
+                
+                return (
+                  <div key={playlist.id} className="relative group">
+                    {/* ✅ ENHANCED: Visibility Toggle Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleVisibility(playlist.id, isDiscoverable);
+                      }}
+                      disabled={isToggling}
+                      className={`absolute top-2 right-2 z-10 p-2 rounded-lg backdrop-blur-sm transition-all duration-200 ${
+                        isDiscoverable
+                          ? 'bg-green-600/80 hover:bg-green-500/90'
+                          : 'bg-gray-600/80 hover:bg-gray-500/90'
+                      } ${
+                        isToggling ? 'opacity-50 cursor-not-allowed' : 'opacity-90 group-hover:opacity-100'
+                      }`}
+                      title={isDiscoverable ? 'Hide from users' : 'Show to users'}
+                    >
+                      {isToggling ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : isDiscoverable ? (
+                        <Eye size={16} className="text-white" />
+                      ) : (
+                        <EyeOff size={16} className="text-white" />
+                      )}
+                    </button>
+
+                    <AdminPlaylistCard
+                      playlist={playlist}
+                      assigned={false}
+                      onView={() => navigate(`/admin/playlists/${playlist.id}`)}
+                      onToggle={() => {}}
+                      status={{}}
+                      hideToggleButton={true}
+                      songCount={songCounts[playlist.id] || 0} 
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
 

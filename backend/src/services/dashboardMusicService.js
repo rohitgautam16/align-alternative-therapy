@@ -33,7 +33,8 @@ async function fetchDashboardPlaylistsByCategory(categoryId) {
        category_id AS categoryId,
        created     AS createdAt
      FROM playlists
-     WHERE category_id = ?`,
+     WHERE category_id = ?
+     AND is_discoverable = 1`,
     [categoryId]
   );
   return attachAccessFlags(rows, 'playlist');
@@ -52,7 +53,8 @@ async function fetchDashboardAllPlaylists() {
        artwork_filename AS image,
        category_id AS categoryId,
        created     AS createdAt
-     FROM playlists`
+     FROM playlists
+     WHERE is_discoverable = 1`
   );
   return attachAccessFlags(rows, 'playlist');
 }
@@ -71,6 +73,7 @@ async function fetchDashboardFreePlaylists() {
        created          AS createdAt
      FROM playlists
      WHERE paid = 0
+     AND is_discoverable = 1
      ORDER BY createdAt DESC`
   );
   return attachAccessFlags(rows, 'playlist');
@@ -92,9 +95,11 @@ async function fetchDashboardSongsByPlaylist(playlistId) {
        artwork_filename AS image,
        cdn_url     AS audioUrl,
        created     AS createdAt,
-       is_free
-     FROM audio_metadata
-     WHERE playlist = ?`,
+       is_free,
+       is_discoverable
+    FROM audio_metadata
+    WHERE playlist = ?
+    AND is_discoverable = 1`,
     [playlistId]
   );
   return attachAccessFlags(rows, 'song');
@@ -182,7 +187,8 @@ async function searchDashboardEverything(term) {
        c.title as category_title
      FROM playlists p
      LEFT JOIN categories c ON p.category_id = c.id
-     WHERE LOWER(p.title) LIKE ? OR LOWER(p.tags) LIKE ?
+     WHERE (LOWER(p.title) LIKE ? OR LOWER(p.tags) LIKE ?)
+     AND p.is_discoverable = 1
      ORDER BY p.title
      LIMIT 10`,
     [likeTerm, likeTerm]
@@ -206,7 +212,8 @@ async function searchDashboardEverything(term) {
        p.title as playlist_title
      FROM audio_metadata s
      LEFT JOIN playlists p ON s.playlist = p.id
-     WHERE LOWER(s.title) LIKE ? OR LOWER(s.artist) LIKE ? OR LOWER(s.tags) LIKE ?
+     WHERE (LOWER(s.title) LIKE ? OR LOWER(s.artist) LIKE ? OR LOWER(s.tags) LIKE ?)
+     AND s.is_discoverable = 1
      ORDER BY s.title
      LIMIT 10`,
     [likeTerm, likeTerm, likeTerm]
@@ -277,6 +284,7 @@ async function fetchDashboardNewReleases({ playlistLimit = 12, songLimit = 8 } =
        category_id      AS categoryId,
        created          AS createdAt
      FROM playlists
+     WHERE is_discoverable = 1
      ORDER BY created DESC
      LIMIT ?`,
     [playlistLimit]
@@ -296,6 +304,7 @@ async function fetchDashboardNewReleases({ playlistLimit = 12, songLimit = 8 } =
        created         AS createdAt,
        is_free
      FROM audio_metadata
+     WHERE is_discoverable = 1
      ORDER BY created DESC
      LIMIT ?`,
     [songLimit]
@@ -328,6 +337,7 @@ async function fetchDashboardAllSongs() {
        created         AS createdAt,
        is_free
      FROM audio_metadata
+     WHERE is_discoverable = 1
      ORDER BY createdAt DESC`
   );
   return attachAccessFlags(rows, 'song');

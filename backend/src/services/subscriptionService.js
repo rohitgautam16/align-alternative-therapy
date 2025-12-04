@@ -4,12 +4,15 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const db = require('../db');
 const { syncUserSubscriptionFlag } = require('./subscriptionSyncService');
 const { getProductPriceMap } = require('./stripePriceCache');
+const { sendWelcomeOnSubscription } = require('../server/mail/emailService');
 
 let cachedPriceMap = null;
 let lastPriceMapLoad = 0;
 const PRICE_MAP_CACHE_TTL_MS = 1000 * 60 * 15; 
 
 const YEARLY_PROMO_COUPON_ID = process.env.STRIPE_ANNUAL_PROMO_COUPON_ID || null;
+
+const { resolveTrialDays } = require("./promoTrialEngine");
 
 function isAnnualPromoActive(plan) {
   return plan === 'annual' && !!YEARLY_PROMO_COUPON_ID;
@@ -44,7 +47,7 @@ async function subscriptionHasBase(subscription) {
 }
 
 
-async function createOrUpdateSubscriptionSession(userId, plan, trial = false) {
+async function createOrUpdateSubscriptionSession(userId, plan, trial = false, promoCode = null) {
   if (!['monthly', 'annual'].includes(plan)) {
     throw new Error(`Unknown plan: ${plan}`);
   }
@@ -161,20 +164,54 @@ async function createOrUpdateSubscriptionSession(userId, plan, trial = false) {
 
   const applyAnnualPromo = isAnnualPromoActive(plan);
 
+  const trialDays = await resolveTrialDays({
+    trial,           
+    plan,            
+    promoCode,
+  });
+
+  console.log("DEBUG BACKEND → trialDays after resolveTrialDays:", { promoCode, trialDays });
+
   const sessionPayload = {
     mode: 'subscription',
     customer_email: userEmail,
     client_reference_id: String(userId),
     line_items: [{ price: basePriceId, quantity: 1 }],
-    metadata: { user_id: String(userId), plan, purpose: 'premium_subscription' },
+    metadata: { user_id: String(userId), plan, purpose: 'premium_subscription', promo_code_used: promoCode || "none" },
     success_url: `${process.env.FRONTEND_URL}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.FRONTEND_URL}/subscribe/cancel`,
-    ...(trial ? { subscription_data: { trial_period_days: 30 } } : {}),
+    //...(trial ? { subscription_data: { trial_period_days: 30 } } : {}),
   };
 
-  if (applyAnnualPromo) {
+  console.log("TRIAL DAYS BEING SENT TO STRIPE =", trialDays);
+console.log("FINAL sessionPayload =", sessionPayload);
+
+  if (trialDays > 0) {
+    sessionPayload.subscription_data = {
+      trial_period_days: trialDays,
+    };
+  }
+
+  if (promoCode) {
+  const promo = await stripe.promotionCodes.list({
+    code: promoCode,
+    active: true,
+    limit: 1,
+  });
+
+  if (promo.data.length > 0) {
+    sessionPayload.discounts = [{
+      promotion_code: promo.data[0].id
+    }];
+  }
+}
+
+  const ENABLE_ANNUAL_PROMO = false; // temporary off
+
+  if (ENABLE_ANNUAL_PROMO && applyAnnualPromo) {
     sessionPayload.discounts = [{ coupon: YEARLY_PROMO_COUPON_ID }];
   }
+
 
   const session = await stripe.checkout.sessions.create(sessionPayload);
 
@@ -628,6 +665,38 @@ async function handleStripeWebhook(event) {
       console.log(
         `Processed checkout.session.completed for user ${userId}, sub ${subId}`
       );
+
+      try {
+        const [[user]] = await db.query(
+          `SELECT id, email, full_name AS name
+             FROM users
+            WHERE id = ?
+            LIMIT 1`,
+          [userId]
+        );
+
+        if (user && user.email) {
+          const planName =
+            plan ||
+            mapStripeIntervalToPlan(firstItem?.price?.recurring?.interval) ||
+            'monthly';
+
+          await sendWelcomeOnSubscription({
+            user,
+            planName,
+          });
+        } else {
+          console.warn(
+            `Stripe webhook: could not load user ${userId} for welcome email`
+          );
+        }
+      } catch (mailErr) {
+        console.error(
+          `Stripe webhook: failed to send welcome subscription email for user ${userId}:`,
+          mailErr
+        );
+      }
+
       return;
     }
 

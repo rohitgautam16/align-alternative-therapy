@@ -8,7 +8,10 @@ import {
   Home,
   Settings,
   LogOut,
-  User
+  User,
+  Newspaper,
+  HelpCircle,
+  BookOpen
 } from 'lucide-react';
 import { MdLibraryMusic, MdFavorite, MdQueueMusic } from 'react-icons/md';
 import { useGetCategoriesQuery } from '../../utils/api';
@@ -23,6 +26,7 @@ export default function Sidebar({ className = '' }) {
 
   const [isExploreOpen, setIsExploreOpen] = useState(true);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isBlogsOpen, setIsBlogsOpen] = useState(false);
   const { isRecommendationOnly } = useSubscription();
 
   useEffect(() => {
@@ -96,7 +100,7 @@ export default function Sidebar({ className = '' }) {
             animate={isExploreOpen ? 'open' : 'closed'}
             variants={dropdownVariants}
             transition={{ duration: 0.3 }}
-            className="overflow-hidden ml-6 mt-2"
+            className="overflow-hidden ml-6"
           >
             {isLoading && (
               <p className="px-4 py-2 text-gray-400 text-sm">
@@ -181,6 +185,60 @@ export default function Sidebar({ className = '' }) {
           </motion.div>
         </div>
        )}
+      
+      <div>
+      </div>
+
+
+    {/* RESOURCES DROPDOWN */}
+    <div>
+      <button
+        onClick={() =>
+          handleExpand(() => setIsBlogsOpen((o) => !o))
+        }
+        className="w-full flex items-center justify-between px-4 py-2 rounded-lg hover:bg-secondary/70 transition"
+      >
+        <span className="flex items-center gap-2 text-lg">
+          <BookOpen size={20} />
+          {!collapsed && 'Resources'}
+        </span>
+
+        {!collapsed &&
+          (isBlogsOpen ? (
+            <ChevronUp size={20} />
+          ) : (
+            <ChevronDown size={20} />
+          ))}
+      </button>
+
+      <motion.div
+        initial="closed"
+        animate={isBlogsOpen ? 'open' : 'closed'}
+        variants={dropdownVariants}
+        transition={{ duration: 0.3 }}
+        className="overflow-hidden ml-6 mt-2"
+      >
+        <NavLink
+          to="/dashboard/blog"
+          onClick={() => handleExpand(() => {})}
+          className="flex items-center gap-2 px-4 py-2 text-gray-300 rounded-lg hover:bg-secondary/70 hover:text-white"
+        >
+          <Newspaper size={18} />
+          {!collapsed && 'Blogs'}
+        </NavLink>
+
+        <NavLink
+          to="/dashboard/faqs"
+          onClick={() => handleExpand(() => {})}
+          className="flex items-center gap-2 px-4 py-2 text-gray-300 rounded-lg hover:bg-secondary/70 hover:text-white"
+        >
+          <HelpCircle size={18} />
+          {!collapsed && 'FAQs'}
+        </NavLink>
+      </motion.div>
+    </div>
+
+
 
       </div>
 

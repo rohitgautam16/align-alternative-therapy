@@ -11,36 +11,126 @@ const FAQ = () => {
 
   const faqData = [
     {
-      question: "What is invoice discounting in the media and entertainment industry?",
-      answer: "Invoice discounting in the media and entertainment industry involves providing funds to production companies based on their anticipated future cash flows/invoices. In exchange, investors earn stable returns when the invoices are paid by a third party, typically a buyer of film or music rights (for example, Netflix, Hotstar, Prime)."
+      question: "What is Align Alternative Therapy?",
+      answer: "Align offers sound-based therapeutic tools that combine frequency engineering, energetic programming, morphic fields, and guided states to support physical systems, emotional balance, mental clarity, and personal growth. Each track is designed to work with the body’s natural intelligence — gently, safely, and progressively"
     },
     {
-      question: "What is the minimum investment amount at BetterInvest?",
-      answer: "The minimum investment amount varies by investment opportunity and product type. Please contact our investment team for specific details about current offerings and minimum investment requirements."
+      question: "How do these audios work?",
+      answer: `Each audio uses a combination of:
+      •	Targeted frequencies (binaural, solfeggio, biofield-tuned tones)
+      •	Energetic / morphic programming
+      •	Light entrainment patterns
+      •	System-specific algorithms
+Together, they help your body shift into healthier patterns by influencing:
+      •	nervous system state
+      •	hormonal responses
+      •	lymphatic & circulatory flow
+      •	cellular communication
+      •	emotional + mental states
+Everything is delivered through non-invasive energetic signaling, not medication.
+`
     },
     {
-      question: "How does BetterInvest select content producers to fund?",
-      answer: "BetterInvest uses a comprehensive due diligence process to evaluate content producers, including assessment of their track record, financial stability, content portfolio, and partnership with established distributors and platforms."
+      question: "Are these audios safe?",
+      answer: `Yes — all audios are designed to be gentle and body-friendly.
+They do not force change, overstimulate, or override natural functioning.
+They simply guide your system toward balance.
+If you have medical conditions, you can still use them — but they are not a substitute for professional treatment.
+`
     },
     {
-      question: "What are the typical returns for investors?",
-      answer: "Returns vary based on the specific investment opportunity and risk profile. Our investment team provides detailed projections and historical performance data for each opportunity during the investment process."
+      question: "How often should I listen?",
+      answer: `Most tracks work best when listened to:
+•	1–3 times per day, or
+•	as needed, based on how your body feels.
+Your body naturally adjusts, so you don’t need to force repetition.
+If an audio feels strong, reduce the number of plays
+`
     },
     {
-      question: "How long is the typical investment period?",
-      answer: "Investment periods typically range from 6 months to 2 years, depending on the production timeline and distribution agreements. Each opportunity will have specific timeline details provided upfront."
+      question: "Can I listen while sleeping?",
+      answer: `Yes. Many tracks — especially those for healing, detox, hormones, and nervous system support — work extremely well during sleep.
+You can loop them quietly in the background.
+`
     },
     {
-      question: "What happens if a production fails to deliver?",
-      answer: "We have comprehensive risk management strategies in place, including insurance policies, completion bonds, and diversified investment portfolios to protect investor interests in case of production issues."
+      question: "Should I use headphones or speakers?",
+      answer: `Both work.
+•	Headphones → deeper immersion, best for brain states, mood, sleep, focus.
+•	Speakers → great for physical/energetic work (lymph, liver, blood pressure, immunity).
+Choose what feels better.
+`
     },
     {
-      question: "Can I withdraw my investment early?",
-      answer: "Early withdrawal options depend on the specific investment terms and current market conditions. Our team can discuss available options based on your individual circumstances and investment agreement."
+      question: "How long before I notice results?",
+      answer: `This varies by person and system:
+•	Emotional / mental tracks → often immediate or same day
+•	Physical system tracks (lymph, liver, heart, hormones) → may take days or weeks of consistent listening
+•	Deep regeneration → long-term benefits accumulate over time
+Consistency matters more than volume
+`
     },
     {
-      question: "How do I track my investment performance?",
-      answer: "Investors receive regular updates through our investor portal, including quarterly reports, production milestones, and financial performance metrics. You'll have full transparency into your investment progress."
+      question: "Can I listen to multiple tracks in one day?",
+      answer: `Yes. Most users follow:
+•	Morning: mood, activation, motivation
+•	Afternoon: healing, cleansing, system-specific tracks
+•	Night: deep repair, nervous system, hormones, sleep
+You can mix categories freely unless a track description mentions limits.
+`
+    },
+    {
+      question: "Is this scientifically backed?",
+      answer: `While the exact energetic mechanisms are non-medical, the principles behind Align draw from:
+•	neuroscience
+•	biofield studies
+•	frequency therapy
+•	entrainment research
+•	stress + nervous system physiology
+•	somatic healing
+•	lymphatic/circulatory responses to vibration
+•	psychoacoustic psychology
+Align is a holistic enhancement tool, not a clinical treatment
+`
+    },
+    {
+      question: "Do I need to believe for it to work?",
+      answer: `No.
+The body responds to frequency, sound, and regulation patterns automatically — belief, while helpful, isn’t required`
+    },
+    {
+      question: "Can children use these audios?",
+      answer: `Yes, but use calmer tracks and keep the volume low.
+Avoid intense detox or system-heavy fields for very young children`
+    },
+    {
+      question: "Do you offer personalized programs?",
+      answer: `Yes — Align offers personalized plans where tracks are grouped based on:
+•	your goals
+•	your symptoms
+•	your energy state
+•	physical systems needing support
+This ensures maximum efficiency and clarity.`
+    },
+    {
+      question: "Can I use these alongside medications or therapy?",
+      answer: `Yes.
+Align audios do not interfere with medications or therapeutic practices.
+They complement healing by reducing stress, improving flow, and supporting regulation`
+    },
+    {
+      question: "Are results permanent?",
+      answer: `Changes tend to stabilize as long as listening is consistent.
+Just like exercise, the body maintains what it regularly receives.`
+    },
+    {
+      question: "What if I feel tired or emotional after a track?",
+      answer: `This is normal during:
+•	detox
+•	lymph clearing
+•	hormonal balancing
+•	emotional release
+Simply reduce the number of plays or switch to a calming track.`
     }
   ];
 
@@ -122,7 +212,7 @@ const FAQ = () => {
   };
 
   return (
-    <div className="h-auto bg-black py-6 md:py-8 lg:py-10 px-4 md:px-6 lg:px-8 font-sans" ref={faqRef}>
+    <div className="h-auto bg-black py-6 md:py-8 lg:py-10 px-4 md:px-6 lg:px-8" ref={faqRef}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12 lg:mb-16">
@@ -145,7 +235,7 @@ const FAQ = () => {
           >
             <div className="relative w-full max-w-xs h-80 rounded-2xl overflow-hidden shadow-2xl">
               <motion.img
-                src="https://images.unsplash.com/photo-1553877522-43269d4ea984?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+                src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=799&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt="FAQ Support"
                 className="w-full h-full object-cover cursor-pointer"
                 whileHover={{ scale: 1.1 }}
@@ -241,9 +331,9 @@ const FAQ = () => {
                           className="overflow-hidden"
                         >
                           <div className="px-4 pb-4">
-                            <p className="text-sm leading-relaxed text-gray-800">
+                            <pre className="text-sm lg:text-base leading-relaxed text-gray-800 whitespace-pre-wrap">
                               {item.answer}
-                            </p>
+                            </pre>
                           </div>
                         </motion.div>
                       )}
@@ -301,7 +391,7 @@ const FAQ = () => {
               style={{ minHeight: '400px' }}
             >
               <motion.img
-                src="https://cdn.align-alternativetherapy.com/static-pages-media/photo-1553877522-43269d4ea984.avif"
+                src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=799&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt="FAQ Support"
                 className="w-full h-full object-cover cursor-pointer"
                 whileHover={{ scale: 1.1 }}
@@ -397,9 +487,9 @@ const FAQ = () => {
                           className="overflow-hidden"
                         >
                           <div className="px-5 lg:px-6 pb-5 lg:pb-6">
-                            <p className="text-sm lg:text-base leading-relaxed text-gray-800">
+                            <pre className="text-sm lg:text-base leading-relaxed text-gray-800 whitespace-pre-wrap">
                               {item.answer}
-                            </p>
+                            </pre>
                           </div>
                         </motion.div>
                       )}
@@ -412,7 +502,7 @@ const FAQ = () => {
               <div className="flex justify-center pt-5 lg:pt-6">
                 {visibleItems < faqData.length ? (
                   <motion.button
-                    className="bg-gray-200 text-gray-800 font-semibold py-2.5 lg:py-3 px-6 lg:px-8 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm lg:text-base"
+                    className="bg-gray-200 text-gray-800 cursor-pointer font-semibold py-2.5 lg:py-3 px-6 lg:px-8 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm lg:text-base"
                     onClick={handleShowMore}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -424,7 +514,7 @@ const FAQ = () => {
                   </motion.button>
                 ) : (
                   <motion.button
-                    className="bg-gray-200 text-gray-800 font-semibold py-2.5 lg:py-3 px-6 lg:px-8 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm lg:text-base"
+                    className="bg-gray-200 text-gray-800 cursor-pointer font-semibold py-2.5 lg:py-3 px-6 lg:px-8 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm lg:text-base"
                     onClick={handleShowLess}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}

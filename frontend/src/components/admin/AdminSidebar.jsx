@@ -68,6 +68,7 @@ export default function AdminSidebar() {
         { to: '/admin/categories', label: 'Categories', icon: FolderOpen },
         { to: '/admin/playlists', label: 'Playlists', icon: Grid },
         { to: '/admin/songs', label: 'Songs', icon: Music },
+        { to: '/admin/hero-banner', label: 'Hero Banner', icon: FileText },
       ]
     }
   ];

@@ -10,9 +10,10 @@ import {
   useUpdateAdminSongMutation,
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
-  useCreateAdminSongMutation, 
+  useCreateAdminSongMutation,
+  useUpdatePlaylistVisibilityMutation 
 } from '../../utils/api';
-import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter, X } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter, X, Eye, EyeOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
 import SongBulkUpload from '../../components/admin/SongBulkUpload'
@@ -125,7 +126,7 @@ export default function AdminPlaylistDetail() {
   const [flash, setFlash] = useState({ txt: '', ok: true });
   const [togglingId, setTogglingId] = useState(null);
   const [showAvailable, setShowAvailable] = useState(false);
-
+  const [updateVisibility] = useUpdatePlaylistVisibilityMutation();
   const [showBulkUpload, setShowBulkUpload] = useState(false);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -214,7 +215,8 @@ export default function AdminPlaylistDetail() {
         tags:             p.tags ?? '',
         artwork_filename: p.image ?? p.artwork_filename ?? '',
         category_id:      p.categoryId ?? p.category_id ?? '',
-        paid:             Number(p.paid) || 1
+        paid:             Number(p.paid) || 1,
+        is_discoverable:  p.is_discoverable ?? 1, 
       });
     }
   }, [p]);
@@ -665,10 +667,49 @@ export default function AdminPlaylistDetail() {
     }
   };
 
+    const handleToggleVisibility = async () => {
+    try {
+      const newVisibility = !form.is_discoverable;
+      
+      setForm(f => ({ ...f, is_discoverable: newVisibility ? 1 : 0 }));
+      
+      await updateVisibility({
+        id: playlistId,
+        isDiscoverable: newVisibility,
+      }).unwrap();
+      
+      setFlash({
+        txt: `Playlist ${newVisibility ? 'shown' : 'hidden'} successfully!`,
+        ok: true,
+      });
+      
+      await refetchPlaylist();
+    } catch (err) {
+      console.error('Toggle visibility error:', err);
+
+      setForm(f => ({ ...f, is_discoverable: f.is_discoverable ? 0 : 1 }));
+      setFlash({
+        txt: 'Failed to update visibility.',
+        ok: false,
+      });
+    }
+  };
+
   const handleSave = async () => {
     try {
       console.log('💾 Saving playlist with data:', { id: playlistId, ...form });
-      await updatePlaylist({ id: playlistId, ...form }).unwrap();
+      
+      const { is_discoverable, ...playlistData } = form;
+      
+      await updatePlaylist({ id: playlistId, ...playlistData }).unwrap();
+      
+      if (is_discoverable !== p.is_discoverable) {
+        await updateVisibility({
+          id: playlistId,
+          isDiscoverable: Boolean(is_discoverable),
+        }).unwrap();
+      }
+      
       setFlash({ txt: 'Playlist updated.', ok: true });
       setEditMode(false);
       await refetchPlaylist();
@@ -691,6 +732,7 @@ export default function AdminPlaylistDetail() {
       setFlash({ txt: 'Failed to delete playlist.', ok: false });
     }
   };
+
 
   return (
     <div className="p-6 text-white space-y-8">
@@ -717,6 +759,28 @@ export default function AdminPlaylistDetail() {
           <ArrowLeft size={20} /> Back
         </button>
         <div className="flex items-center gap-4">
+
+          <button
+            onClick={handleToggleVisibility}
+            className={`flex items-center gap-1 px-3 py-1 rounded transition-colors ${
+              form?.is_discoverable === 1
+                ? 'bg-green-600 hover:bg-green-500'
+                : 'bg-gray-600 hover:bg-gray-500'
+            }`}
+            title={form?.is_discoverable === 1 ? 'Hide from users' : 'Show to users'}
+          >
+            {form?.is_discoverable === 1 ? (
+              <>
+                <Eye size={16} />
+                <span className="hidden sm:inline">Visible</span>
+              </>
+            ) : (
+              <>
+                <EyeOff size={16} />
+                <span className="hidden sm:inline">Hidden</span>
+              </>
+            )}
+          </button>
           <button
             onClick={() => setEditMode((e) => !e)}
             className="flex items-center gap-1 bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
@@ -802,27 +866,61 @@ export default function AdminPlaylistDetail() {
 
             <div>
         <label className="block text-gray-400 mb-1">Type</label>
-        {editMode ? (
-          <select
-            value={form.paid !== undefined ? form.paid : 1}
-            onChange={(e) => setForm((f) => ({ ...f, paid: Number(e.target.value) }))}
-            className="w-full p-2 bg-gray-700 rounded text-white"
-          >
-            <option value={0}>Free</option>
-            <option value={1}>Paid</option>
-          </select>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center py-1 font-medium ${
-              p.paid === 1 
-                ? '' 
-                : ''
-            }`}>
-              <p>{p.paid === 1 ? 'Paid' : 'Free'}</p>
-            </span>
-          </div>
-        )}
-      </div>
+          {editMode ? (
+            <select
+              value={form.paid !== undefined ? form.paid : 1}
+              onChange={(e) => setForm((f) => ({ ...f, paid: Number(e.target.value) }))}
+              className="w-full p-2 bg-gray-700 rounded text-white"
+            >
+              <option value={0}>Free</option>
+              <option value={1}>Paid</option>
+            </select>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center py-1 font-medium ${
+                p.paid === 1 
+                  ? '' 
+                  : ''
+              }`}>
+                <p>{p.paid === 1 ? 'Paid' : 'Free'}</p>
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-gray-400 mb-1">Visibility</label>
+          {editMode ? (
+            <select
+              value={form.is_discoverable !== undefined ? form.is_discoverable : 1}
+              onChange={(e) => setForm((f) => ({ ...f, is_discoverable: Number(e.target.value) }))}
+              className="w-full p-2 bg-gray-700 rounded text-white"
+            >
+              <option value={1}>Discoverable</option>
+              <option value={0}>Hidden</option>
+            </select>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm ${
+                p.is_discoverable === 1 
+                  ? 'bg-green-600/20 text-green-400' 
+                  : 'bg-gray-600/20 text-gray-400'
+              }`}>
+                {p.is_discoverable === 1 ? (
+                  <>
+                    <Eye size={14} />
+                    <span>Discoverable</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff size={14} />
+                    <span>Hidden</span>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
 
             {/* Category Dropdown with Images */}
             <div className="md:col-span-2">

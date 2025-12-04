@@ -4,12 +4,13 @@ import {
   useCreateAdminSongMutation,
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
+  useUpdateSongVisibilityMutation, // ✅ NEW
 } from '../../utils/api';
 import {
   useListCategoriesQuery,
   useListPlaylistsQuery,
 } from '../../utils/api';
-import { Eye, Grid3X3, List, Plus, Search, X, Upload, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Grid3X3, List, Plus, Search, X, Upload, CheckCircle } from 'lucide-react'; // ✅ Added EyeOff
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
@@ -94,10 +95,8 @@ const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
 export default function AdminSongsOverview() {
   const navigate = useNavigate();
   
-  // ✅ FIXED: Track if filters changed to avoid resetting page on mount
-  const prevFiltersRef = useRef({ searchTerm: '', filterPlaylist: '' });
+  const prevFiltersRef = useRef({ searchTerm: '', filterPlaylist: '', filterDiscoverable: '' }); // ✅ Added filterDiscoverable
   
-  // ✅ FIXED: Initialize page from sessionStorage
   const [page, setPage] = useState(() => {
     const saved = sessionStorage.getItem('adminSongsPage');
     return saved ? Number(saved) : 1;
@@ -106,14 +105,12 @@ export default function AdminSongsOverview() {
   const [viewType, setViewType] = useState('grid');
   const [showCreateForm, setShowCreateForm] = useState(false);
   
-  // Frontend-only pagination
   const itemsPerPage = 12;
 
-  // Search and Filter with session storage
   const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('adminSongsSearchTerm') || '');
   const [filterPlaylist, setFilterPlaylist] = useState(() => sessionStorage.getItem('adminSongsFilterPlaylist') || '');
+  const [filterDiscoverable, setFilterDiscoverable] = useState(''); // ✅ NEW: Visibility filter
 
-  // ✅ FIXED: Save page to sessionStorage
   useEffect(() => {
     sessionStorage.setItem('adminSongsPage', String(page));
   }, [page]);
@@ -123,44 +120,43 @@ export default function AdminSongsOverview() {
     sessionStorage.setItem('adminSongsFilterPlaylist', filterPlaylist);
   }, [searchTerm, filterPlaylist]);
 
-  // ✅ FIXED: Reset page to 1 ONLY when filters actually change (not on initial mount)
+  // ✅ UPDATED: Include filterDiscoverable in reset logic
   useEffect(() => {
     const prevFilters = prevFiltersRef.current;
     
-    // Check if filters actually changed (not just initialized)
-    if (prevFilters.searchTerm !== searchTerm || prevFilters.filterPlaylist !== filterPlaylist) {
-      // Only reset if this isn't the first render (filters were actually changed by user)
-      if (prevFilters.searchTerm !== '' || prevFilters.filterPlaylist !== '' || 
+    if (prevFilters.searchTerm !== searchTerm || 
+        prevFilters.filterPlaylist !== filterPlaylist ||
+        prevFilters.filterDiscoverable !== filterDiscoverable) {
+      if (prevFilters.searchTerm !== '' || prevFilters.filterPlaylist !== '' || prevFilters.filterDiscoverable !== '' ||
           searchTerm !== sessionStorage.getItem('adminSongsSearchTerm') || 
           filterPlaylist !== sessionStorage.getItem('adminSongsFilterPlaylist')) {
         setPage(1);
       }
     }
     
-    // Update ref for next comparison
-    prevFiltersRef.current = { searchTerm, filterPlaylist };
-  }, [searchTerm, filterPlaylist]);
+    prevFiltersRef.current = { searchTerm, filterPlaylist, filterDiscoverable };
+  }, [searchTerm, filterPlaylist, filterDiscoverable]);
 
-  // File uploads - Manual upload control
+  // File uploads
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   const [selectedArtFile, setSelectedArtFile] = useState(null);
   const [selectedAudioFile, setSelectedAudioFile] = useState(null);
   
-  // Upload tracking state
   const [artworkKey, setArtworkKey] = useState(null);
   const [audioKey, setAudioKey] = useState(null);
   const [artworkUploading, setArtworkUploading] = useState(false);
   const [audioUploading, setAudioUploading] = useState(false);
 
-  // Progress tracking state
   const [artworkUploadProgress, setArtworkUploadProgress] = useState(0);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
 
-  // Presign request state for manual triggering
   const [artworkPresignParams, setArtworkPresignParams] = useState(null);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
 
-  // ✅ FIXED: Fetch ALL songs at once (increased pageSize to 1000)
+  // ✅ NEW: Visibility mutation and toggling state
+  const [updateVisibility] = useUpdateSongVisibilityMutation();
+  const [togglingIds, setTogglingIds] = useState(new Set());
+
   const {
     data: songsData,
     isLoading,
@@ -169,7 +165,6 @@ export default function AdminSongsOverview() {
     refetch,
   } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
 
-  // Categories and Playlists  
   const { data: catRaw = { data: [] } } = useListCategoriesQuery({
     page: 1,
     pageSize: 100,
@@ -179,7 +174,6 @@ export default function AdminSongsOverview() {
     pageSize: 100,
   });
 
-  // Create mutation 
   const [createSong, { isLoading: creating }] = useCreateAdminSongMutation();
 
   const [form, setForm] = useState({
@@ -194,11 +188,11 @@ export default function AdminSongsOverview() {
     artwork_filename: '',
     cdn_url: '',
     is_free: 0,
+    is_discoverable: 1, // ✅ NEW: Default to discoverable
   });
 
   const [flash, setFlash] = useState({ txt: '', ok: true });
 
-  // Use existing hook with conditional skip
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
       filename: "",
@@ -217,7 +211,6 @@ export default function AdminSongsOverview() {
     { skip: !audioPresignParams }
   );
 
-  // Manual artwork upload handler
   const handleArtworkUpload = async () => {
     if (!selectedArtFile) return;
     
@@ -239,7 +232,6 @@ export default function AdminSongsOverview() {
     }
   };
 
-  // Manual audio upload handler
   const handleAudioUpload = async () => {
     if (!selectedAudioFile) return;
     
@@ -261,7 +253,6 @@ export default function AdminSongsOverview() {
     }
   };
 
-  // Handle artwork presign response with delayed state reset
   useEffect(() => {
     if (!artworkPresign || !selectedArtFile || !artworkPresignParams) return;
 
@@ -274,7 +265,6 @@ export default function AdminSongsOverview() {
         
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
@@ -282,7 +272,6 @@ export default function AdminSongsOverview() {
           }
         });
 
-        // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const publicUrl = `https://cdn.align-alternativetherapy.com/${artworkPresign.key}`;
@@ -293,13 +282,11 @@ export default function AdminSongsOverview() {
             setFlash({ txt: "Artwork uploaded successfully!", ok: true });
             setArtworkUploadProgress(100);
             
-            // Clear file selection
             setSelectedArtFile(null);
             setArtworkPresignParams(null);
             const artInput = document.getElementById('create-artwork-upload');
             if (artInput) artInput.value = '';
             
-            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setArtworkUploading(false);
               setArtworkUploadProgress(0);
@@ -310,12 +297,10 @@ export default function AdminSongsOverview() {
           }
         });
 
-        // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
 
-        // Start the upload
         xhr.open('PUT', artworkPresign.url);
         xhr.setRequestHeader('Content-Type', selectedArtFile.type);
         xhr.send(selectedArtFile);
@@ -331,7 +316,6 @@ export default function AdminSongsOverview() {
     uploadArtwork();
   }, [artworkPresign, selectedArtFile, artworkPresignParams]);
 
-  // Handle audio presign response with delayed state reset
   useEffect(() => {
     if (!audioPresign || !selectedAudioFile || !audioPresignParams) return;
 
@@ -342,7 +326,6 @@ export default function AdminSongsOverview() {
         
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const percentComplete = Math.round((e.loaded / e.total) * 90) + 10;
@@ -350,7 +333,6 @@ export default function AdminSongsOverview() {
           }
         });
 
-        // Handle completion
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const publicUrl = `https://cdn.align-alternativetherapy.com/${audioPresign.key}`;
@@ -359,13 +341,11 @@ export default function AdminSongsOverview() {
             setFlash({ txt: "Audio file uploaded successfully!", ok: true });
             setAudioUploadProgress(100);
             
-            // Clear file selection
             setSelectedAudioFile(null);
             setAudioPresignParams(null);
             const audioInput = document.getElementById('create-audio-upload');
             if (audioInput) audioInput.value = '';
             
-            // Delay resetting upload state to keep progress bar visible
             setTimeout(() => {
               setAudioUploading(false);
               setAudioUploadProgress(0);
@@ -376,12 +356,10 @@ export default function AdminSongsOverview() {
           }
         });
 
-        // Handle errors
         xhr.addEventListener('error', () => {
           throw new Error('Upload failed');
         });
 
-        // Start the upload
         xhr.open('PUT', audioPresign.url);
         xhr.setRequestHeader('Content-Type', selectedAudioFile.type);
         xhr.send(selectedAudioFile);
@@ -397,7 +375,6 @@ export default function AdminSongsOverview() {
     uploadAudio();
   }, [audioPresign, selectedAudioFile, audioPresignParams]);
 
-  // Process data safely based on backend response structure  
   const allSongs = React.useMemo(() => {
     if (!songsData) return [];
     
@@ -422,7 +399,7 @@ export default function AdminSongsOverview() {
     return Array.isArray(plRaw.data) ? plRaw.data : (Array.isArray(plRaw) ? plRaw : []);
   }, [plRaw]);
 
-  // Filter songs based on search and playlist filter only  
+  // ✅ UPDATED: Filter songs including discoverability
   const filteredSongs = React.useMemo(() => {
     return allSongs.filter(song => {
       const matchesSearch = !searchTerm || 
@@ -443,17 +420,20 @@ export default function AdminSongsOverview() {
         song.playlistId === filterPlaylist ||
         song.playlistId === String(filterPlaylist);
 
-      return matchesSearch && matchesPlaylist;
-    });
-  }, [allSongs, searchTerm, filterPlaylist]);
+      // ✅ NEW: Discoverability filter
+      const matchesDiscoverable = !filterDiscoverable ||
+        (filterDiscoverable === 'discoverable' && song.is_discoverable) ||
+        (filterDiscoverable === 'hidden' && !song.is_discoverable);
 
-  // ✅ FIXED: Frontend-only pagination
-  const totalItems = allSongs.length; // Total songs from DB
+      return matchesSearch && matchesPlaylist && matchesDiscoverable;
+    });
+  }, [allSongs, searchTerm, filterPlaylist, filterDiscoverable]);
+
+  const totalItems = allSongs.length;
   const totalPages = Math.ceil(filteredSongs.length / itemsPerPage);
   const startIndex = (page - 1) * itemsPerPage;
   const paginatedSongs = filteredSongs.slice(startIndex, startIndex + itemsPerPage);
 
-  // Auto-clear flash messages  
   useEffect(() => {
     if (flash.txt) {
       const t = setTimeout(() => setFlash({ txt: '', ok: true }), 3000);
@@ -461,7 +441,6 @@ export default function AdminSongsOverview() {
     }
   }, [flash]);
 
-  // Fixed auto-generate slug from title  
   const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -477,6 +456,39 @@ export default function AdminSongsOverview() {
     setViewType((prev) => (prev === 'grid' ? 'list' : 'grid'));
   };
 
+  // ✅ NEW: Toggle visibility handler
+  const handleToggleVisibility = async (songId, currentDiscoverable) => {
+    if (togglingIds.has(songId)) return;
+
+    setTogglingIds(prev => new Set(prev).add(songId));
+    
+    try {
+      await updateVisibility({
+        id: songId,
+        isDiscoverable: !currentDiscoverable,
+      }).unwrap();
+      
+      setFlash({
+        txt: `Song ${!currentDiscoverable ? 'shown' : 'hidden'} successfully!`,
+        ok: true,
+      });
+    } catch (err) {
+      console.error('Toggle visibility error:', err);
+      setFlash({
+        txt: 'Failed to update visibility.',
+        ok: false,
+      });
+    } finally {
+      setTimeout(() => {
+        setTogglingIds(prev => {
+          const next = new Set(prev);
+          next.delete(songId);
+          return next;
+        });
+      }, 300);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     
@@ -486,7 +498,6 @@ export default function AdminSongsOverview() {
       await createSong(form).unwrap();
       setFlash({ txt: 'Song created successfully!', ok: true });
       
-      // Reset form and files
       setForm({
         name: '',
         title: '',
@@ -499,11 +510,11 @@ export default function AdminSongsOverview() {
         artwork_filename: '',
         cdn_url: '',
         is_free: 0,
+        is_discoverable: 1, // ✅ Reset to default
       });
       setSelectedArtFile(null);
       setSelectedAudioFile(null);
       
-      // Reset upload keys and states
       setArtworkKey(null);
       setAudioKey(null);
       setArtworkUploading(false);
@@ -511,7 +522,6 @@ export default function AdminSongsOverview() {
       setArtworkUploadProgress(0);
       setAudioUploadProgress(0);
       
-      // Clear file inputs
       const artInput = document.getElementById('create-artwork-upload');
       const audioInput = document.getElementById('create-audio-upload');
       if (artInput) artInput.value = '';
@@ -528,6 +538,7 @@ export default function AdminSongsOverview() {
   const clearFilters = () => {
     setSearchTerm('');
     setFilterPlaylist('');
+    setFilterDiscoverable(''); // ✅ NEW
   };
 
   return (
@@ -552,7 +563,7 @@ export default function AdminSongsOverview() {
           <h2 className="text-xl sm:text-2xl font-semibold">Songs Overview</h2>
           <p className="text-gray-400 text-sm">
             {totalItems} song{totalItems !== 1 ? 's' : ''} total, {filteredSongs.length} shown
-            {(searchTerm || filterPlaylist) && ` (filtered)`}
+            {(searchTerm || filterPlaylist || filterDiscoverable) && ` (filtered)`}
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -587,7 +598,7 @@ export default function AdminSongsOverview() {
               className="w-full pl-10 pr-4 py-2 bg-gray-700 rounded text-white placeholder-gray-400 text-sm sm:text-base"
             />
           </div>
-          {(searchTerm || filterPlaylist) && (
+          {(searchTerm || filterPlaylist || filterDiscoverable) && (
             <button
               onClick={clearFilters}
               className="flex items-center justify-center gap-1 text-gray-400 hover:text-white text-sm px-3 py-2 sm:px-0 sm:py-0"
@@ -597,15 +608,32 @@ export default function AdminSongsOverview() {
           )}
         </div>
         
-        <div className="w-full sm:w-1/2">
-          <label className="block text-gray-400 text-sm mb-1">Filter by Playlist</label>
-          <ImageDropdown
-            options={playlists}
-            value={filterPlaylist}
-            onChange={(e) => setFilterPlaylist(e.target.value)}
-            placeholder="All Playlists"
-            type="playlist"
-          />
+        {/* ✅ UPDATED: Added Visibility filter */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-gray-400 text-sm mb-1">Filter by Playlist</label>
+            <ImageDropdown
+              options={playlists}
+              value={filterPlaylist}
+              onChange={(e) => setFilterPlaylist(e.target.value)}
+              placeholder="All Playlists"
+              type="playlist"
+            />
+          </div>
+          
+          {/* ✅ NEW: Visibility Filter */}
+          <div>
+            <label className="block text-gray-400 text-sm mb-1">Filter by Visibility</label>
+            <select
+              value={filterDiscoverable}
+              onChange={(e) => setFilterDiscoverable(e.target.value)}
+              className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+            >
+              <option value="">All Songs</option>
+              <option value="discoverable">Discoverable</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -623,7 +651,6 @@ export default function AdminSongsOverview() {
               <Plus size={20} /> Create New Song
             </h3>
 
-            {/* Form fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Name</label>
@@ -699,7 +726,6 @@ export default function AdminSongsOverview() {
                 />
               </div>
               
-              {/* Access Type Radio Group */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Access Type</label>
                 <div className="flex gap-4">
@@ -732,6 +758,19 @@ export default function AdminSongsOverview() {
                   </label>
                 </div>
               </div>
+
+              {/* ✅ NEW: Visibility Field */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Visibility</label>
+                <select
+                  value={form.is_discoverable}
+                  onChange={(e) => setForm({ ...form, is_discoverable: Number(e.target.value) })}
+                  className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                >
+                  <option value={1}>Discoverable</option>
+                  <option value={0}>Hidden</option>
+                </select>
+              </div>
               
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Playlist</label>
@@ -759,7 +798,6 @@ export default function AdminSongsOverview() {
                 />
                 
                 <div className="space-y-2">
-                  {/* File selection */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       id="create-artwork-upload"
@@ -778,7 +816,6 @@ export default function AdminSongsOverview() {
                       </span>
                     </label>
                     
-                    {/* Status indicator */}
                     {artworkKey && (
                       <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                         <CheckCircle size={14} />
@@ -787,7 +824,6 @@ export default function AdminSongsOverview() {
                     )}
                   </div>
                   
-                  {/* Progress bar */}
                   {artworkUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -808,7 +844,6 @@ export default function AdminSongsOverview() {
                     </div>
                   )}
                   
-                  {/* Upload button */}
                   {selectedArtFile && !artworkKey && (
                     <button
                       type="button"
@@ -834,7 +869,6 @@ export default function AdminSongsOverview() {
                 />
                 
                 <div className="space-y-2">
-                  {/* File selection */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       id="create-audio-upload"
@@ -853,7 +887,6 @@ export default function AdminSongsOverview() {
                       </span>
                     </label>
                     
-                    {/* Status indicator */}
                     {audioKey && (
                       <div className="flex items-center gap-1 px-3 py-2 bg-green-600/20 text-green-400 rounded text-sm">
                         <CheckCircle size={14} />
@@ -862,7 +895,6 @@ export default function AdminSongsOverview() {
                     )}
                   </div>
                   
-                  {/* Progress bar */}
                   {audioUploading && (
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
@@ -883,7 +915,6 @@ export default function AdminSongsOverview() {
                     </div>
                   )}
                   
-                  {/* Upload button */}
                   {selectedAudioFile && !audioKey && (
                     <button
                       type="button"
@@ -948,17 +979,48 @@ export default function AdminSongsOverview() {
                   : 'grid-cols-1'
               }`}
             >
-              {paginatedSongs.map((song) => (
-                <AdminSongCard
-                  key={song.id}
-                  song={song}
-                  assigned={false}
-                  onView={() => navigate(`/admin/songs/${song.id}`)}
-                  onToggle={() => {}}
-                  status={{}}
-                  hideToggleButton={true}
-                />
-              ))}
+              {paginatedSongs.map((song) => {
+                const isDiscoverable = Boolean(song.is_discoverable);
+                const isToggling = togglingIds.has(song.id);
+                
+                return (
+                  <div key={song.id} className="relative group">
+                    {/* ✅ NEW: Visibility Toggle Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleVisibility(song.id, isDiscoverable);
+                      }}
+                      disabled={isToggling}
+                      className={`absolute top-2 right-2 z-10 p-2 rounded-lg backdrop-blur-sm transition-all duration-200 ${
+                        isDiscoverable
+                          ? 'bg-green-600/80 hover:bg-green-500/90'
+                          : 'bg-gray-600/80 hover:bg-gray-500/90'
+                      } ${
+                        isToggling ? 'opacity-50 cursor-not-allowed' : 'opacity-90 group-hover:opacity-100'
+                      }`}
+                      title={isDiscoverable ? 'Hide from users' : 'Show to users'}
+                    >
+                      {isToggling ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : isDiscoverable ? (
+                        <Eye size={16} className="text-white" />
+                      ) : (
+                        <EyeOff size={16} className="text-white" />
+                      )}
+                    </button>
+
+                    <AdminSongCard
+                      song={song}
+                      assigned={false}
+                      onView={() => navigate(`/admin/songs/${song.id}`)}
+                      onToggle={() => {}}
+                      status={{}}
+                      hideToggleButton={true}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
 

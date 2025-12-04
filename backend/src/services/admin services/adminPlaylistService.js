@@ -28,6 +28,7 @@ async function listPlaylists({ page = 1, pageSize = 20 } = {}) {
        artwork_filename    AS artwork_filename,
        category_id         AS category_id,
        paid                AS paid,
+       is_discoverable     AS is_discoverable,
        created             AS createdAt
      FROM playlists
      ORDER BY created DESC
@@ -49,6 +50,7 @@ async function getPlaylistById(id) {
        artwork_filename AS image,
        category_id AS categoryId,
        paid             AS paid,
+       is_discoverable  AS is_discoverable,
        created AS createdAt
      FROM playlists
      WHERE id = ?`,
@@ -64,13 +66,14 @@ async function createPlaylistAdmin({
   tags,
   artwork_filename,
   category_id,
-  paid
+  paid,
+  is_discoverable = 1      // 👈 NEW: default discoverable
 }) {
   const [result] = await db.query(
     `INSERT INTO playlists
-       (title, slug, description, tags, artwork_filename, category_id, paid)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [title, slug, description || '', tags || null, artwork_filename || null, category_id || null, paid]
+       (title, slug, description, tags, artwork_filename, category_id, paid, is_discoverable)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [title, slug, description || '', tags || null, artwork_filename || null, category_id || null, paid, is_discoverable]
   );
   return getPlaylistById(result.insertId);
 }
@@ -108,10 +111,25 @@ async function deletePlaylistAdmin(id) {
   await db.query(`DELETE FROM playlists WHERE id = ?`, [id]);
 }
 
+/**
+ * 👇 NEW: only toggles discoverability, safe and isolated.
+ */
+async function setPlaylistDiscoverability(id, isDiscoverable) {
+  const flag = isDiscoverable ? 1 : 0;
+  await db.query(
+    `UPDATE playlists
+       SET is_discoverable = ?
+     WHERE id = ?`,
+    [flag, id]
+  );
+  return getPlaylistById(id);
+}
+
 module.exports = {
   listPlaylists,
   getPlaylistById,
   createPlaylistAdmin,
   updatePlaylistAdmin,
   deletePlaylistAdmin,
+  setPlaylistDiscoverability
 };

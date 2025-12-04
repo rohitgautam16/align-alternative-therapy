@@ -3,7 +3,7 @@
 
 const Brevo = require('@getbrevo/brevo');
 const nodemailer = require('nodemailer');
-const validator = require('validator'); // npm i validator
+const validator = require('validator'); 
 
 // ---------- Helpers ----------
 function parseAddress(addr) {
@@ -180,6 +180,10 @@ function getSmtpTransporter() {
     maxConnections: Number(process.env.MAIL_SMTP_MAX_CONNECTIONS || 5),
     maxMessages: Number(process.env.MAIL_SMTP_MAX_MESSAGES || 100),
   };
+
+  console.log('SMTP_USER =', process.env.SMTP_USER);
+console.log('SMTP_PASS length =', process.env.SMTP_PASS ? process.env.SMTP_PASS.length : 0);
+
 
   cachedTransporter = nodemailer.createTransport(opts);
 

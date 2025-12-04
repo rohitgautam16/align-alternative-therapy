@@ -1,6 +1,6 @@
-//controllers/personalizeBasicController.js
+// controllers/personalizeBasicController.js
 const db = require('../db');
-const { sendMail } = require('../mail/mailer');
+const { sendPersonalizeBasicEmails } = require('../server/mail/emailService');
 
 function trimOrNull(v) {
   const s = (v ?? '').toString().trim();
@@ -18,7 +18,6 @@ exports.createBasicPersonalizeRequest = async function createBasicPersonalizeReq
       return res.status(400).json({ error: 'name and email are required' });
     }
 
-    // Insert into DB (backup log of the lead)
     const [result] = await db.query(
       `INSERT INTO personalize_basic_requests (name, email, mobile, notes, created_at)
        VALUES (?, ?, ?, ?, NOW())`,
@@ -29,27 +28,14 @@ exports.createBasicPersonalizeRequest = async function createBasicPersonalizeReq
     const adminBase = process.env.ADMIN_BASE_URL || 'http://localhost:3000';
     const adminUrl  = `${adminBase.replace(/\/+$/,'')}/admin/basic-personalize/${id}`;
 
-    // Build a text body (mailer will wrap it in your branded HTML template)
-    const text = [
-      'New personalize request',
-      `ID:     ${id}`,
-      `Name:   ${name}`,
-      `Email:  ${email}`,
-      `Mobile: ${mobile || '-'}`,
-      `Notes:  ${notes || '-'}`,
-      '',
-      `Open in Admin: ${adminUrl}`,
-    ].join('\n');
-
-    // Send to admins (reply-to the user)
-    const toAdmins = process.env.PERSONALIZE_ADMIN_TO || process.env.MAIL_FROM_EMAIL || 'admin@example.com';
-
-    await sendMail({
-      to: toAdmins,                     // can be comma-separated list
-      subject: `New Personalize Request: ${name}`,
-      text,                             // <-- text only; mailer wraps with branded HTML
-      replyTo: { email, name },
-      tags: ['personalize-basic', 'lead'],
+    // send emails (admin + user)
+    await sendPersonalizeBasicEmails({
+      id,
+      name,
+      email,
+      mobile,
+      notes,
+      adminUrl,
     });
 
     return res.status(201).json({
@@ -63,5 +49,4 @@ exports.createBasicPersonalizeRequest = async function createBasicPersonalizeReq
   }
 };
 
-// (Optional) Simple health check used earlier
 exports.ping = (req, res) => res.json({ ok: true });

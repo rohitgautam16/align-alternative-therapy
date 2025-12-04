@@ -2,8 +2,7 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import stubBlogs from '../stubs/blogs';
-import Header from '../components/common/Header';
-import TransitionWrapper from '../components/custom-ui/transition';
+
 
 const BlogPostPage = () => {
   const { slug } = useParams();
@@ -17,33 +16,40 @@ const BlogPostPage = () => {
   const rafRef = useRef(0);
 
   useEffect(() => {
-    const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+  const hero = heroRef.current;
+  const img = heroImgRef.current;
+  if (!hero || !img) return;
 
-    const update = () => {
-      if (!heroRef.current || !heroImgRef.current) return;
-      const rect = heroRef.current.getBoundingClientRect();
-      // progress 0..1 as the hero scrolls past the top of viewport
-      const offset = -rect.top; // 0 when hero top hits viewport top; grows as you scroll down
-      const progress = clamp(offset / Math.max(rect.height, 1), 0, 1);
-      const scale = 1 + progress * 0.12; // 12% zoom at end
-      heroImgRef.current.style.transform = `scale(${scale})`;
-    };
+  let rafId = 0;
 
-    const onScroll = () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(update);
-    };
-    const onResize = onScroll;
+  const update = () => {
+    const rect = hero.getBoundingClientRect();
+    const windowH = window.innerHeight;
 
-    onScroll(); // set initial transform
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
+    // ----------------------------------------------------
+    // START ZOOM EARLY: even when hero is fully visible
+    // ----------------------------------------------------
+    const scrolled = Math.max(0, -rect.top); // 0 → scroll distance upward
+    const raw = Math.min(scrolled / (windowH * 0.4), 1);
+    //  ^ Zoom completes after scrolling 60% of viewport height
+    //    (previously it waited till hero exited viewport)
+
+    // Cinematic ease
+    const eased = raw * raw * (4 - 1 * raw);
+
+    // Stronger scale now that we're zooming earlier
+    const scale = 1 + eased * 0.30;
+
+    img.style.transform = `scale(${scale})`;
+
+    rafId = requestAnimationFrame(update);
+  };
+
+  rafId = requestAnimationFrame(update);
+  return () => cancelAnimationFrame(rafId);
+}, []);
+
+
 
   if (!blog) return <div className="p-6 text-center text-red-400">Post not found.</div>;
 
@@ -60,12 +66,11 @@ const BlogPostPage = () => {
 
   return (
     <div>
-      <Header />
-      <article className="bg-black text-white py-20">
+      <article className="bg-black text-white">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16 space-y-8 sm:space-y-10">
           {/* Breadcrumb */}
           <div className="text-sm">
-            <Link to="/blog" className="text-white/80 hover:text-white transition">← All articles</Link>
+            <Link to="/dashboard/blog" className="text-white/80 hover:text-white transition">← All articles</Link>
           </div>
 
           {/* Title & meta */}
@@ -169,7 +174,7 @@ const BlogPostPage = () => {
               {related.map((item) => (
                 <Link
                   key={item.slug}
-                  to={`/blog/${item.slug}`}
+                  to={`/dashboard/blog/${item.slug}`}
                   className="group block"
                 >
                   {/* Image: fixed rectangle, no card bg */}
@@ -207,4 +212,4 @@ const BlogPostPage = () => {
   );
 }
 
-export default TransitionWrapper(BlogPostPage);
+export default BlogPostPage;

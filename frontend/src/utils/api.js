@@ -1,4 +1,3 @@
-// src/utils/api.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 function getAccessTokenFromCookie() {
@@ -6,22 +5,120 @@ function getAccessTokenFromCookie() {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-console.log('API baseUrl is', import.meta.env.VITE_API_BASE_URL);
+function setAccessTokenCookie(token) {
+  if (!token) return;
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] || ''));
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expSec = payload?.exp ?? (nowSec + 60 * 60 * 8); // fallback 8h
+    const maxAge = Math.max(0, expSec - nowSec);
+
+    const secure = window.location.protocol === 'https:';
+    document.cookie =
+      `_auth=${encodeURIComponent(token)};` +
+      ` Path=/;` +
+      ` Max-Age=${maxAge};` +
+      `${secure ? ' Secure;' : ''}` +
+      ` SameSite=Strict`;
+  } catch (e) {
+    // fallback: 8 hours if decoding fails
+    document.cookie =
+      `_auth=${encodeURIComponent(token)}; Path=/; Max-Age=${60 * 60 * 8}; SameSite=Strict`;
+  }
+}
+
+function clearAccessTokenCookie() {
+  document.cookie = `_auth=; Path=/; Max-Age=0; SameSite=Strict`;
+}
+
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
+console.log('API baseUrl is', baseUrl);
+
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl,
+  credentials: 'include',
+  prepareHeaders: (headers) => {
+    const token = getAccessTokenFromCookie();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    return headers;
+  },
+});
+
+// helper to avoid infinite refresh loops on auth endpoints
+function isAuthEndpoint(args) {
+  const url =
+    typeof args === 'string'
+      ? args
+      : typeof args === 'object'
+        ? args.url
+        : '';
+
+  if (!url) return false;
+
+  const clean = url.replace(/^\//, ''); // remove leading slash if present
+
+  return (
+    clean === 'auth/login' ||
+    clean === 'auth/register' ||
+    clean === 'auth/refresh' ||
+    clean === 'auth/logout'
+  );
+}
+
+/**
+ * baseQuery wrapper:
+ * - normal request
+ * - on 401 (and not auth endpoints) => call /auth/refresh
+ * - if refresh returns accessToken => store in _auth cookie and retry original request once
+ */
+const baseQueryWithReauth = async (args, api, extraOptions) => {
+  let result = await rawBaseQuery(args, api, extraOptions);
+
+  if (result?.error && result.error.status === 401 && !isAuthEndpoint(args)) {
+    // attempt refresh
+    const refreshResult = await rawBaseQuery(
+      { url: 'auth/refresh', method: 'POST' },
+      api,
+      extraOptions
+    );
+
+    if (refreshResult?.data?.accessToken) {
+      const newAccessToken = refreshResult.data.accessToken;
+      setAccessTokenCookie(newAccessToken);
+
+      // retry original request with new token in cookie
+      result = await rawBaseQuery(args, api, extraOptions);
+    } else {
+      // refresh failed => optional: dispatch a global logout if you have it
+      clearAccessTokenCookie();
+      // e.g. api.dispatch(logoutAction());
+    }
+  }
+
+  return result;
+};
 
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_BASE_URL,
-    credentials: 'include',
-    prepareHeaders: headers => {
-      const token = getAccessTokenFromCookie();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      return headers;
-    }
-  }),
-  tagTypes: ['User', 'Categories', 'Playlists', 'Songs', 'PQ', 'REC', 'FU', 'PB', 'PB_REC', 'PB_ITEM', 'PersonalizeUser', 'RecentPlays', 'RecentPlaylists'],
+  baseQuery: baseQueryWithReauth,
+  tagTypes: [
+    'User',
+    'Categories',
+    'Playlists',
+    'Songs',
+    'PQ',
+    'REC',
+    'FU',
+    'PB',
+    'PB_REC',
+    'PB_ITEM',
+    'PersonalizeUser',
+    'RecentPlays',
+    'RecentPlaylists',
+  ],
   endpoints: (build) => ({
 
     getR2PresignUrl: build.query({
@@ -29,6 +126,25 @@ export const api = createApi({
         url: "admin/r2/presign",
         params: { filename, contentType, folder },
       }),
+    }),
+
+    getHero: build.query({
+      query: () => ({
+        url: "/hero-banner",
+        method: "GET",
+      }),
+      transformResponse: (res) => res.data,
+      providesTags: ["HeroBanner"],
+    }),
+
+    updateHero: build.mutation({
+      query: ({ payload }) => ({
+        url: "/admin/hero-banner",
+        method: "PATCH",
+        body: payload,
+        credentials: "include",
+      }),
+      invalidatesTags: ["HeroBanner"],
     }),
 
     adminLogin: build.mutation({
@@ -56,7 +172,7 @@ export const api = createApi({
       },
       transformResponse: (response) => ({
         data: response.data || [],
-        total: response.total || 0, // This is returning 0 - backend issue!
+        total: response.total || 0, 
         page: response.page || 1,
         pageSize: response.pageSize || 20,
       }),
@@ -195,13 +311,14 @@ export const api = createApi({
         const ps       = res.pageSize ?? items.length;
         return { data: items, total, page: pageNum, pageSize: ps };
       },
+
       providesTags: (result) =>
         result?.data
           ? [
-              ...result.data.map((p) => ({ type: 'Playlist', id: p.id })),
-              { type: 'Playlist', id: 'LIST' },
+              { type: 'Playlists', id: 'LIST' }, 
+              ...result.data.map((p) => ({ type: 'Playlists', id: p.id })),
             ]
-          : [{ type: 'Playlist', id: 'LIST' }],
+          : [{ type: 'Playlists', id: 'LIST' }],
     }),
 
     // ─── Get single playlist ──────────────────────────────
@@ -242,10 +359,56 @@ export const api = createApi({
       invalidatesTags: [{ type: 'Playlist', id: 'LIST' }],
     }),
 
+    updatePlaylistVisibility: build.mutation({
+      query: ({ id, isDiscoverable }) => ({
+        url: `/admin/playlists/${id}/visibility`,
+        method: 'PATCH',
+        body: { is_discoverable: isDiscoverable },
+      }),
+
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Playlists', id: 'LIST' },
+        { type: 'Playlists', id },
+      ],
+
+      async onQueryStarted({ id, isDiscoverable }, { dispatch, queryFulfilled }) {
+        
+        const patches = [];
+        
+        const patchResult = dispatch(
+          api.util.updateQueryData('listPlaylists', { page: 1, pageSize: 200 }, (draft) => {
+            if (draft?.data && Array.isArray(draft.data)) {
+              const playlist = draft.data.find(p => p.id === id);
+              if (playlist) {
+                playlist.is_discoverable = isDiscoverable ? 1 : 0;
+              }
+            }
+          })
+        );
+        patches.push(patchResult);
+        
+        try {
+          await queryFulfilled;
+        } catch {
+          patches.forEach(patch => patch.undo());
+        }
+      },
+    }),
+
     getAdminSongs: build.query({
       query: ({ page = 1, pageSize = 10 }) =>
         `admin/songs?page=${page}&pageSize=${pageSize}`,
-      providesTags: ['AdminSongs']
+
+      providesTags: (result) => {
+        if (!result) return [{ type: 'Songs', id: 'LIST' }];
+        
+        const songs = Array.isArray(result) ? result : (result.data || []);
+        
+        return [
+          { type: 'Songs', id: 'LIST' },
+          ...songs.map(({ id }) => ({ type: 'Songs', id })),
+        ];
+      },
     }),
 
     getAdminSong: build.query({
@@ -280,6 +443,38 @@ export const api = createApi({
         method: 'DELETE'
       }),
       invalidatesTags: ['AdminSongs']
+    }),
+
+    updateSongVisibility: build.mutation({
+      query: ({ id, isDiscoverable }) => ({
+        url: `/admin/songs/${id}/visibility`,
+        method: 'PATCH',
+        body: { is_discoverable: isDiscoverable },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Songs', id: 'LIST' },
+        { type: 'Songs', id },
+      ],
+
+      async onQueryStarted({ id, isDiscoverable }, { dispatch, queryFulfilled }) {
+
+        const patchResult = dispatch(
+          api.util.updateQueryData('getAdminSongs', { page: 1, pageSize: 1000 }, (draft) => {
+
+            const songs = Array.isArray(draft) ? draft : (draft.data || []);
+            const song = songs.find(s => s.id === id);
+            if (song) {
+              song.is_discoverable = isDiscoverable ? 1 : 0;
+            }
+          })
+        );
+        
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
 
     listR2Objects: build.query({
@@ -372,6 +567,22 @@ export const api = createApi({
       })
     }),
 
+    forgotPassword: build.mutation({
+      query: (email) => ({
+        url: '/password/forgot',
+        method: 'POST',
+        body: { email },
+      }),
+    }),
+
+    resetPassword: build.mutation({
+      query: ({ token, newPassword }) => ({
+        url: '/password/reset',
+        method: 'POST',
+        body: { token, newPassword },
+      }),
+    }),
+
     refreshToken: build.query({
       query: () => ({ url: 'auth/refresh', method: 'POST' }),
     }),
@@ -420,10 +631,18 @@ export const api = createApi({
     // }),
 
     checkoutSubscription: build.mutation({
-      query: ({ plan, trial = false, includeAddon = false }) => ({
+      query: ({ plan, trial = false, includeAddon = false, promoCode = null }) => ({
         url: '/subscribe/checkout',
         method: 'POST',
-        body: { plan, trial, includeAddon },
+        body: { plan, trial, includeAddon, promoCode },
+      }),
+    }),
+
+    validatePromoCode: build.mutation({
+      query: (body) => ({
+        url: '/subscribe/validate-code',
+        method: 'POST',
+        body,
       }),
     }),
 
@@ -1074,6 +1293,8 @@ getPbPaymentStatus: build.query({
 
 export const {
   useGetR2PresignUrlQuery,
+  useGetHeroQuery,
+  useUpdateHeroMutation,
   useAdminLoginMutation,
   useListUsersQuery,
   useGetAdminsQuery,
@@ -1096,6 +1317,8 @@ export const {
   useCreateAdminSongMutation,
   useUpdateAdminSongMutation,
   useDeleteAdminSongMutation,
+  useUpdateSongVisibilityMutation,
+  useUpdatePlaylistVisibilityMutation,
   useDeletePlaylistMutation,
   useListR2ObjectsQuery,
   useGetR2ObjectMetaQuery,
@@ -1105,6 +1328,8 @@ export const {
   useDeleteR2FolderMutation,
   useLoginUserMutation,
   useRegisterUserMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
   useRefreshTokenQuery,
   useLogoutUserMutation,
   useGetProfileQuery,
@@ -1112,6 +1337,7 @@ export const {
   useDeleteProfileMutation,
   useRestoreAccountMutation,
   useCheckoutSubscriptionMutation,
+  useValidatePromoCodeMutation,
   useCheckoutAddonMutation,
   useGetSubscriptionSummaryQuery,
   useCreateBillingPortalSessionMutation,

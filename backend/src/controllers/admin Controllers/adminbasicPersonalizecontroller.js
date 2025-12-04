@@ -52,7 +52,8 @@ exports.searchSongs = async (req, res) => {
         name,
         artist,
         artwork_filename AS image,
-        cdn_url
+        cdn_url,
+        is_discoverable
       FROM audio_metadata
       WHERE (title LIKE ? OR name LIKE ? OR artist LIKE ?)
       ORDER BY id DESC
@@ -82,6 +83,7 @@ exports.searchPlaylists = async (req, res) => {
         slug,
         artwork_filename AS image,
         paid,
+        is_discoverable,
         COALESCE(NULLIF(title, ''), slug) AS display_title
       FROM playlists
       WHERE (title LIKE ? OR slug LIKE ?)
@@ -202,7 +204,8 @@ if (trackIds.length) {
       artist       AS artist,
       artwork_filename AS image,
       cdn_url      AS audio_url,
-      slug
+      slug,
+      is_discoverable
     FROM audio_metadata
     WHERE id IN (${trackIds.map(()=>'?').join(',')})
     `,
@@ -222,6 +225,7 @@ if (playlistIds.length) {
       slug,
       artwork_filename AS image,
       paid,
+      is_discoverable,
       COALESCE(NULLIF(title, ''), slug) AS display_title
     FROM playlists
     WHERE id IN (${playlistIds.map(()=>'?').join(',')})
@@ -557,7 +561,8 @@ exports.listMineForCurrentUser = async (req, res) => {
           description,
           artwork_filename AS image,
           cdn_url AS audioUrl,
-          slug
+          slug,
+          is_discoverable
         FROM audio_metadata
         WHERE id IN (${trackIds.map(() => '?').join(',')})
         `,
@@ -576,6 +581,7 @@ exports.listMineForCurrentUser = async (req, res) => {
           slug,
           artwork_filename AS image,
           paid,
+          is_discoverable,
           COALESCE(NULLIF(title, ''), slug) AS display_title
         FROM playlists
         WHERE id IN (${playlistIds.map(() => '?').join(',')})

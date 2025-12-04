@@ -127,7 +127,7 @@ const DashboardHome = () => {
       />
       )}
 
-      {/* <PersonalizeCTA/> */}
+      <PersonalizeCTA/>
       
     </div>
     

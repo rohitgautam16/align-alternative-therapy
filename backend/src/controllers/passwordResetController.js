@@ -1,69 +1,66 @@
 'use strict';
-const Brevo = require('@getbrevo/brevo');
+
+const db = require('../db');
 const {
   createPasswordResetToken,
-  resetPassword
+  resetPassword,
 } = require('../services/passwordResetService');
+const {
+  sendPasswordResetEmail,
+  sendPasswordChangedEmail,
+} = require('../server/mail/emailService');
 
-const apiInstance = new Brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(
-  Brevo.TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY
-);
+function getFrontendBaseUrl() {
+  return (
+    process.env.FRONTEND_URL ||
+    process.env.CLIENT_URL ||
+    'http://localhost:5173'
+  );
+}
 
 // Step 1 — Request Reset
 async function requestResetController(req, res, next) {
   try {
     const { email } = req.body;
-    const result = await createPasswordResetToken(email);
 
-    // Always respond success to prevent enumeration
-    if (!result) {
-      return res.json({
-        success: true,
-        message: 'If that email exists, a reset link has been sent.'
-      });
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${encodeURIComponent(result.rawToken)}`;
+    const result = await createPasswordResetToken(email);
 
-    const sendSmtpEmail = {
-      sender: {
-        name: process.env.APP_NAME,
-        email: process.env.SMTP_USER
-      },
-      to: [{ email }],
-      subject: `${process.env.APP_NAME} — Password Reset Request`,
-      htmlContent: `
-        <div style="font-family:Arial,sans-serif;padding:20px;background:#f7f7f7;">
-          <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:8px;">
-            <h2 style="color:#4f46e5;">Password Reset Request</h2>
-            <p>We received a request to reset your password for your ${process.env.APP_NAME} account.</p>
-            <p>Click the button below to reset your password. This link is valid for 1 hour:</p>
-            <a href="${resetUrl}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;margin-top:10px;">Reset Password</a>
-            <p style="margin-top:20px;color:#666;">If you didn’t request this, you can safely ignore this email.</p>
-          </div>
-        </div>
-      `
-    };
+    if (result) {
+      try {
+        // load user for name + email
+        const [[user]] = await db.query(
+          `SELECT id, email, full_name AS full_name
+             FROM users
+            WHERE id = ?
+            LIMIT 1`,
+          [result.userId]
+        );
 
-    try {
-        if (process.env.NODE_ENV === 'production') {
-          await apiInstance.sendTransacEmail(sendSmtpEmail);
-          console.log('✅ Brevo email sent to:', email);
+        if (user && user.email) {
+          const baseUrl = getFrontendBaseUrl().replace(/\/+$/, '');
+          const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(
+            result.rawToken
+          )}`;
+
+          await sendPasswordResetEmail({ user, resetLink });
         } else {
-          console.log('⚙️ Local dev mode: skipping Brevo send.');
-          console.log('🔗 Reset link (for testing):', resetUrl);
+          console.warn(
+            `Password reset: token created but user not found or email missing for id=${result.userId}`
+          );
         }
       } catch (mailErr) {
-        console.error('⚠️ Brevo send failed:', mailErr.message);
-        console.log('🔗 Reset link (fallback):', resetUrl);
+        console.error('Password reset email send failed:', mailErr);
       }
+    }
 
-
+    // Always respond success to prevent enumeration
     return res.json({
       success: true,
-      message: 'If that email exists, a reset link has been sent.'
+      message: 'If that email exists, a reset link has been sent.',
     });
   } catch (err) {
     next(err);
@@ -74,15 +71,48 @@ async function requestResetController(req, res, next) {
 async function resetPasswordController(req, res, next) {
   try {
     const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res
+        .status(400)
+        .json({ error: 'token and newPassword are required' });
+    }
+
     const result = await resetPassword(token, newPassword);
 
     if (!result) {
       return res.status(400).json({ error: 'Invalid or expired reset token.' });
     }
 
+    // Fire-and-forget confirmation email
+    try {
+      const [[user]] = await db.query(
+        `SELECT id, email, full_name AS full_name
+           FROM users
+          WHERE id = ?
+          LIMIT 1`,
+        [result.userId]
+      );
+
+      if (user && user.email) {
+        sendPasswordChangedEmail({ user }).catch(err =>
+          console.error('Password changed email failed:', err)
+        );
+      } else {
+        console.warn(
+          `Password changed: user not found or email missing for id=${result.userId}`
+        );
+      }
+    } catch (mailErr) {
+      console.error(
+        'Password changed: failed to load user or send email:',
+        mailErr
+      );
+    }
+
     return res.json({
       success: true,
-      message: 'Password reset successful. Please log in again.'
+      message: 'Password reset successful. Please log in again.',
     });
   } catch (err) {
     next(err);
@@ -91,5 +121,5 @@ async function resetPasswordController(req, res, next) {
 
 module.exports = {
   requestResetController,
-  resetPasswordController
+  resetPasswordController,
 };

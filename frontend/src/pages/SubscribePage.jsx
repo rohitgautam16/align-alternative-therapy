@@ -1,9 +1,12 @@
 // src/pages/SubscribePage.jsx
 import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Check, Sparkles } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useCheckoutSubscriptionMutation } from '../utils/api';
+import {
+  useCheckoutSubscriptionMutation,
+  useValidatePromoCodeMutation
+} from '../utils/api';
 import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated';
 
 const cardVariants = {
@@ -25,7 +28,10 @@ function useAuthGate() {
     (fn) => {
       if (isAuthenticated) fn?.();
       else {
-        sessionStorage.setItem('returnToPath', window.location.pathname + window.location.search);
+        sessionStorage.setItem(
+          'returnToPath',
+          window.location.pathname + window.location.search
+        );
         sessionStorage.setItem('loginRedirect', 'return');
         setLoginPromptOpen(true);
       }
@@ -43,14 +49,46 @@ function useAuthGate() {
 
 export default function SubscribePage() {
   const navigate = useNavigate();
+  const { requireAuthThen, loginPromptOpen, setLoginPromptOpen, proceedToLogin } =
+    useAuthGate();
 
-  const { requireAuthThen, loginPromptOpen, setLoginPromptOpen, proceedToLogin } = useAuthGate();
   const [checkout, { isLoading, error }] = useCheckoutSubscriptionMutation();
+  const [validatePromo, { isLoading: validatingPromo }] =
+    useValidatePromoCodeMutation();
 
-  // checkout
+  // Promo state (only Yearly)
+  const [promoInput, setPromoInput] = React.useState("");
+  const [validatedPromo, setValidatedPromo] = React.useState(null);
+  const [promoError, setPromoError] = React.useState("");
+  const [showPromoInput, setShowPromoInput] = React.useState(false);
+
+  // Validate promo
+  async function handleApplyPromo() {
+    try {
+      setPromoError("");
+      const result = await validatePromo({ promoCode: promoInput }).unwrap();
+
+      if (!result.valid) {
+        setValidatedPromo(null);
+        setPromoError("Invalid or expired promo code");
+        return;
+      }
+
+      setValidatedPromo(result);
+      setPromoError("");
+    } catch (err) {
+      setPromoError("Could not validate promo code");
+    }
+  }
+
+  // Checkout
   async function startCheckout(plan) {
     try {
-      const result = await checkout({ plan }).unwrap();
+      const result = await checkout({
+        plan,
+        promoCode: plan === "annual" ? validatedPromo?.promoCode || null : null
+      }).unwrap();
+
       if (result.url) window.location.href = result.url;
       else navigate('/dashboard');
     } catch (err) {
@@ -109,19 +147,15 @@ export default function SubscribePage() {
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100"></div>
 
             <div className="relative h-full bg-gradient-to-br from-white/[0.07] to-white/[0.02] backdrop-blur-xl rounded-3xl border border-white/10 p-8 transition-all duration-300 group-hover:border-white/20 group-hover:scale-[1.02]">
-
-              {/* Badge */}
               <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
                 <span className="text-xs font-semibold text-blue-300 tracking-wider">POPULAR</span>
               </div>
 
-              {/* Title */}
               <div className="mb-8">
                 <h3 className="text-2xl font-medium mb-2">Monthly</h3>
                 <p className="text-sm text-gray-400">Perfect for getting started</p>
               </div>
 
-              {/* Pricing */}
               <div className="mb-8">
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-6xl font-light tracking-tight">$151</span>
@@ -130,48 +164,25 @@ export default function SubscribePage() {
                 <p className="text-sm text-gray-500">Billed monthly</p>
               </div>
 
-              {/* Features */}
-              {/* <div className="space-y-4 mb-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                  <span className="text-gray-300 text-sm">Full access to meditation library</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                  <span className="text-gray-300 text-sm">Personalized recommendations</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                  <span className="text-gray-300 text-sm">Progress tracking</span>
-                </div>
-              </div> */}
-
               <button
                 onClick={() => handleBasePlanClick('monthly')}
                 disabled={isLoading}
-                className="w-full py-4 rounded-full bg-white text-black cursor-pointer font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg disabled:opacity-50"
+                className="w-full py-4 rounded-full bg-white text-black font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg disabled:opacity-50"
               >
                 {isLoading ? 'Processing...' : 'Subscribe Monthly'}
               </button>
             </div>
           </motion.div>
 
-          {/* YEARLY */}
+          {/* YEARLY CARD */}
           <motion.div variants={cardVariants} initial="offscreen" whileInView="onscreen" viewport={{ once: true }} className="relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 to-secondary-500/10 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
 
             <div className="relative h-full bg-gradient-to-br from-white/[0.12] to-white/[0.05] backdrop-blur-xl rounded-3xl border-2 border-white/20 p-8 transition-all duration-300 group-hover:border-white/30 group-hover:scale-[1.02] shadow-2xl">
 
+              {/* Badge */}
               <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-green-500/20 border border-green-400/40 backdrop-blur-sm">
-                <span className="text-xs font-semibold text-green-300 tracking-wider">SAVE 33.3%</span>
+                <span className="text-xs font-semibold text-green-300 tracking-wider">BEST VALUE</span>
               </div>
 
               {/* Title */}
@@ -181,54 +192,100 @@ export default function SubscribePage() {
               </div>
 
               {/* Pricing */}
-              <div className="mb-8">
+              <div className="mb-6">
                 <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-4xl font-light text-gray-500 line-through">$1499</span>
-                  <span className="text-6xl font-light tracking-tight">$999</span>
+                  {/* <span className="text-4xl font-light text-gray-500 line-through">$1499</span> */}
+                  <span className="text-6xl font-light tracking-tight">$1499</span>
                 </div>
                 <p className="text-sm text-gray-400">Billed annually · Save $500</p>
               </div>
 
-              {/* Features */}
-              {/* <div className="space-y-4 mb-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-green-400" />
-                  </div>
-                  <span className="text-gray-200 text-sm font-medium">Everything in Monthly</span>
-                </div>
+              {/* "Have a coupon code?" CTA */}
+              {!showPromoInput && (
+                <button
+                  onClick={() => setShowPromoInput(true)}
+                  className="text-sm text-gray-300 cursor-pointer hover:text-white transition-all mb-6"
+                >
+                  Have a coupon code ? 
+                </button>
+              )}
 
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-green-400" />
-                  </div>
-                  <span className="text-gray-200 text-sm font-medium">Priority support</span>
-                </div>
+              {/* Promo Input Section */}
+              {showPromoInput && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-6 space-y-2"
+                >
+                  <div className="flex gap-2 items-start">
+                    <input
+                      value={promoInput}
+                      onChange={(e) => {
+                        setPromoInput(e.target.value);
+                        setValidatedPromo(null);
+                        setPromoError("");
+                      }}
+                      placeholder="Enter code"
+                      className={`flex-1 pl-2 py-3 rounded-xl bg-white/5 border ${
+                        validatedPromo
+                          ? "border-green-400/40"
+                          : promoError
+                          ? "border-red-400/40"
+                          : "border-white/10"
+                      } text-white placeholder-gray-500 focus:outline-none`}
+                    />
 
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-green-400" />
+                    <button
+                      onClick={handleApplyPromo}
+                      disabled={validatingPromo || !promoInput.trim()}
+                      className="px-4 py-3 bg-white text-black rounded-xl font-medium hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      {validatingPromo ? "..." : "Apply"}
+                    </button>
+
+                    {/* Remove Coupon */}
+                    <button
+                      onClick={() => {
+                        setShowPromoInput(false);
+                        setPromoInput("");
+                        setValidatedPromo(null);
+                        setPromoError("");
+                      }}
+                      className="pl-0.5 md:pl-2 py-3 rounded-xl cursor-pointer text-white transition"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <span className="text-gray-200 text-sm font-medium">Exclusive content access</span>
-                </div>
-              </div> */}
+
+                  {validatedPromo && (
+                    <p className="text-green-400 text-sm">✔ Promo applied: {validatedPromo.trialDays} days free trial</p>
+                  )}
+
+                  {promoError && <p className="text-red-400 text-sm">{promoError}</p>}
+                </motion.div>
+              )}
 
               <button
-                onClick={() => handleBasePlanClick('annual')}
-                disabled={isLoading}
-                className="w-full py-4 rounded-full bg-white text-black cursor-pointer font-medium hover:bg-gray-100 transition-all duration-300 shadow-xl disabled:opacity-50"
+                onClick={() => handleBasePlanClick("annual")}
+                disabled={
+                  isLoading ||
+                  validatingPromo ||
+                  (showPromoInput && promoInput && !validatedPromo)
+                }
+                className="w-full py-4 rounded-full bg-white text-black font-medium hover:bg-gray-100 transition-all duration-300 shadow-xl disabled:opacity-50"
               >
-                {isLoading ? 'Processing...' : 'Subscribe Yearly'}
+                {isLoading ? "Processing..." : "Subscribe Yearly"}
               </button>
             </div>
           </motion.div>
+
 
           {/* ALIGN+ */}
           <motion.div variants={cardVariants} initial="offscreen" whileInView="onscreen" viewport={{ once: true }} className="relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-yellow-500/5 rounded-3xl blur-xl transition-all duration-500 opacity-50"></div>
 
             <div className="relative h-full bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl rounded-3xl border border-white/[0.08] p-8 transition-all duration-300">
-
               <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
                 <span className="text-xs font-semibold text-amber-300 tracking-wider">SOON</span>
               </div>
@@ -243,30 +300,6 @@ export default function SubscribePage() {
                 <p className="text-sm text-gray-600 mt-2">Coming soon</p>
               </div>
 
-              {/* <div className="space-y-4 mb-10 opacity-50">
-
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-gray-600" />
-                  </div>
-                  <span className="text-gray-500 text-sm">Everything in Yearly</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-gray-600" />
-                  </div>
-                  <span className="text-gray-500 text-sm">1-on-1 coaching sessions</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-gray-600" />
-                  </div>
-                  <span className="text-gray-500 text-sm">Custom meditation programs</span>
-                </div>
-              </div> */}
-
               <button
                 disabled
                 className="w-full py-4 rounded-full bg-white/5 text-gray-500 font-medium border border-white/10 cursor-not-allowed"
@@ -275,11 +308,10 @@ export default function SubscribePage() {
               </button>
             </div>
           </motion.div>
-
         </div>
 
         {/* Banner */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -309,24 +341,27 @@ export default function SubscribePage() {
 
               <button
                 onClick={handeConatctSales}
-                className="inline-flex items-center gap-2 bg-white cursor-pointer text-black px-8 py-4 rounded-full font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-white/20 group"
+                className="inline-flex items-center gap-2 bg-white text-black px-8 py-4 rounded-full font-medium hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-white/20 group"
               >
                 Contact Sales
                 <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
               </button>
             </div>
           </div>
-        </motion.div>
+        </motion.div> */}
 
         {/* Error */}
         {error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-8 text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-8 text-center"
+          >
             <p className="text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-6 py-3 inline-block">
               {error.data?.error || error.error}
             </p>
           </motion.div>
         )}
-
       </div>
 
       {/* Login modal */}
@@ -338,7 +373,9 @@ export default function SubscribePage() {
             className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl"
           >
             <h4 className="text-2xl font-medium mb-3">Login Required</h4>
-            <p className="text-gray-400 mb-8">Please log in to continue to checkout.</p>
+            <p className="text-gray-400 mb-8">
+              Please log in to continue to checkout.
+            </p>
 
             <div className="flex gap-3">
               <button
@@ -358,7 +395,6 @@ export default function SubscribePage() {
           </motion.div>
         </div>
       )}
-
     </div>
   );
 }

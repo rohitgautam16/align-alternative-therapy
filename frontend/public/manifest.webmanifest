@@ -1,0 +1,63 @@
+{
+  "id": "/?source=pwa",
+  "name": "Align",
+  "short_name": "Align",
+  "description": "Align helps you reach focused, calm, and elevated states with personalized music and sound experiences.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050510",
+  "theme_color": "#4A6CF7",
+  "categories": ["music", "health", "productivity"],
+  "icons": [
+    {
+      "src": "./icons/logo-with-text.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/logo-with-text.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/logo-with-text.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/logo-with-text.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "./icons/menu.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Recently Played",
+      "short_name": "Recent",
+      "url": "/recently-played"
+    },
+    {
+      "name": "My Playlists",
+      "short_name": "Playlists",
+      "url": "/my-playlists"
+    }
+  ]
+}

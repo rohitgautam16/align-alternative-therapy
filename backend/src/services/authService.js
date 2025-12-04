@@ -61,6 +61,19 @@ async function deleteRefreshToken(token) {
   );
 }
 
+
+/**
+ * Delete *all* refresh tokens for a user (used on token reuse detection)
+ * @param {number} userId
+ */
+async function deleteRefreshTokensForUser(userId) {
+  return db.query(
+    `DELETE FROM user_refresh_tokens WHERE user_id = ?`,
+    [userId]
+  );
+}
+
+
 /**
  * Find and verify a refresh token.
  * @param {string} token 
@@ -82,5 +95,6 @@ module.exports = {
   validateUser,
   saveRefreshToken,
   deleteRefreshToken,
+  deleteRefreshTokensForUser,
   findRefreshToken,
 };

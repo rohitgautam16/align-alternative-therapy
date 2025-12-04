@@ -6,6 +6,7 @@ const {
   validateUser,
   saveRefreshToken,
   deleteRefreshToken,
+  deleteRefreshTokensForUser,
   findRefreshToken
 } = require('../services/authService');
 const {
@@ -17,11 +18,17 @@ const {
   generateRefreshToken,
   verifyRefreshToken,
 } = require('../utils/jwt');
+const { sendWelcomeOnSignup } = require('../server/mail/emailService');
+
+
 
 async function registerController(req, res, next) {
   try {
     const { email, password, full_name } = req.body;
     const user = await createUser({ email, password, full_name });
+    sendWelcomeOnSignup({ user }).catch(err => {
+      console.error('Welcome signup email failed:', err);
+    });
     return res.status(201).json({ success: true, user });
   } catch (err) {
     next(err);
@@ -77,6 +84,7 @@ async function loginController(req, res, next) {
       secure:   process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
       expires:  expiresAt,
+      path: '/api', 
     });
 
     // IMPORTANT: do NOT sync subscription state here.
@@ -155,29 +163,61 @@ async function adminLoginController(req, res, next) {
 
 async function refreshController(req, res) {
   try {
-    const token = req.cookies.refreshToken;
-    if (!token) return res.status(401).json({ error: 'No refresh token' });
+    const token = req.cookies && req.cookies.refreshToken;
+    if (!token) {
+      return res.status(401).json({ error: 'No refresh token' });
+    }
 
-    // Validate JWT signature & expiry
-    const payload = verifyRefreshToken(token);
-     
+    // 1) Validate JWT signature & expiry
+    let payload;
+    try {
+      payload = verifyRefreshToken(token);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // 2) Ensure it exists in DB (not revoked / expired in DB)
+    const dbToken = await findRefreshToken(token);
+    if (!dbToken) {
+      return res.status(401).json({ error: 'Refresh token not recognized' });
+    }
+
+    // 3) OPTIONAL: rotate refresh token (delete old token row)
+    await deleteRefreshToken(token);
+
+    // 4) Sync subscription + fetch latest user
     await syncUserSubscriptionFlag(payload.id);
     const fullUser = await fetchUserById(payload.id);
 
-    // Ensure it exists in DB
-    const dbToken = await findRefreshToken(token);
-    if (!dbToken) return res.status(401).json({ error: 'Refresh token not recognized' });
+    // 5) Issue new access token
+    const userPayload = {
+      id:         payload.id,
+      email:      payload.email,
+      full_name:  payload.full_name,
+      user_roles: payload.user_roles,
+    };
+    const newAccessToken  = generateAccessToken(userPayload);
+    const newRefreshToken = generateRefreshToken(userPayload);
 
-    // Issue new access token
-    const newAccessToken = generateAccessToken({
-    id:         payload.id,
-    email:      payload.email,
-    full_name:  payload.full_name,
-    user_roles: payload.user_roles
-  });
+    // 6) Persist new refresh token with correct expiry
+    const { exp }   = verifyRefreshToken(newRefreshToken);
+    const expiresAt = new Date(exp * 1000);
+    await saveRefreshToken(payload.id, newRefreshToken, expiresAt);
+
+    // 7) Set rotated refresh token cookie
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      expires:  expiresAt,
+      path: '/api', 
+    });
+
+    // 8) Send new access token + user to client
     return res.json({ accessToken: newAccessToken, user: fullUser });
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired refresh token' });
+  } catch (err) {
+    console.error('refreshController error:', err);
+    return res.status(500).json({ error: 'Server error' });
   }
 }
 

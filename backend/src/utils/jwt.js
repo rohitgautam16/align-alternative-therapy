@@ -15,6 +15,15 @@ function generateRefreshToken(user) {
   return jwt.sign(user, REFRESH_SECRET, { expiresIn: 7 * 24 * 60 * 60 }); // 7d
 }
 
+// testing shorter expiry
+// function generateAccessToken(user) {
+//   return jwt.sign(user, ACCESS_SECRET, { expiresIn: 180 }); 
+// }
+
+// function generateRefreshToken(user) {
+//   return jwt.sign(user, REFRESH_SECRET, { expiresIn: 7 * 60 });
+// }
+
 function verifyAccessToken(token) {
   return jwt.verify(token, ACCESS_SECRET);
 }

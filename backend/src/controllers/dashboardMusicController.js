@@ -25,7 +25,12 @@ async function getDashboardCategoriesController(req, res, next) {
 
 async function getDashboardPlaylistsByCategoryController(req, res, next) {
   try {
-    const playlists = await fetchDashboardPlaylistsByCategory(req.params.categoryId);
+    const categoryId = Number(req.params.categoryId);
+    if (Number.isNaN(categoryId)) {
+      return res.status(400).json({ error: 'Invalid categoryId' });
+    }
+
+    const playlists = await fetchDashboardPlaylistsByCategory(categoryId);
     res.json(playlists);
   } catch (err) {
     console.error('getDashboardPlaylistsByCategoryController error:', err);
@@ -75,15 +80,15 @@ async function getDashboardSongByIdController(req, res, next) {
   }
 }
 
-async function getSongBySlugController(req, res) {
+async function getSongBySlugController(req, res, next) {
   try {
     const { slug } = req.params;
     const row = await fetchDashboardSongBySlug(slug);
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(row);
   } catch (err) {
-    console.error('getSongBySlug error:', err);
-    res.status(400).json({ error: err.message });
+    console.error('getSongBySlugController error:', err);
+    next(err);
   }
 }
 

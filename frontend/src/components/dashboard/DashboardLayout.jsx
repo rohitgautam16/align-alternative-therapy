@@ -10,6 +10,7 @@ import Sidebar from './Sidebar';
 import PlayerShell from '../music/PlayerShell';
 import { usePlayerBarPadding } from '../music/usePlayerBarPadding';
 import useScrollToTop from '../../hooks/useScrollToTop';
+import DashboardFooter from './DashboardFooter';
 
 function InnerLayout() {
   useScrollToTop();
@@ -38,6 +39,7 @@ function InnerLayout() {
 
         <main className="flex-1 bg-black rounded-lg overflow-y-auto scroll-smooth">
           <Outlet />
+          <DashboardFooter />
         </main>
       </div>
 

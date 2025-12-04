@@ -46,6 +46,29 @@ app.get('/health', (_req, res) => res.json({ status: 'OK' }));
 
 app.use('/api', routes);
 
+if (NODE_ENV === "development") {
+  console.log("⚡ Dev mode: Proxying frontend to Vite dev server");
+
+  const { createProxyMiddleware } = require("http-proxy-middleware");
+
+  app.use(
+    (req, res, next) => {
+      if (
+        req.path.startsWith("/api") ||
+        req.path.startsWith("/health") ||
+        req.path.startsWith("/webhooks")
+      ) {
+        return next();
+      }
+      return next("route");
+    },
+    createProxyMiddleware({
+      target: "http://localhost:5173",
+      changeOrigin: true,
+      ws: true
+    })
+  );
+}
 
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {

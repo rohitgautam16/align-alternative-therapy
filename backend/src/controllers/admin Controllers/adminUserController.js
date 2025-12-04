@@ -97,8 +97,8 @@ async function createUserController(req, res, next) {
       profile_type = 'free',
       user_tier_id = null,
       one_time_fee_amount = null,
-      plan = null,              // ⬅️ New: used for premium checkout/trial
-      premium_option = null       // ⬅️ New: 'checkout' | 'trial' | 'free'
+      plan = null,             
+      premium_option = null    
     } = req.body;
 
     if (!email || !password) {
@@ -125,7 +125,7 @@ async function createUserController(req, res, next) {
       user_tier_id,
       one_time_fee_amount,
       plan,
-      premium_option,   // ✅ Pass to service
+      premium_option,  
     });
 
     console.log('✅ createUserController success:', {
@@ -181,7 +181,7 @@ async function updateUserController(req, res, next) {
       user_tier_id,
       one_time_fee_amount,
       plan,
-      premium_option, // 👈 now forwarded to service
+      premium_option, 
     });
 
     console.log('✅ updateUserController success:', {

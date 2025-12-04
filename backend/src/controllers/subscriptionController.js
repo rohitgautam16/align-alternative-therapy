@@ -9,32 +9,43 @@ const {
   subscriptionHasBase,
   findUserIdFromSubscriptionObject,
 } = require('../services/subscriptionService');
-
+const { sendWelcomeOnSubscription } = require('../server/mail/emailService');
 const { getProductPriceMap } = require('../services/stripePriceCache');
 const { syncUserSubscriptionFlag } = require('../services/subscriptionSyncService');
 
 
 async function checkoutController(req, res) {
   try {
-    const { plan, trial } = req.body;
+    const { plan, trial, promoCode } = req.body;  // ← pick up promoCode from UI
     const userId = req.user.id;
 
     const result = await createOrUpdateSubscriptionSession(
       userId,
       plan,
-      Boolean(trial)
+      Boolean(trial),
+      promoCode ? promoCode.trim() : null  // ← send promo to backend service
     );
 
-    if (result.type && String(result.type).startsWith('new')) {
+    // If this triggered a new checkout session → return session URL
+    if (result.type && String(result.type).startsWith("new")) {
       return res.json({ url: result.session.url });
     }
-    console.log(`✅ Subscription handled for user ${userId}, type=${result.type}`);
-    return res.json({ subscription: result.subscription, type: result.type });
+
+    console.log(
+      `✅ Subscription handled for user=${userId}, type=${result.type}, promoCode=${promoCode || "none"}`
+    );
+
+    return res.json({
+      subscription: result.subscription,
+      type: result.type,
+    });
+
   } catch (err) {
-    console.error('checkoutController error:', err);
-    return res.status(500).json({ error: err.message || 'Checkout failed' });
+    console.error("checkoutController error:", err);
+    return res.status(500).json({ error: err.message || "Checkout failed" });
   }
 }
+
 
 
 async function webhookController(req, res) {

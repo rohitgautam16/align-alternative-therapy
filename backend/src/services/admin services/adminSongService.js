@@ -32,7 +32,9 @@ async function listSongs({ page = 1, pageSize = 20 } = {}) {
        playlist AS playlistId,
        artwork_filename AS image,
        cdn_url AS audioUrl,
-       created AS createdAt
+       created AS createdAt,
+       is_free,
+       is_discoverable
      FROM audio_metadata
      ORDER BY createdAt DESC
      LIMIT ? OFFSET ?`,
@@ -58,7 +60,8 @@ async function getSongById(id) {
        artwork_filename AS image,
        cdn_url AS audioUrl,
        created AS createdAt,
-       is_free
+       is_free,
+       is_discoverable
      FROM audio_metadata
      WHERE id = ?`,
     [id]
@@ -97,14 +100,15 @@ async function createSongAdmin({
   playlist,
   artwork_filename,
   cdn_url,
-  is_free = 0 // default: not free
+  is_free = 0, // default: not free
+  is_discoverable = 1    // default: globally discoverable
 }) {
   const uniqueSlug = await generateUniqueSlug(slug);
 
   const [result] = await db.query(
     `INSERT INTO audio_metadata
-       (name, title, slug, description, artist, tags, category, playlist, artwork_filename, cdn_url, is_free)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, title, slug, description, artist, tags, category, playlist, artwork_filename, cdn_url, is_free, is_discoverable)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       name || null,
       title,
@@ -116,7 +120,8 @@ async function createSongAdmin({
       playlist || null,
       artwork_filename || null,
       cdn_url || null,
-      is_free
+      is_free,
+      is_discoverable
     ]
   );
 
@@ -135,7 +140,7 @@ async function updateSongAdmin(id, fields) {
     playlist,
     artwork_filename,
     cdn_url,
-    is_free // allow updating this too
+    is_free 
   } = fields;
 
   await db.query(
@@ -175,6 +180,20 @@ async function deleteSongAdmin(id) {
   await db.query(`DELETE FROM audio_metadata WHERE id = ?`, [id]);
 }
 
+/**
+ * Set discoverability for a song.
+ * @param {number} id
+ * @param {boolean|number} isDiscoverable
+ */
+async function setSongDiscoverability(id, isDiscoverable) {
+  const flag = isDiscoverable ? 1 : 0;
+  await db.query(
+    `UPDATE audio_metadata SET is_discoverable = ? WHERE id = ?`,
+    [flag, id]
+  );
+  return getSongById(id);
+}
+
 module.exports = {
   listSongs,
   getSongById,
@@ -182,4 +201,5 @@ module.exports = {
   createSongAdmin,
   updateSongAdmin,
   deleteSongAdmin,
+  setSongDiscoverability
 };
