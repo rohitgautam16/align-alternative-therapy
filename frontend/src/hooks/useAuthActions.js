@@ -1,36 +1,77 @@
-// src/hooks/useAuthActions.js
-import { useLoginUserMutation } from '../utils/api';
+import {
+  useLoginUserMutation,
+  useLogoutUserMutation,
+  useAdminLoginMutation,
+  api,
+} from '../utils/api';
 import { useNavigate } from 'react-router-dom';
-import useSignIn from 'react-auth-kit/hooks/useSignIn';
+import { useDispatch } from 'react-redux';
 
 export function useAuthActions() {
   const [loginUser] = useLoginUserMutation();
-  const signIn       = useSignIn();
-  const navigate     = useNavigate();
+  const [logoutUser] = useLogoutUserMutation();
+  const [adminLogin] = useAdminLoginMutation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   /**
-   * Attempt to log in with email/password.
-   * @returns {Promise<{accessToken:string,refreshToken:string,user:object}>}
-   *          Resolves to the payload on success; throws on failure.
+   * Login with email/password
    */
   async function loginAndFetch({ email, password }) {
-    // 1) call RTK Query
-    const { accessToken, refreshToken, user } = await loginUser({ email, password }).unwrap();
+    const { accessToken, user } = await loginUser({ email, password }).unwrap();
 
-    // 2) persist via react‑auth‑kit
-    const ok = signIn({
-      auth:      { token: accessToken, type: 'Bearer' },
-      refresh:    refreshToken || '',
-      userState:  user
-    });
-    if (!ok) throw new Error('Sign‑in failed');
+    // Drop stale auth-related queries (profile, subscription, etc.)
+    dispatch(api.util.resetApiState());
 
-    // 3) redirect (optional, you can leave that to the caller)
     navigate('/dashboard', { replace: true });
 
-    // 4) return the raw payload for anyone who called this fn
-    return { accessToken, refreshToken, user };
+    return { accessToken, user };
   }
 
-  return { loginAndFetch };
+  async function adminLoginAndFetch({ email, password }) {
+    const { accessToken, user } = await adminLogin({ email, password }).unwrap();
+
+    // hard guard – never trust frontend routing
+    if (!user || user.user_roles !== 1) {
+      throw new Error('Not authorized as admin');
+    }
+
+    // IMPORTANT:
+    // hydrate profile so AdminRoute doesn't 401-loop
+    dispatch(
+      api.util.upsertQueryData('getProfile', undefined, user)
+    );
+
+    navigate('/admin/users', { replace: true });
+
+    return { accessToken, user };
+  }
+
+  /**
+   * Global logout (safe to call from anywhere)
+   */
+  async function logout({ redirectTo = '/login' } = {}) {
+    try {
+      // 1) Tell backend to invalidate refresh token
+      await logoutUser().unwrap();
+    } catch (err) {
+      // Backend failure should NOT block logout
+      console.warn('Logout API failed:', err);
+    } finally {
+      // 2) Clear access token cookie
+      document.cookie = '_auth=; Path=/; Max-Age=0; SameSite=Lax';
+
+      // 3) Clear all RTK Query cache
+      dispatch(api.util.resetApiState());
+
+      // 4) Redirect
+      navigate(redirectTo, { replace: true });
+    }
+  }
+
+  return {
+    loginAndFetch,
+    adminLoginAndFetch,
+    logout,
+  };
 }

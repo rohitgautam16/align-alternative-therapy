@@ -1,8 +1,7 @@
 import React from 'react'
 import { useLocation, Navigate, Routes, Route } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-// import RequireAuth from '@auth-kit/react-router/RequireAuth'
-import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated'
+import { useAuthStatus } from './hooks/useAuthStatus';
 import RestoreAccountPage from './pages/RestoreAccountPage';
 import Layout from './Layout'
 import Homepage from './pages/Homepage'
@@ -20,7 +19,9 @@ import UserPlaylistView from './pages/UserPlaylistView';
 import SongView from './pages/SongView'
 import Search from './pages/Search'
 import ProfilePage from './pages/ProfilePage'
+import Devices from './pages/DevicesSection';
 import TransitionWrapper from './components/custom-ui/transition'
+import AuthGate from './components/common/AuthGate'
 import SubscribePage from './pages/SubscribePage'
 import PaymentSuccesful from './components/landing/PaymentSuccesful'
 import ManageSubscription from './pages/ManageSubscription'
@@ -54,21 +55,30 @@ import ResetPassword from './pages/ResetPassword';
 import FAQPage from './pages/FaqPage';
 
 
-const WrappedLoginPage = TransitionWrapper(LoginPage)
-
 
 function LoginRoute() {
-  const isAuth = useIsAuthenticated()
+  const { isAuth } = useAuthStatus();
+
+  // Avoid redirect flicker while checking
+  if (isAuth === null) {
+    return <AuthGate loading />;
+  }
+
   return isAuth
     ? <Navigate to="/dashboard" replace />
-    : <WrappedLoginPage />
+    : <LoginPage />;
 }
 
 function ProtectedRoute({ children, loginPath = '/login' }) {
-  const isAuth = useIsAuthenticated();  
+  const { isAuth } = useAuthStatus();
+
+  if (isAuth === null) {
+    return <AuthGate loading />;
+  }
+
   return isAuth
     ? children
-   : <Navigate to={loginPath} replace />;
+    : <Navigate to={loginPath} replace />;
 }
 
 export default function App() {
@@ -113,6 +123,7 @@ export default function App() {
         >
           <Route index element={<DashboardHome />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="devices" element={<Devices />} />
           <Route path="manage-subscription" element={<ManageSubscription />} />
           <Route path="category/:slug" element={<CategoryView />} />
           <Route path="playlist/:slug" element={<PlaylistView />} />
@@ -134,7 +145,7 @@ export default function App() {
        <Route
          path="/admin/*"
          element={
-           <ProtectedRoute fallbackPath="/admin-login">
+           <ProtectedRoute loginPath="/admin-login">
              <AdminRoute>
                <AdminDashboardLayout />
              </AdminRoute>

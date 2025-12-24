@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminLoginMutation } from '../../utils/api';
-import useSignIn from 'react-auth-kit/hooks/useSignIn';
+import { useAuthActions } from '../../hooks/useAuthActions';
 import { useNavigate } from 'react-router-dom';
 import { 
   Eye, 
@@ -19,10 +19,10 @@ export default function AdminLoginPage() {
   // Existing state (kept exactly the same)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const signIn = useSignIn();
   const navigate = useNavigate();
   const [adminLogin, { isLoading, error }] = useAdminLoginMutation();
   const [formError, setError] = useState(null);
+  const { adminLoginAndFetch } = useAuthActions();
 
   // Enhanced UI state
   const [showPassword, setShowPassword] = useState(false);
@@ -31,37 +31,18 @@ export default function AdminLoginPage() {
 
   // Form submission (kept exactly the same logic)
   const onSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
+  e.preventDefault();
+  setError(null);
 
-    try {
-      const { accessToken, user } = await adminLogin({ email, password }).unwrap();
+  try {
+    await adminLoginAndFetch({ email, password });
+    document.cookie = `_auth=${accessToken}; Path=/; SameSite=Lax`;
 
-      const success = signIn({
-        auth: {
-          token: accessToken,
-          type: 'Bearer',
-        },
-        refresh: null,
-        userState: {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          user_roles: user.user_roles,
-        }
-      });
-
-      if (!success) {
-        throw new Error('Sign-in failed');
-      }
-
-      setIsSuccess(true);
-      setTimeout(() => navigate('/admin'), 1000);
-    } catch (err) {
-      console.error('Admin login failed:', err);
-      setError('Login failed: ' + err.message);
-    }
-  };
+    setIsSuccess(true);
+  } catch (err) {
+    setError(err.message || 'Admin login failed');
+  }
+};
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);

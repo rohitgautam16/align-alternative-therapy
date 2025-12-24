@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLoginUserMutation, useRegisterUserMutation } from '../../utils/api';
-import useSignIn from 'react-auth-kit/hooks/useSignIn';
 import Logo from '../../assets/images/logo-with-text-removebg-preview.png';
 import { useAuthActions } from '../../hooks/useAuthActions';
 
@@ -22,7 +21,7 @@ const formVariants = {
 };
 
 export default function Login() {
-  const signIn = useSignIn();
+  //const signIn = useSignIn();
   const navigate = useNavigate();
 
   // RTK Query mutations

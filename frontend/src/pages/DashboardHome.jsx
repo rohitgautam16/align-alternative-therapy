@@ -35,7 +35,7 @@ const DashboardHome = () => {
   }, [navigate])
 
 
-  // New releases
+
   const { data: nrRaw = {}, isLoading: nrL, isError: nrE } =
     useGetDashboardNewReleasesQuery({ playlistLimit: 12, songLimit: 8 });
   const newPlaylists = Array.isArray(nrRaw.playlists) ? nrRaw.playlists : [];
@@ -47,9 +47,9 @@ const DashboardHome = () => {
 
 
  const { data: rpRaw, isLoading: rpL, isError: rpE } = useGetRecentPlaysQuery(10);
-   // Normalize: supports either ARRAY or { items: [...] }
+   
  const recentItemsRaw = Array.isArray(rpRaw) ? rpRaw : (rpRaw?.items ?? []);
-   // Optional: ensure a `slug` field exists (fallback to `song_slug`)
+   
  const recentItems = recentItemsRaw.map(s => ({
    ...s,
    slug: s?.slug ?? s?.song_slug ?? s?.id?.toString(),
@@ -57,7 +57,7 @@ const DashboardHome = () => {
 
  const { data: rplRaw, isLoading: rplL, isError: rplE } = useGetRecentPlaylistsQuery(8);
   const recentPlaylists = Array.isArray(rplRaw) ? rplRaw : (rplRaw?.items ?? []);
-  // ensure slug fallback if API uses different key names
+  
   const normalizedRecentPlaylists = recentPlaylists.map(p => ({
     ...p,
     slug: p?.slug ?? p?.playlist_slug ?? p?.id?.toString(),

@@ -4,12 +4,28 @@ const db = require('../db');
 async function getProfile(req, res) {
   const userId = req.user.id;
 
-  const [rows] = await db.query(`SELECT id, email, full_name, status_message, created_at FROM users WHERE id = ? AND deleted_at IS NULL
-      LIMIT 1`, [userId]);
-  if (!rows.length) return res.status(404).json({ error: 'User not found' });
+  const [rows] = await db.query(
+    `SELECT
+       id,
+       email,
+       full_name,
+       user_roles,
+       status_message,
+       created_at
+     FROM users
+     WHERE id = ?
+       AND deleted_at IS NULL
+     LIMIT 1`,
+    [userId]
+  );
+
+  if (!rows.length) {
+    return res.status(404).json({ error: 'User not found' });
+  }
 
   res.json(rows[0]);
 }
+
 
 async function updateProfile(req, res) {
   const userId = req.user.id;

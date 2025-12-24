@@ -7,7 +7,8 @@ import {
   useCheckoutSubscriptionMutation,
   useValidatePromoCodeMutation
 } from '../utils/api';
-import useIsAuthenticated from 'react-auth-kit/hooks/useIsAuthenticated';
+import { useAuthStatus } from '../hooks/useAuthStatus';
+
 
 const cardVariants = {
   offscreen: { opacity: 0, y: 50 },
@@ -20,13 +21,13 @@ const cardVariants = {
 
 // ---------- auth gate ----------
 function useAuthGate() {
-  const isAuthenticated = useIsAuthenticated();
+  const { isAuth } = useAuthStatus();
   const navigate = useNavigate();
   const [loginPromptOpen, setLoginPromptOpen] = React.useState(false);
 
   const requireAuthThen = useCallback(
     (fn) => {
-      if (isAuthenticated) fn?.();
+      if (isAuth) fn?.();
       else {
         sessionStorage.setItem(
           'returnToPath',
@@ -36,7 +37,7 @@ function useAuthGate() {
         setLoginPromptOpen(true);
       }
     },
-    [isAuthenticated]
+    [isAuth]
   );
 
   const proceedToLogin = useCallback(() => {

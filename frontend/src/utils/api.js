@@ -118,6 +118,8 @@ export const api = createApi({
     'PersonalizeUser',
     'RecentPlays',
     'RecentPlaylists',
+    'User',
+    'AuthSessions',
   ],
   endpoints: (build) => ({
 
@@ -552,6 +554,14 @@ export const api = createApi({
         url: 'auth/login',
         method: 'POST',
         body: credentials,
+        async onQueryStarted(arg, { queryFulfilled }) {
+    try {
+      const { data } = await queryFulfilled;
+      if (data?.accessToken) {
+        setAccessTokenCookie(data.accessToken);
+      }
+    } catch {}
+  },
       }),
     }),
 
@@ -629,6 +639,33 @@ export const api = createApi({
     //     body: { plan, trial },
     //   }),
     // }),
+
+    // ---- Auth Sessions (Devices) ----
+
+    getAuthSessions: build.query({
+      query: () => ({
+        url: 'auth/sessions',
+        method: 'GET',
+      }),
+      providesTags: ['AuthSessions'],
+    }),
+
+    revokeAuthSession: build.mutation({
+      query: (sessionId) => ({
+        url: `auth/sessions/${sessionId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['AuthSessions'],
+    }),
+
+    revokeOtherAuthSessions: build.mutation({
+      query: () => ({
+        url: 'auth/sessions',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['AuthSessions'],
+    }),
+
 
     checkoutSubscription: build.mutation({
       query: ({ plan, trial = false, includeAddon = false, promoCode = null }) => ({
@@ -1336,6 +1373,9 @@ export const {
   useUpdateProfileMutation,
   useDeleteProfileMutation,
   useRestoreAccountMutation,
+  useGetAuthSessionsQuery,
+  useRevokeAuthSessionMutation,
+  useRevokeOtherAuthSessionsMutation,
   useCheckoutSubscriptionMutation,
   useValidatePromoCodeMutation,
   useCheckoutAddonMutation,

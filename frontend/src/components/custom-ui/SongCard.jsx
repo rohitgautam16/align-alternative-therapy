@@ -12,12 +12,14 @@ import { useRecordPlayMutation } from '../../utils/api';
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 
-export default function SongCard({ song, playlist }) {
+export default function SongCard({ song, playlist, disableTierCheck = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { userTier } = useSubscription();
 
-  const locked = !canAccessContent(userTier, playlist, song);
+  const locked = disableTierCheck
+    ? false
+    : !canAccessContent(userTier, playlist, song);
 
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
@@ -86,7 +88,7 @@ export default function SongCard({ song, playlist }) {
           onError={(e) => (e.target.src = FALLBACK_IMAGE)}
         />
 
-        {/* 🔒 LOCK OVERLAY (matches PlaylistCard style) */}
+        {/* LOCK OVERLAY */}
         {locked ? (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]hover:backdrop-blur-[0px] flex items-center justify-center rounded-md">
             <button
@@ -126,7 +128,7 @@ export default function SongCard({ song, playlist }) {
         </h3>
       </div>
 
-      {/* ✨ LOCK POPUP (identical to previous implementation) */}
+      {/* LOCK POPUP */}
       <AnimatePresence>
         {showPopup && (
           <motion.div

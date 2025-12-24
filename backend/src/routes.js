@@ -220,6 +220,9 @@ const {
   refreshController,
   logoutController,
   adminLoginController,
+  listSessionsController,
+  revokeSessionController,
+  revokeOtherSessionsController
 } = require('./controllers/authController');
 
 
@@ -233,6 +236,23 @@ router.post('/auth/login',    loginController);
 // Cookie-based token refresh & logout
 router.post('/auth/refresh',  refreshController);
 router.post('/auth/logout',   logoutController);
+router.get(
+  '/auth/sessions',
+  requireAuth,
+  listSessionsController
+);
+
+router.delete(
+  '/auth/sessions/:id',
+  requireAuth,
+  revokeSessionController
+);
+
+router.delete(
+  '/auth/sessions',
+  requireAuth,
+  revokeOtherSessionsController
+);
 
 const {
   requestResetController,

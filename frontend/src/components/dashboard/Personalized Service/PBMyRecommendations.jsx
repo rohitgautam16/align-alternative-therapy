@@ -23,7 +23,7 @@ export default function PBMyRecommendations() {
     }
   }, [location, refetch]);
 
-  // 🧠 Popup state
+  // Popup state
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
   const [paymentUrl, setPaymentUrl] = useState(null);
@@ -45,7 +45,7 @@ export default function PBMyRecommendations() {
 
   if (isError || !Array.isArray(data) || data.length === 0) return null;
 
-  // 🔹 Flatten recommendation data
+  // recommendation data
   const unified = [];
   for (const entry of data) {
     const rec = entry?.recommendation;
@@ -90,16 +90,15 @@ export default function PBMyRecommendations() {
 
   if (unified.length === 0) return null;
 
-  // 🎵 Single Card Renderer with Lock Popup
+
   function CardWithMeta({ kind, item, meta, k }) {
-    // 🔥 FIXED: Free recommendations should NOT be locked
+    
     const locked = meta.paymentStatus !== 'paid' && meta.paymentStatus !== 'free';
 
     const handleLockedClick = (e) => {
       e.stopPropagation();
       if (!locked) return;
 
-      // Determine message based on payment link existence
       if (meta.paymentLinkUrl) {
         setPopupMessage('This recommendation is locked. Complete payment to unlock access.');
         setPaymentUrl(meta.paymentLinkUrl);
@@ -113,11 +112,11 @@ export default function PBMyRecommendations() {
 
     return (
       <div key={k} className="relative group" onClick={locked ? handleLockedClick : undefined}>
-        {/* Core card (playlist/song) */}
+        {/* Core card */}
         {kind === 'playlist' ? (
-          <PlaylistCard playlist={item} isLockedOverlay={locked} />
+          <PlaylistCard playlist={item} isLockedOverlay={locked} disableTierCheck />
         ) : (
-          <SongCard song={item} isLockedOverlay={locked} />
+          <SongCard song={item} isLockedOverlay={locked} disableTierCheck />
         )}
 
         {/* Recommendation title badge */}
@@ -131,7 +130,7 @@ export default function PBMyRecommendations() {
           </span>
         </div>
 
-        {/* Payment overlay icon only */}
+        {/* Payment overlay */}
         {locked && (
           <div
             className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px] rounded-md
@@ -175,7 +174,7 @@ export default function PBMyRecommendations() {
         )}
       />
 
-      {/* 🔹 Animated Popup (shared style as PlaylistCard) */}
+      {/* Animated Popup */}
       <AnimatePresence>
         {showPopup && (
           <motion.div

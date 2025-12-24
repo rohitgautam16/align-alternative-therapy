@@ -2,6 +2,7 @@
 import React from 'react';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useCreateBillingPortalSessionMutation } from '../utils/api';
+import DevicesSection from '../pages/DevicesSection';
 
 const money = (minor, currency='INR') =>
   new Intl.NumberFormat('en-IN', { style:'currency', currency }).format((minor||0)/100);
@@ -156,10 +157,10 @@ export default function ManageSubscription() {
               return (
                 <div
                   key={it.id}
-                  className="rounded-xl ring-1 ring-white/10 bg-white/5 p-4"
+                  className="rounded-xl ring-1 flex flex-col min-h-42 justify-center ring-white/10 bg-white/5 p-4"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-base font-medium">
+                    <div className="text-lg font-medium">
                       {it.product_name || 'Subscription'}
                     </div>
                     <StatusPill status={status} />
@@ -201,6 +202,18 @@ export default function ManageSubscription() {
       {/* <p className="text-xs text-zinc-500">
         Need to update your plan or payment method? Use the billing portal.
       </p> */}
+
+      <Section
+        title="Active Devices"
+        right={
+          <span className="text-xs text-zinc-400">
+            Security & access control
+          </span>
+        }
+      >
+        <DevicesSection />
+      </Section>
+
     </div>
   );
 }

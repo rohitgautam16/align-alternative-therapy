@@ -1,7 +1,7 @@
 // src/pages/ProfilePage.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useSignOut from 'react-auth-kit/hooks/useSignOut';
+import { useAuthActions } from '../hooks/useAuthActions';
 import { motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import {
@@ -12,8 +12,8 @@ import {
 } from '../utils/api';
 
 export default function ProfilePage() {
-  const signOut  = useSignOut();
-  const navigate = useNavigate();
+  const { logout } = useAuthActions();
+  const navigate = useNavigate(); 
 
   // RTK Query hooks
   const {
@@ -76,8 +76,7 @@ export default function ProfilePage() {
     setError(null);
     try {
       await deleteUser().unwrap();
-      signOut();
-      navigate('/login', { replace: true });
+      await logout({ redirectTo: '/login' });
     } catch (e) {
       setError(e?.data?.error || e?.error || 'Failed to delete account');
     }
@@ -207,8 +206,8 @@ export default function ProfilePage() {
                 {new Date(latestSub.expires_at).toLocaleDateString()}
               </p>
             )}
-          </div>
-          */}
+          </div> */}
+         
         </section>
 
         {/* Actions / Errors */}

@@ -11,14 +11,17 @@ import { canAccessContent } from '../../utils/permissions';
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 
-export default function PlaylistCard({ playlist, isLockedOverlay = false }) {
+export default function PlaylistCard({ playlist, isLockedOverlay = false, disableTierCheck = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { userTier } = useSubscription();
   const { data: songs = [] } = useGetSongsQuery(playlist.id);
   const firstSong = songs?.[0];
 
-  const locked = !canAccessContent(userTier, playlist);
+  const locked = disableTierCheck
+  ? false
+  : !canAccessContent(userTier, playlist);
+
 
   const [recordPlay] = useRecordPlayMutation();
 
@@ -150,7 +153,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false }) {
         </h3>
       </div>
 
-      {/* Popup Modal with Scale Animation */}
+      {/* Popup Modal */}
       <AnimatePresence>
         {showPopup && (
           <motion.div

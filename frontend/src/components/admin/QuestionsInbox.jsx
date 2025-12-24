@@ -9,7 +9,8 @@ import {
   api
 } from '../../utils/api';
 import { useDispatch } from 'react-redux';
-import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
+import { useAuthStatus } from '../../hooks/useAuthStatus';
+
 
 const CATS = ['stress_relief','focus_study','sleep_aid','emotional_healing','other'];
 const MOODS = ['calm','anxious','sad','angry','tired','stressed','motivated','neutral','other'];
@@ -190,8 +191,8 @@ function StatusChip({ s }) {
 /* ---------- Thread ---------- */
 function QuestionThread({ questionId, onOpenRec, onCreateRecForQuestion }) {
   const dispatch = useDispatch();
-  const authUser = useAuthUser(); // ✅ fix: call the hook
-  const myAdminId = authUser?.id;
+  const { user } = useAuthStatus();
+  const myAdminId = user?.id;
 
   const { data, isLoading, isError, refetch } = useAdminGetQuestionQuery(questionId, {
     skip: !questionId, refetchOnFocus: false, refetchOnReconnect: false

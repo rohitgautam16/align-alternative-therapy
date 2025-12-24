@@ -1,9 +1,7 @@
 // src/components/common/Topbar.jsx
 import React, { useState } from 'react';
-import {
-  useGetUserQuery,
-  useLogoutUserMutation,
-} from '../../utils/api';
+import {useGetUserQuery } from '../../utils/api';
+import { useDispatch } from 'react-redux';
 import { useSidebar } from '../../context/SidebarContext';
 import {
   Menu,
@@ -16,7 +14,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useLocation, createSearchParams, Link } from 'react-router-dom';
-import useSignOut from 'react-auth-kit/hooks/useSignOut';
+import { useAuthActions } from '../../hooks/useAuthActions';
 import { useSubscription } from '../../context/SubscriptionContext';
 
 export default function Topbar() {
@@ -25,8 +23,8 @@ export default function Topbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const signOut = useSignOut();
-  const [logoutUser] = useLogoutUserMutation();
+  // const signOut = useSignOut();
+  const { logout } = useAuthActions();
 
   // ✅ consume latest subscription context
   const { summary, baseEntitled, addonEntitled, isEntitled, loading, error } = useSubscription();
@@ -35,16 +33,10 @@ export default function Topbar() {
   // Show "Manage subscription" if user has any entitlement or active subscription
   const showManage = Boolean(isEntitled);
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser().unwrap();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      signOut();
-      navigate('/login', { replace: true });
-    }
+  const handleLogout = () => {
+    logout(); 
   };
+
 
   const handleSearchChange = (e) => {
     const q = e.target.value;

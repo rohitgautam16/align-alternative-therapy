@@ -18,7 +18,8 @@ import {
   useRecordPlayMutation
 } from '../utils/api';
 import { setQueue, setTrack, setIsPlaying }   from '../store/playerSlice';
-import useAuthUser                           from 'react-auth-kit/hooks/useAuthUser';
+import { useSubscription } from '../context/SubscriptionContext';
+
 
 const FALLBACK_BG   = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 const FALLBACK_DESC = 'No description available for this playlist.';
@@ -27,8 +28,9 @@ export default function UserPlaylistView() {
   const { slug }    = useParams();
   const nav         = useNavigate();
   const dispatch    = useDispatch();
-  const user        = useAuthUser();
-  const isSub       = Number(user?.is_subscribed) === 1;
+  const { isEntitled, loading: subLoading } = useSubscription();
+  const isSub = isEntitled;
+
 
   // — DATA —
   const { data: playlist = {}, isLoading, isError, refetch } =
@@ -245,7 +247,7 @@ export default function UserPlaylistView() {
                 className="w-full p-2 bg-secondary/30 text-white rounded-t text-sm"
               />
               {filtered.map(s => {
-                const locked = paidById[s.playlistId] && !isSub;
+                const locked = paidById[s.playlistId] && !isSub && !subLoading;
                 const imgSrc = s.image || FALLBACK_BG;
 
                 return (

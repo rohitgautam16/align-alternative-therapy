@@ -14,4 +14,4 @@ const LoginPage = () => {
   );
 };
 
-export default TransitionWrapper(LoginPage);
+export default LoginPage;

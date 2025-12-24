@@ -1,6 +1,18 @@
 // src/services/authService.js
 const bcrypt = require('bcrypt');
 const db     = require('../db');
+const crypto = require('crypto');
+
+
+const MAX_ACTIVE_SESSIONS = Number(process.env.MAX_ACTIVE_SESSIONS || 2);
+
+function hashRefreshToken(token) {
+  return crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+}
+
 
 async function createUser({ email, password, full_name }) {
   const hash = await bcrypt.hash(password, 10);
@@ -90,6 +102,133 @@ async function findRefreshToken(token) {
   return rows[0] || null;
 }
 
+
+/**
+ * Get active sessions for a user (oldest first)
+ */
+async function getActiveSessions(userId) {
+  const [rows] = await db.query(
+    `SELECT id
+     FROM user_refresh_tokens
+     WHERE user_id = ?
+       AND revoked_at IS NULL
+       AND expires_at > NOW()
+     ORDER BY created_at ASC`,
+    [userId]
+  );
+  return rows;
+}
+
+/**
+ * Soft revoke sessions by ids
+ */
+async function revokeSessionsByIds(ids, conn = db) {
+  if (!ids.length) return;
+  await conn.query(
+    `UPDATE user_refresh_tokens
+     SET revoked_at = NOW()
+     WHERE id IN (?)`,
+    [ids]
+  );
+}
+
+
+/**
+ * Enforce max active sessions per user
+ * Auto-revokes oldest sessions if limit exceeded
+ */
+async function enforceSessionLimit(userId, conn = db) {
+  const sessions = await getActiveSessions(userId);
+
+  if (sessions.length < MAX_ACTIVE_SESSIONS) return;
+
+  const excessCount = sessions.length - (MAX_ACTIVE_SESSIONS - 1);
+  const idsToRevoke = sessions
+    .slice(0, excessCount)
+    .map(s => s.id);
+
+  await revokeSessionsByIds(idsToRevoke, conn);
+}
+
+
+/**
+ * Create a new refresh-token session (HASHED)
+ */
+async function createSession({
+  userId,
+  token,
+  expiresAt,
+  userAgent = null,
+  ipAddress = null,
+  conn = db,
+}) {
+  const tokenHash = hashRefreshToken(token);
+
+  await conn.query(
+    `INSERT INTO user_refresh_tokens
+      (user_id, token_hash, expires_at, user_agent, ip_address, last_used_at)
+     VALUES (?, ?, ?, ?, ?, NOW())`,
+    [userId, tokenHash, expiresAt, userAgent, ipAddress]
+  );
+}
+
+
+
+
+/**
+ * Rotate refresh token:
+ * - revoke old token (by hash)
+ * - fallback to legacy token if needed
+ * - insert new hashed token
+ */
+async function rotateSession({
+  oldToken,
+  userId,
+  newToken,
+  expiresAt,
+  userAgent = null,
+  ipAddress = null,
+  conn = db,
+}) {
+  const oldTokenHash = hashRefreshToken(oldToken);
+
+  let [result] = await conn.query(
+    `UPDATE user_refresh_tokens
+     SET revoked_at = NOW(),
+         last_used_at = NOW()
+     WHERE token_hash = ?
+       AND revoked_at IS NULL`,
+    [oldTokenHash]
+  );
+
+  if (result.affectedRows === 0) {
+    [result] = await conn.query(
+      `UPDATE user_refresh_tokens
+       SET revoked_at = NOW(),
+           last_used_at = NOW()
+       WHERE token = ?
+         AND revoked_at IS NULL`,
+      [oldToken]
+    );
+  }
+
+  if (result.affectedRows === 0) {
+    throw new Error('REFRESH_TOKEN_REVOKED');
+  }
+
+
+  await createSession({
+    userId,
+    token: newToken,
+    expiresAt,
+    userAgent,
+    ipAddress,
+    conn,
+  });
+}
+
+
+
 module.exports = {
   createUser,
   validateUser,
@@ -97,4 +236,8 @@ module.exports = {
   deleteRefreshToken,
   deleteRefreshTokensForUser,
   findRefreshToken,
+  getActiveSessions,
+  enforceSessionLimit,
+  createSession,
+  rotateSession,
 };
