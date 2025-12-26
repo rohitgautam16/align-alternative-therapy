@@ -37,7 +37,7 @@ function InnerLayout() {
           </div>
         </div>
 
-        <main className="flex-1 bg-black rounded-lg overflow-y-auto scroll-smooth">
+        <main className="flex-1 bg-black space-between rounded-lg overflow-y-auto scroll-smooth">
           <Outlet />
           <DashboardFooter />
         </main>

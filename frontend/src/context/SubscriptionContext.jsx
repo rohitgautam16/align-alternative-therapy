@@ -16,13 +16,8 @@ const SubscriptionContext = React.createContext({
 export function SubscriptionProvider({ children }) {
   const { isAuth, user } = useAuthStatus();
 
-  const isAdmin = user?.user_roles === 1;
-
-  // 🔒 Only NON-admin users get subscription queries
-  const userId =
-    isAuth && user?.id && !isAdmin
-      ? user.id
-      : null;
+  // 🔑 Always resolve entitlements from backend
+  const userId = isAuth && user?.id ? user.id : null;
 
   const {
     data,
@@ -30,24 +25,13 @@ export function SubscriptionProvider({ children }) {
     isError,
     error,
   } = useGetSubscriptionSummaryQuery(userId, {
-    skip: !userId, // ✅ admin-safe
+    skip: !userId,
     refetchOnFocus: false,
     refetchOnReconnect: true,
   });
 
-  // ---------- ADMIN DEFAULTS ----------
-  const adminValue = {
-    isEntitled: false,
-    baseEntitled: false,
-    userTier: null,
-    isRecommendationOnly: false,
-    canAccessFullCatalog: true,
-    summary: null,
-    loading: false,
-    error: null,
-  };
+  /* ================= USER / ADMIN COMPUTATION ================= */
 
-  // ---------- USER COMPUTATION ----------
   const serverIsEntitled =
     typeof data?.isEntitled === 'boolean'
       ? data.isEntitled
@@ -74,23 +58,21 @@ export function SubscriptionProvider({ children }) {
 
   const canAccessFullCatalog = !isRecommendationOnly;
 
-  const userValue = {
-    isEntitled,
-    baseEntitled,
-    userTier,
-    isRecommendationOnly,
-    canAccessFullCatalog,
-    summary: data ?? null,
-    loading: isLoading,
-    error: isError
-      ? error?.data?.error || error?.error || 'Failed to load'
-      : null,
-  };
-
-  const value = isAdmin ? adminValue : userValue;
-
   return (
-    <SubscriptionContext.Provider value={value}>
+    <SubscriptionContext.Provider
+      value={{
+        isEntitled,
+        baseEntitled,
+        userTier,
+        isRecommendationOnly,
+        canAccessFullCatalog,
+        summary: data ?? null,
+        loading: isLoading,
+        error: isError
+          ? error?.data?.error || error?.error || 'Failed to load'
+          : null,
+      }}
+    >
       {children}
     </SubscriptionContext.Provider>
   );

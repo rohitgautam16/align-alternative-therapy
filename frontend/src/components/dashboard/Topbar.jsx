@@ -94,7 +94,7 @@ export default function Topbar() {
             </button>
 
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/dashboard')}
               aria-label="Home"
               className="hidden sm:inline-flex ml-1 p-2 hover:bg-secondary rounded-full transition"
             >

@@ -14,13 +14,15 @@ const FALLBACK_IMAGE =
 export default function PlaylistCard({ playlist, isLockedOverlay = false, disableTierCheck = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { userTier } = useSubscription();
+  const { userTier, loading } = useSubscription();
   const { data: songs = [] } = useGetSongsQuery(playlist.id);
   const firstSong = songs?.[0];
 
   const locked = disableTierCheck
   ? false
-  : !canAccessContent(userTier, playlist);
+  : loading
+    ? false            
+    : !canAccessContent(userTier, playlist);
 
 
   const [recordPlay] = useRecordPlayMutation();
@@ -96,7 +98,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
     <div className="flex flex-col items-start relative">
       {/* Main card */}
       <div
-        className={`relative group/item w-65 aspect-square flex-shrink-0 overflow-hidden rounded-lg
+        className={`relative group/item w-65 aspect-square shrink-0 overflow-hidden rounded-lg
                    cursor-pointer transform transition-all duration-500 hover:scale-100`}
         onClick={handleCardClick}
         tabIndex={0}
@@ -134,7 +136,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
         {/* Gradient + Play button if unlocked */}
         {!locked && !isLockedOverlay && (
           <>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent
+            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/50 to-transparent
                             opacity-0 group-hover/item:opacity-100 transition-all duration-300" />
             <button
               onClick={(e) => handlePlaySong(e, firstSong)}

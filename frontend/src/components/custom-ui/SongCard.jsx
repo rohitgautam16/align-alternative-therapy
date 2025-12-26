@@ -15,12 +15,14 @@ const FALLBACK_IMAGE =
 export default function SongCard({ song, playlist, disableTierCheck = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { userTier } = useSubscription();
+  const { userTier, loading } = useSubscription();
 
   const locked = disableTierCheck
     ? false
-    : !canAccessContent(userTier, playlist, song);
-
+    : loading
+      ? false
+      : !canAccessContent(userTier, playlist, song);
+      
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
 
