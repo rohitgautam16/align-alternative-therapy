@@ -2,10 +2,15 @@
 const {
   listPlaylists,
   getPlaylistById,
+  addCategoryToPlaylist,
+  removeCategoryFromPlaylist,
   createPlaylistAdmin,
   updatePlaylistAdmin,
   deletePlaylistAdmin,
-  setPlaylistDiscoverability
+  setPlaylistDiscoverability,
+  addSongToPlaylist,
+  removeSongFromPlaylist,
+  getSongsForPlaylist
 } = require('../../services/admin services/adminPlaylistService');
 
  /**
@@ -30,6 +35,28 @@ async function getPlaylistController(req, res, next) {
     next(err);
   }
 }
+
+
+async function addCategoryToPlaylistController(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { category_id } = req.body;
+    
+    if (!category_id) return res.status(400).json({ error: 'category_id is required' });
+
+    await addCategoryToPlaylist(id, category_id);
+    res.json({ success: true });
+  } catch (err) { next(err); }
+}
+
+async function removeCategoryFromPlaylistController(req, res, next) {
+  try {
+    const { id, categoryId } = req.params;
+    await removeCategoryFromPlaylist(id, categoryId);
+    res.json({ success: true });
+  } catch (err) { next(err); }
+}
+
 
 async function createPlaylistController(req, res, next) {
   try {
@@ -135,11 +162,50 @@ async function updatePlaylistVisibilityController(req, res, next) {
   }
 }
 
+async function addSongToPlaylistController(req, res, next) {
+  try {
+    const { id } = req.params; // playlistId
+    const { song_id } = req.body;
+    
+    if (!song_id) return res.status(400).json({ error: 'song_id is required' });
+
+    await addSongToPlaylist(id, song_id);
+    res.json({ success: true, message: 'Song linked successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function removeSongFromPlaylistController(req, res, next) {
+  try {
+    const { id, songId } = req.params;
+    await removeSongFromPlaylist(id, songId);
+    res.json({ success: true, message: 'Song unlinked successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getPlaylistSongsController(req, res, next) {
+  try {
+    const { id } = req.params;
+    const songs = await getSongsForPlaylist(id);
+    res.json(songs);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listPlaylistsController,
   getPlaylistController,
+  addCategoryToPlaylistController,
+  removeCategoryFromPlaylistController,
   createPlaylistController,
   updatePlaylistController,
   deletePlaylistController,
-  updatePlaylistVisibilityController
+  updatePlaylistVisibilityController,
+  addSongToPlaylistController,
+  removeSongFromPlaylistController,
+  getPlaylistSongsController
 };

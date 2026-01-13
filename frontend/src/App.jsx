@@ -53,6 +53,8 @@ import PWAInstallBanner from "./components/common/PWAInstallBanner";
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import FAQPage from './pages/FaqPage';
+import AdminBlogsPage from './pages/Admin/AdminBlogsPage';
+import AdminBlogEditor from './pages/Admin/AdminBlogEditor';
 
 
 
@@ -168,6 +170,8 @@ export default function App() {
          <Route path="personalize" element={<AdminPersonalize />} />
          <Route path="personalize-basic" element={<BasicPersonalize />} />
          <Route path="personalize-users" element={<UserRecommendationsList />} />
+         <Route path="blogs" element={<AdminBlogsPage />} />
+         <Route path="blogs/:id" element={<AdminBlogEditor />} />
        </Route>
 
         {/* Fallback */}

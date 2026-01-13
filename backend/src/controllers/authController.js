@@ -89,7 +89,12 @@ async function loginController(req, res, next) {
     const expiresAt = new Date(exp * 1000);
 
     const userAgent = req.get('User-Agent') || null;
-    const ipAddress = req.ip || null;
+    const ipAddress =
+      req.headers['cf-connecting-ip'] ||
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.ip ||
+      null;
+
 
     await conn.beginTransaction();
 
@@ -173,7 +178,12 @@ async function adminLoginController(req, res, next) {
     const expiresAt = new Date(exp * 1000);
 
     const userAgent = req.get('User-Agent') || null;
-    const ipAddress = req.ip || null;
+    const ipAddress =
+      req.headers['cf-connecting-ip'] ||
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.ip ||
+      null;
+
 
     await conn.beginTransaction();
 
@@ -235,7 +245,12 @@ async function refreshController(req, res) {
 
     const userId = payload.id;
     const userAgent = req.get('User-Agent') || null;
-    const ipAddress = req.ip || null;
+    const ipAddress =
+      req.headers['cf-connecting-ip'] ||
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.ip ||
+      null;
+
 
     await conn.beginTransaction();
 

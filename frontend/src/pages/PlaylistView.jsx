@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Play, Plus, Share2, Clock, ArrowLeft, ArrowRight, X, Eye,
-} from 'lucide-react'; // ⬅️ added Eye
+} from 'lucide-react'; 
 import {
   FaTwitter, FaFacebookF, FaLinkedinIn, FaPinterestP, FaTelegramPlane,
 } from 'react-icons/fa';
@@ -16,6 +16,7 @@ import {
   useRecordPlayMutation
 } from '../utils/api';
 import { setQueue, setTrack, setIsPlaying } from '../store/playerSlice';
+import DescriptionModal from '../components/custom-ui/DescriptionModal';
 
 const FALLBACK_BG = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
 const FALLBACK_DESC = '';
@@ -193,29 +194,13 @@ export default function PlaylistView() {
             </button>
           )}
 
-          {/* Read More Modal */}
-          <div
-            className={`fixed inset-0 z-200 flex items-center justify-center bg-black/40 backdrop-blur-lg transition-all duration-300 ${
-              showDescModal ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-0 pointer-events-none'
-            }`}
-            onClick={() => setShowDescModal(false)}
-          >
-            <div
-              className="relative bg-black/30 backdrop-blur-lg rounded-xl w-[85vw] h-[75vh] overflow-x-scroll max-w-3xl p-6 sm:p-8 text-gray-200 transform transition-all duration-300 ease-out"
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowDescModal(false)}
-                className="absolute top-3 right-3 p-1 hover:bg-secondary/70 rounded transition"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-              <h3 className="text-2xl pt-4 sm:text-3xl text-secondary font-semibold mb-3">About {playlist.name}</h3>
-              <p className="text-gray-400 leading-relaxed whitespace-pre-line">
-                {playlist.description}
-              </p>
-            </div>
-          </div>
+          <DescriptionModal
+            open={showDescModal}
+            onClose={() => setShowDescModal(false)}
+            title={`About ${playlist.name}`}
+            description={playlist.description || FALLBACK_DESC}
+          />
+
           <p className="mt-2 text-sm sm:text-base text-gray-400">
             {/* • {playlist.saveCount?.toLocaleString()||0} saves  */}
             • {songs.length} songs

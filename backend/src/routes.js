@@ -415,7 +415,10 @@ const {
   getCategoryController,
   createCategoryController,
   updateCategoryController,
-  deleteCategoryController
+  deleteCategoryController,
+  getCategoryPlaylistsController,
+  addPlaylistToCategoryController,
+  removePlaylistFromCategoryController
 } = require('./controllers/admin Controllers/adminCategoryController');
 
 router.get(   '/admin/categories',        requireAuth, requireAdmin, listCategoriesController);
@@ -423,22 +426,35 @@ router.get(   '/admin/categories/:id',    requireAuth, requireAdmin, getCategory
 router.post(  '/admin/categories',        requireAuth, requireAdmin, createCategoryController);
 router.put(   '/admin/categories/:id',    requireAuth, requireAdmin, updateCategoryController);
 router.delete('/admin/categories/:id',    requireAuth, requireAdmin, deleteCategoryController);
+router.get('/admin/categories/:id/playlists', requireAuth, requireAdmin, getCategoryPlaylistsController);
+router.post('/admin/categories/:id/playlists', requireAuth, requireAdmin, addPlaylistToCategoryController);
+router.delete('/admin/categories/:id/playlists/:playlistId', requireAuth, requireAdmin, removePlaylistFromCategoryController);
 
 const {
   listPlaylistsController,
   getPlaylistController,
+  addCategoryToPlaylistController,
+  removeCategoryFromPlaylistController,
   createPlaylistController,
   updatePlaylistController,
   deletePlaylistController,
-  updatePlaylistVisibilityController
+  updatePlaylistVisibilityController,
+  addSongToPlaylistController,
+  removeSongFromPlaylistController,
+  getPlaylistSongsController
 } = require('./controllers/admin Controllers/adminPlaylistController');
 
 router.get(   '/admin/playlists',       requireAuth, requireAdmin, listPlaylistsController);
 router.get(   '/admin/playlists/:id',   requireAuth, requireAdmin, getPlaylistController);
+router.post('/admin/playlists/:id/categories', requireAuth, requireAdmin, addCategoryToPlaylistController);
+router.delete('/admin/playlists/:id/categories/:categoryId', requireAuth, requireAdmin, removeCategoryFromPlaylistController);
 router.post(  '/admin/playlists',       requireAuth, requireAdmin, createPlaylistController);
 router.put(   '/admin/playlists/:id',   requireAuth, requireAdmin, updatePlaylistController);
 router.delete('/admin/playlists/:id',   requireAuth, requireAdmin, deletePlaylistController);
 router.patch( '/admin/playlists/:id/visibility', requireAuth, requireAdmin, updatePlaylistVisibilityController);
+router.get('/admin/playlists/:id/songs', requireAuth, requireAdmin, getPlaylistSongsController);
+router.post('/admin/playlists/:id/songs', requireAuth, requireAdmin, addSongToPlaylistController);
+router.delete('/admin/playlists/:id/songs/:songId', requireAuth, requireAdmin, removeSongFromPlaylistController);
 
 const {
   listSongsController,
@@ -673,6 +689,38 @@ router.get(
     }
   }
 );
+
+
+const {
+  listBlogsAdmin,
+  getBlogAdmin,
+  createBlogAdmin,
+  updateBlogAdmin,
+  publishBlogAdmin,
+  unpublishBlogAdmin,
+  archiveBlogAdmin,
+  unarchiveBlogAdmin,
+  deleteBlogAdmin,
+} = require('./controllers/admin Controllers/adminBlogController');
+
+router.get('/admin/blogs', requireAuth, requireAdmin, listBlogsAdmin);
+router.get('/admin/blogs/:id', requireAuth, requireAdmin, getBlogAdmin);
+router.post('/admin/blogs/new', requireAuth, requireAdmin, createBlogAdmin);
+router.patch('/admin/blogs/:id', requireAuth, requireAdmin, updateBlogAdmin);
+router.patch('/admin/blogs/:id/publish', requireAuth, requireAdmin, publishBlogAdmin);
+router.patch('/admin/blogs/:id/unpublish', requireAuth, requireAdmin, unpublishBlogAdmin);
+router.patch('/admin/blogs/:id/archive', requireAuth, requireAdmin, archiveBlogAdmin);
+router.patch('/admin/blogs/:id/unarchive', requireAuth, requireAdmin, unarchiveBlogAdmin);
+router.delete('/admin/blogs/:id', requireAuth, requireAdmin, deleteBlogAdmin);
+
+
+const {
+  listBlogsPublic,
+  getBlogBySlugPublic,
+} = require('./controllers/blogController');
+
+router.get('/blogs', listBlogsPublic);
+router.get('/blogs/:slug', getBlogBySlugPublic);
 
 // router.get('/categories', async (_req, res) => {
 //   try {

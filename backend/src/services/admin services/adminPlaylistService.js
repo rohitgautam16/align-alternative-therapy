@@ -17,21 +17,24 @@ async function listPlaylists({ page = 1, pageSize = 20 } = {}) {
   const [countRows] = await db.query(`SELECT COUNT(*) AS total FROM playlists`);
   const total = countRows[0]?.total || 0;
 
-  // 2) paged data — use `created` column
+  // 2) paged data — 👇 UPDATED with JOIN and COUNT
   const [rows] = await db.query(
     `SELECT
-       id,
-       title,
-       slug,
-       description,
-       tags,
-       artwork_filename    AS artwork_filename,
-       category_id         AS category_id,
-       paid                AS paid,
-       is_discoverable     AS is_discoverable,
-       created             AS createdAt
-     FROM playlists
-     ORDER BY created DESC
+       p.id,
+       p.title,
+       p.slug,
+       p.description,
+       p.tags,
+       p.artwork_filename  AS artwork_filename,
+       p.category_id       AS category_id,
+       p.paid              AS paid,
+       p.is_discoverable   AS is_discoverable,
+       p.created           AS createdAt,
+       COUNT(ps.song_id)   AS songCount
+     FROM playlists p
+     LEFT JOIN playlist_songs ps ON p.id = ps.playlist_id
+     GROUP BY p.id
+     ORDER BY p.created DESC
      LIMIT ? OFFSET ?`,
     [pageSize, offset]
   );
@@ -40,7 +43,8 @@ async function listPlaylists({ page = 1, pageSize = 20 } = {}) {
 }
 
 async function getPlaylistById(id) {
-  const [rows] = await db.query(
+
+  const playlistPromise = db.query(
     `SELECT
        id,
        title,
@@ -48,15 +52,52 @@ async function getPlaylistById(id) {
        description,
        tags,
        artwork_filename AS image,
-       category_id AS categoryId,
-       paid             AS paid,
-       is_discoverable  AS is_discoverable,
+       artwork_filename,
+       category_id AS categoryId, -- Legacy field (optional)
+       paid,
+       is_discoverable,
        created AS createdAt
      FROM playlists
      WHERE id = ?`,
     [id]
   );
-  return rows[0];
+
+  const categoriesPromise = db.query(
+    `SELECT c.id, c.title, c.slug, c.artwork_filename 
+     FROM categories c
+     JOIN category_playlists cp ON c.id = cp.category_id
+     WHERE cp.playlist_id = ?`,
+    [id]
+  );
+
+  const [[playlistRows], [categoryRows]] = await Promise.all([
+    playlistPromise, 
+    categoriesPromise
+  ]);
+
+  const playlist = playlistRows[0];
+
+  if (playlist) {
+    playlist.categories = categoryRows; 
+  }
+
+  return playlist;
+}
+
+async function addCategoryToPlaylist(playlistId, categoryId) {
+  await db.query(
+    `INSERT IGNORE INTO category_playlists (category_id, playlist_id) VALUES (?, ?)`,
+    [categoryId, playlistId]
+  );
+  return { success: true };
+}
+
+async function removeCategoryFromPlaylist(playlistId, categoryId) {
+  await db.query(
+    `DELETE FROM category_playlists WHERE category_id = ? AND playlist_id = ?`,
+    [categoryId, playlistId]
+  );
+  return { success: true };
 }
 
 async function createPlaylistAdmin({
@@ -125,11 +166,61 @@ async function setPlaylistDiscoverability(id, isDiscoverable) {
   return getPlaylistById(id);
 }
 
+async function addSongToPlaylist(playlistId, songId) {
+  // 1. Add to the new Many-to-Many table (The future way)
+  await db.query(
+    `INSERT IGNORE INTO playlist_songs (playlist_id, song_id) VALUES (?, ?)`,
+    [playlistId, songId]
+  );
+
+  // await db.query(
+  //   `UPDATE audio_metadata SET playlist = ? WHERE id = ?`,
+  //   [playlistId, songId]
+  // );
+
+  return { success: true };
+}
+
+async function removeSongFromPlaylist(playlistId, songId) {
+  // 1. Remove from new table
+  await db.query(
+    `DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ?`,
+    [playlistId, songId]
+  );
+
+  await db.query(
+    `UPDATE audio_metadata SET playlist = NULL WHERE id = ? AND playlist = ?`,
+    [songId, playlistId]
+  );
+
+  return { success: true };
+}
+
+async function getSongsForPlaylist(playlistId) {
+  const [rows] = await db.query(
+    `SELECT 
+        s.*, 
+        p.title as playlist_title
+     FROM audio_metadata s
+     JOIN playlist_songs ps ON s.id = ps.song_id
+     JOIN playlists p ON p.id = ps.playlist_id
+     WHERE ps.playlist_id = ?
+     ORDER BY ps.created_at DESC`,
+    [playlistId]
+  );
+  return rows;
+}
+
 module.exports = {
   listPlaylists,
   getPlaylistById,
+  addCategoryToPlaylist,
+  removeCategoryFromPlaylist,
   createPlaylistAdmin,
   updatePlaylistAdmin,
   deletePlaylistAdmin,
-  setPlaylistDiscoverability
+  setPlaylistDiscoverability,
+  addSongToPlaylist,
+  removeSongFromPlaylist,
+  getSongsForPlaylist
 };

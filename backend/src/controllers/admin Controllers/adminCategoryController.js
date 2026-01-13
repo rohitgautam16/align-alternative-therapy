@@ -3,7 +3,10 @@ const {
   getCategoryById,
   createCategoryAdmin,
   updateCategoryAdmin,
-  deleteCategoryAdmin
+  deleteCategoryAdmin,
+  getPlaylistsForCategory,
+  addPlaylistToCategory,
+  removePlaylistFromCategory
 } = require('../../services/admin services/adminCategoryService');
 
 /**
@@ -62,10 +65,46 @@ async function deleteCategoryController(req, res, next) {
   }
 }
 
+async function getCategoryPlaylistsController(req, res, next) {
+  try {
+    const playlists = await getPlaylistsForCategory(req.params.id);
+    res.json(playlists);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function addPlaylistToCategoryController(req, res, next) {
+  try {
+    const { id } = req.params; 
+    const { playlist_id } = req.body;
+    
+    if (!playlist_id) return res.status(400).json({ error: 'playlist_id is required' });
+
+    await addPlaylistToCategory(id, playlist_id);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function removePlaylistFromCategoryController(req, res, next) {
+  try {
+    const { id, playlistId } = req.params;
+    await removePlaylistFromCategory(id, playlistId);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listCategoriesController,
   getCategoryController,
   createCategoryController,
   updateCategoryController,
   deleteCategoryController,
+  getCategoryPlaylistsController,
+  addPlaylistToCategoryController,
+  removePlaylistFromCategoryController
 };

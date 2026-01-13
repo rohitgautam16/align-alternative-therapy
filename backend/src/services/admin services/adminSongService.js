@@ -46,7 +46,8 @@ async function listSongs({ page = 1, pageSize = 20 } = {}) {
 }
 
 async function getSongById(id) {
-  const [rows] = await db.query(
+  // 1. Fetch Song Details
+  const songPromise = db.query(
     `SELECT
        id,
        name,
@@ -56,9 +57,11 @@ async function getSongById(id) {
        artist,
        tags,
        category,
-       playlist AS playlistId,
+       playlist AS playlistId, -- Legacy field
        artwork_filename AS image,
+       artwork_filename,       -- Raw field
        cdn_url AS audioUrl,
+       cdn_url,                -- Raw field
        created AS createdAt,
        is_free,
        is_discoverable
@@ -66,7 +69,35 @@ async function getSongById(id) {
      WHERE id = ?`,
     [id]
   );
-  return rows[0];
+
+  // 2. Fetch Linked Playlists (Many-to-Many)
+  const playlistsPromise = db.query(
+    `SELECT 
+        p.id, 
+        p.title, 
+        p.slug, 
+        p.artwork_filename 
+     FROM playlists p
+     JOIN playlist_songs ps ON p.id = ps.playlist_id
+     WHERE ps.song_id = ?
+     ORDER BY p.title ASC`,
+    [id]
+  );
+
+  // 3. Execute in parallel
+  const [[songRows], [playlistRows]] = await Promise.all([
+    songPromise, 
+    playlistsPromise
+  ]);
+
+  const song = songRows[0];
+
+  if (song) {
+    // Embed the playlists array directly into the song object
+    song.playlists = playlistRows; 
+  }
+
+  return song;
 }
 
 async function generateUniqueSlug(baseSlug) {

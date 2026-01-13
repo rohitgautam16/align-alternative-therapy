@@ -11,7 +11,10 @@ import {
   useGetR2PresignUrlQuery,
   useGetAdminSongsQuery,
   useCreatePlaylistMutation,
-  useListCategoriesQuery, 
+  useListCategoriesQuery,
+  useGetCategoryPlaylistsQuery,
+  useAddPlaylistToCategoryMutation,
+  useRemovePlaylistFromCategoryMutation 
 } from '../../utils/api';
 import { ArrowLeft, Edit3, Save, Trash2, Plus, Upload, CheckCircle, Search, Filter, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -56,6 +59,12 @@ export default function AdminCategoryDetail() {
 
   const { data: cat, isLoading: catL, isError: catE, refetch: refetchCat } =
     useGetAdminCategoryQuery(categoryId);
+
+  const { 
+    data: assignedPlaylists = [], 
+    isLoading: assignedL,
+    refetch: refetchAssigned 
+  } = useGetCategoryPlaylistsQuery(categoryId);
   
   const {
     data: allPLs = [],
@@ -77,6 +86,8 @@ export default function AdminCategoryDetail() {
 
   const [updateCategory, { isLoading: catSaving }] = useUpdateCategoryMutation();
   const [deleteCategory] = useDeleteCategoryMutation();
+  const [addPlaylistToCategory] = useAddPlaylistToCategoryMutation();
+  const [removePlaylistFromCategory] = useRemovePlaylistFromCategoryMutation();
   const [updatePlaylist] = useUpdatePlaylistMutation();
   const [uploadFiles, { isLoading: uploading }] = useUploadR2FilesMutation();
   
@@ -296,12 +307,18 @@ export default function AdminCategoryDetail() {
 
 
   const filteredAndSortedAvailable = React.useMemo(() => {
-    let filtered = available;
+    if (!allPLs) return [];
 
-    // Apply search filter
+    // Create a set of IDs currently in this category
+    const currentIds = new Set(assignedPlaylists.map(p => p.id));
+
+    // Filter out playlists already assigned
+    let filtered = allPLs.filter(p => !currentIds.has(p.id));
+
+    // Apply search
     if (availablePlaylistsSearch) {
       const search = availablePlaylistsSearch.toLowerCase();
-      filtered = available.filter(playlist => 
+      filtered = filtered.filter(playlist => 
         playlist.title?.toLowerCase().includes(search) ||
         playlist.name?.toLowerCase().includes(search) ||
         playlist.slug?.toLowerCase().includes(search) ||
@@ -309,52 +326,38 @@ export default function AdminCategoryDetail() {
       );
     }
 
-    // Apply sorting
+    // Apply sort
     const sorted = [...filtered].sort((a, b) => {
       switch (availablePlaylistsSort) {
-        case 'title':
-          return (a.title || a.name || '').localeCompare(b.title || b.name || '');
-        case 'slug':
-          return (a.slug || '').localeCompare(b.slug || '');
-        case 'newest':
-          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        case 'oldest':
-          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-        case 'paid':
-          return (b.paid ? 1 : 0) - (a.paid ? 1 : 0); // paid first
-        case 'free':
-          return (a.paid ? 1 : 0) - (b.paid ? 1 : 0); // free first
-        default:
-          return 0;
+        case 'title': return (a.title || a.name || '').localeCompare(b.title || b.name || '');
+        case 'slug': return (a.slug || '').localeCompare(b.slug || '');
+        case 'newest': return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        case 'oldest': return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        case 'paid': return (b.paid ? 1 : 0) - (a.paid ? 1 : 0);
+        case 'free': return (a.paid ? 1 : 0) - (b.paid ? 1 : 0);
+        default: return 0;
       }
     });
 
     return sorted;
-  }, [available, availablePlaylistsSearch, availablePlaylistsSort]);
+  }, [allPLs, assignedPlaylists, availablePlaylistsSearch, availablePlaylistsSort]);
 
-
+  // Song counts (Visual only)
   const songCounts = React.useMemo(() => {
     const counts = {};
+    const allSongs = Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
     
-    // Initialize all playlists with 0 count
-    [...assigned, ...filteredAndSortedAvailable].forEach(playlist => {
-      counts[playlist.id] = 0;
+    // Initialize
+    [...assignedPlaylists, ...filteredAndSortedAvailable].forEach(p => counts[p.id] = 0);
+    
+    // Count
+    allSongs.forEach(song => {
+      const pid = song.playlist_id || song.playlistId || song.playlist;
+      if (pid && counts.hasOwnProperty(pid)) counts[pid]++;
     });
     
-    // Count songs per playlist using the same field names as AdminPlaylistDetail
-    if (Array.isArray(allSongs)) {
-      allSongs.forEach(song => {
-        const playlistId = song.playlist_id || song.playlistId || song.playlist;
-        if (playlistId && counts.hasOwnProperty(playlistId)) {
-          counts[playlistId]++;
-        }
-      });
-    }
-    
-   //console.log('🔍 CategoryDetail song counts:', counts);
-    
     return counts;
-  }, [assigned, filteredAndSortedAvailable, allSongs]);
+  }, [assignedPlaylists, filteredAndSortedAvailable, allSongsRaw]);
 
 
   if (catL || plsL) return <div className="p-6 text-white">Loading…</div>;
@@ -488,19 +491,19 @@ export default function AdminCategoryDetail() {
   const togglePlaylist = async (pl, toAssign) => {
     setTogglingId(pl.id);
     try {
-      await updatePlaylist({
-        id: pl.id,
-        title: pl.name,
-        slug: pl.slug,
-        description: pl.description,
-        tags: pl.tags ?? '',
-        artwork_filename: pl.image ?? '',
-        category_id: toAssign ? categoryId : null,
-        paid: pl.paid,
-      }).unwrap();
-      setFlash({ txt: toAssign ? `Added "${pl.name}"` : `Removed "${pl.name}"`, ok: true });
-      await refetchPLs();
-    } catch {
+      if (toAssign) {
+        // ADD
+        await addPlaylistToCategory({ categoryId, playlistId: pl.id }).unwrap();
+        setFlash({ txt: `Added "${pl.name || pl.title}"`, ok: true });
+      } else {
+        // REMOVE
+        await removePlaylistFromCategory({ categoryId, playlistId: pl.id }).unwrap();
+        setFlash({ txt: `Removed "${pl.name || pl.title}"`, ok: true });
+      }
+      // Refresh lists
+      await refetchAssigned();
+    } catch (err) {
+      console.error(err);
       setFlash({ txt: 'Operation failed', ok: false });
     } finally {
       setTogglingId(null);
@@ -699,11 +702,11 @@ export default function AdminCategoryDetail() {
       {/* Assigned Playlists */}
       <section className="space-y-4">
         <h3 className="text-2xl font-semibold">Playlists in "{cat.title}"</h3>
-        {assigned.length === 0 ? (
+        {assignedPlaylists.length === 0 ? (
           <p className="text-gray-400">No playlists here.</p>
         ) : (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
-            {assigned.map(pl => {
+            {assignedPlaylists.map(pl => {
               const isLoading = togglingId === pl.id;
               const isSuccess = flash.ok && flash.txt === `Removed "${pl.name}"`;
               const isError = !flash.ok && flash.txt === 'Operation failed';

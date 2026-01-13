@@ -120,6 +120,7 @@ export const api = createApi({
     'RecentPlaylists',
     'User',
     'AuthSessions',
+    'Blogs',
   ],
   endpoints: (build) => ({
 
@@ -301,6 +302,28 @@ export const api = createApi({
       invalidatesTags: [{ type: 'Category', id: 'LIST' }],
     }),
 
+    getCategoryPlaylists: build.query({
+      query: (categoryId) => `/admin/categories/${categoryId}/playlists`,
+      providesTags: ['CategoryPlaylists'],
+    }),
+
+    addPlaylistToCategory: build.mutation({
+      query: ({ categoryId, playlistId }) => ({
+        url: `/admin/categories/${categoryId}/playlists`,
+        method: 'POST',
+        body: { playlist_id: playlistId },
+      }),
+      invalidatesTags: ['CategoryPlaylists', 'Playlists'],
+    }),
+
+    removePlaylistFromCategory: build.mutation({
+      query: ({ categoryId, playlistId }) => ({
+        url: `/admin/categories/${categoryId}/playlists/${playlistId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['CategoryPlaylists', 'Playlists'],
+    }),
+
     listPlaylists: build.query({
       query: ({ page = 1, pageSize = 20 } = {}) => ({
         url: '/admin/playlists',
@@ -328,6 +351,24 @@ export const api = createApi({
       query: (id) => `/admin/playlists/${id}`,
       transformResponse: (res) => res.data ?? res,
       providesTags: (_res, _err, id) => [{ type: 'Playlist', id }],
+    }),
+
+    addCategoryToPlaylist: build.mutation({
+      query: ({ playlistId, categoryId }) => ({
+        url: `/admin/playlists/${playlistId}/categories`,
+        method: 'POST',
+        body: { category_id: categoryId },
+      }),
+      invalidatesTags: ['Playlist', 'Categories'],
+    }),
+
+
+    removeCategoryFromPlaylist: build.mutation({
+      query: ({ playlistId, categoryId }) => ({
+        url: `/admin/playlists/${playlistId}/categories/${categoryId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Playlist', 'Categories'],
     }),
 
     // ─── Create playlist ──────────────────────────────────
@@ -396,6 +437,27 @@ export const api = createApi({
         }
       },
     }),
+getPlaylistSongs: build.query({
+    query: (playlistId) => `/admin/playlists/${playlistId}/songs`,
+    providesTags: ['PlaylistSongs'],
+  }),
+
+  addSongToPlaylist: build.mutation({
+    query: ({ playlistId, songId }) => ({
+      url: `/admin/playlists/${playlistId}/songs`,
+      method: 'POST',
+      body: { song_id: songId },
+    }),
+    invalidatesTags: ['PlaylistSongs', 'Songs'],
+  }),
+
+  removeSongFromPlaylist: build.mutation({
+    query: ({ playlistId, songId }) => ({
+      url: `/admin/playlists/${playlistId}/songs/${songId}`,
+      method: 'DELETE',
+    }),
+    invalidatesTags: ['PlaylistSongs', 'Songs'],
+  }),
 
     getAdminSongs: build.query({
       query: ({ page = 1, pageSize = 10 }) =>
@@ -1324,6 +1386,107 @@ getPbPaymentStatus: build.query({
 }),
 
 
+// blogs
+
+listBlogsAdmin: build.query({
+      query: () => `/admin/blogs`,
+      providesTags: (res) =>
+        res?.data?.map(b => ({ type: 'Blogs', id: b.id })) ?? [{ type: 'Blogs', id: 'LIST' }],
+    }),
+
+    getBlogAdmin: build.query({
+      query: (id) => `/admin/blogs/${id}`,
+      providesTags: (res, err, id) => [{ type: 'Blogs', id }],
+    }),
+
+    createBlogAdmin: build.mutation({
+      query: (body) => ({
+        url: `/admin/blogs/new`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Blogs', id: 'LIST' }],
+    }),
+
+    saveBlogAdmin: build.mutation({
+      query: ({ id, body }) => ({
+        url: `/admin/blogs/${id}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (r, e, { id }) => [{ type: 'Blogs', id }],
+    }),
+
+
+    updateBlogAdmin: build.mutation({
+      query: ({ id, body }) => ({
+        url: `/admin/blogs/${id}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (r, e, { id }) => [{ type: 'Blogs', id }],
+    }),
+
+    publishBlogAdmin: build.mutation({
+      query: (id) => ({
+        url: `/admin/blogs/${id}/publish`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (r, e, id) => [
+        { type: 'Blogs', id },
+        { type: 'Blogs', id: 'LIST' },
+      ],
+    }),
+
+    unpublishBlogAdmin: build.mutation({
+  query: (id) => ({
+    url: `/admin/blogs/${id}/unpublish`,
+    method: 'PATCH',
+  }),
+  invalidatesTags: [{ type: 'Blogs', id: 'LIST' }],
+}),
+
+    archiveBlogAdmin: build.mutation({
+      query: (id) => ({
+        url: `/admin/blogs/${id}/archive`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (r, e, id) => [
+        { type: 'Blogs', id },
+        { type: 'Blogs', id: 'LIST' },
+      ],
+    }),
+
+    unarchiveBlogAdmin: build.mutation({
+      query: (id) => ({
+        url: `/admin/blogs/${id}/unarchive`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (r, e, id) => [
+        { type: 'Blogs', id },
+        { type: 'Blogs', id: 'LIST' },
+      ],
+    }),
+
+    deleteBlogAdmin: build.mutation({
+      query: (id) => ({
+        url: `/admin/blogs/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (r, e, id) => [
+        { type: 'Blogs', id },
+        { type: 'Blogs', id: 'LIST' },
+      ],
+    }),
+
+    // PUBLIC
+    listBlogsPublic: build.query({
+      query: () => `/blogs`,
+    }),
+
+    getBlogBySlug: build.query({
+      query: (slug) => `/blogs/${slug}`,
+    }),
   }),
 });
 
@@ -1345,8 +1508,13 @@ export const {
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,
+  useGetCategoryPlaylistsQuery,
+  useAddPlaylistToCategoryMutation,
+  useRemovePlaylistFromCategoryMutation,
   useListPlaylistsQuery,
   useGetAdminPlaylistQuery,
+  useAddCategoryToPlaylistMutation,
+  useRemoveCategoryFromPlaylistMutation,
   useCreatePlaylistMutation,
   useUpdatePlaylistMutation,
   useGetAdminSongsQuery,
@@ -1356,6 +1524,9 @@ export const {
   useDeleteAdminSongMutation,
   useUpdateSongVisibilityMutation,
   useUpdatePlaylistVisibilityMutation,
+  useGetPlaylistSongsQuery,
+  useAddSongToPlaylistMutation,
+  useRemoveSongFromPlaylistMutation,
   useDeletePlaylistMutation,
   useListR2ObjectsQuery,
   useGetR2ObjectMetaQuery,
@@ -1413,7 +1584,7 @@ export const {
   useGetRecentlyPlayedQuery,
   useGetMostListenedQuery,
   useGetBlogsQuery,
-  useGetBlogBySlugQuery,
+  //useGetBlogBySlugQuery,
 
   //personalized service
   useGetMyQuestionsQuery,
@@ -1469,6 +1640,21 @@ export const {
   useAdminPbGetAllUsersWithRecommendationsQuery,
   useCreatePbPaymentLinkMutation,
   useGetPbPaymentStatusQuery,
+
+  // blogs
+  useListBlogsAdminQuery,
+  useGetBlogAdminQuery,
+  useCreateBlogAdminMutation, 
+  useSaveBlogAdminMutation,
+  useUpdateBlogAdminMutation,
+  usePublishBlogAdminMutation,
+  useUnpublishBlogAdminMutation,
+  useArchiveBlogAdminMutation,
+  useUnarchiveBlogAdminMutation,
+  useDeleteBlogAdminMutation,
+  useListBlogsPublicQuery,
+  useGetBlogBySlugQuery
+
 } = api;
 
 

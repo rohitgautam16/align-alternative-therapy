@@ -51,9 +51,6 @@ export default function AdminCategoriesOverview() {
     refetch 
   } = useListCategoriesQuery({ page: 1, pageSize: 200 });
 
-  // ✅ NEW: Fetch all playlists to count them per category
-  const { data: allPlaylistsData = [] } = useGetDashboardAllPlaylistsQuery();
-
   // Create mutation
   const [createCategory, { isLoading: creating }] = useCreateCategoryMutation();
 
@@ -92,27 +89,6 @@ export default function AdminCategoriesOverview() {
     return [];
   }, [data]);
 
-  // ✅ NEW: Create playlist count mapping per category
-  const playlistCounts = React.useMemo(() => {
-    const counts = {};
-    
-    // Initialize all categories with 0 count
-    allCategories.forEach(category => {
-      counts[category.id] = 0;
-    });
-    
-    // Count playlists per category
-    if (Array.isArray(allPlaylistsData)) {
-      allPlaylistsData.forEach(playlist => {
-        const categoryId = playlist.categoryId || playlist.category_id;
-        if (categoryId && counts.hasOwnProperty(categoryId)) {
-          counts[categoryId]++;
-        }
-      });
-    }
-    
-    return counts;
-  }, [allCategories, allPlaylistsData]);
 
   // Filter categories
   const filteredCategories = React.useMemo(() => {
@@ -541,8 +517,7 @@ export default function AdminCategoriesOverview() {
               }`}
             >
               {paginatedCategories.map((category) => {
-                {/* ✅ NEW: Get playlist count for this category */}
-                const playlistCount = playlistCounts[category.id] || 0;
+                
                 
                 return (
                   <motion.div
@@ -560,9 +535,9 @@ export default function AdminCategoriesOverview() {
                         <p className="text-sm md:text-md text-gray-400 truncate mb-1">
                           Slug: {category.slug}
                         </p>
-                        {/* ✅ NEW: Show playlist count */}
+                        {/* playlist count */}
                         <p className="text-xs md:text-sm text-gray-500 truncate mb-1">
-                          {playlistCount} playlist{playlistCount !== 1 ? 's' : ''}
+                          {category.playlistCount || 0} playlist{(category.playlistCount || 0) !== 1 ? 's' : ''}
                         </p>
                         <p className="text-xs md:text-sm text-gray-500 truncate">
                           Category Id: {category.id}

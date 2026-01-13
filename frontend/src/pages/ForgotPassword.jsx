@@ -14,4 +14,4 @@ const ForgotPasswordPage = () => {
   );
 };
 
-export default TransitionWrapper(ForgotPasswordPage);
+export default ForgotPasswordPage;

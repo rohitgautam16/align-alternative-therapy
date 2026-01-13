@@ -39,6 +39,7 @@ const personalizeRoutes = require('../src/routes');
 app.use('/api/personalize', personalizeRoutes);
 
 
+app.set('trust proxy', true);
 
 
 app.get('/health', (_req, res) => res.json({ status: 'OK' }));

@@ -41,21 +41,46 @@ async function fetchDashboardPlaylistsByCategory(categoryId) {
 }
 
 /** GET /playlists */
+/** GET /playlists */
 async function fetchDashboardAllPlaylists() {
+  // 1. Fetch all discoverable playlists
   const [rows] = await db.query(
     `SELECT
-       id,
-       title   AS name,
-       slug,
-       description,
-       tags,
-       paid,
-       artwork_filename AS image,
-       category_id AS categoryId,
-       created     AS createdAt
-     FROM playlists
-     WHERE is_discoverable = 1`
+       p.id,
+       p.title            AS name,
+       p.slug,
+       p.description,
+       p.tags,
+       p.paid,
+       p.artwork_filename AS image,
+       p.created          AS createdAt
+     FROM playlists p
+     WHERE p.is_discoverable = 1`
   );
+
+  // 2. Fetch all category connections
+  const [links] = await db.query(
+    `SELECT playlist_id, category_id 
+     FROM category_playlists`
+  );
+
+  // 3. Attach category IDs to playlists
+  const playlistMap = new Map();
+  rows.forEach(p => {
+    p.categoryIds = []; // Initialize array
+    // p.categoryId = null; // Optional: keep for legacy support if needed
+    playlistMap.set(p.id, p);
+  });
+
+  links.forEach(link => {
+    const p = playlistMap.get(link.playlist_id);
+    if (p) {
+      p.categoryIds.push(link.category_id);
+      // Optional: Set legacy field to the first found category for backward compatibility
+      // if (!p.categoryId) p.categoryId = link.category_id;
+    }
+  });
+
   return attachAccessFlags(rows, 'playlist');
 }
 
@@ -83,23 +108,25 @@ async function fetchDashboardFreePlaylists() {
 async function fetchDashboardSongsByPlaylist(playlistId) {
   const [rows] = await db.query(
     `SELECT
-       id,
-       name,
-       title,
-       slug,
-       description,
-       artist,
-       tags,
-       category,
-       playlist    AS playlistId,
-       artwork_filename AS image,
-       cdn_url     AS audioUrl,
-       created     AS createdAt,
-       is_free,
-       is_discoverable
-    FROM audio_metadata
-    WHERE playlist = ?
-    AND is_discoverable = 1`,
+       s.id,
+       s.name,
+       s.title,
+       s.slug,
+       s.description,
+       s.artist,
+       s.tags,
+       s.category,
+       ps.playlist_id       AS playlistId,
+       s.artwork_filename   AS image,
+       s.cdn_url            AS audioUrl,
+       s.created            AS createdAt,
+       s.is_free,
+       s.is_discoverable
+     FROM audio_metadata s
+     JOIN playlist_songs ps ON s.id = ps.song_id
+     WHERE ps.playlist_id = ?
+     AND s.is_discoverable = 1
+     ORDER BY ps.created_at DESC`, // Sort by when it was added to the playlist
     [playlistId]
   );
   return attachAccessFlags(rows, 'song');

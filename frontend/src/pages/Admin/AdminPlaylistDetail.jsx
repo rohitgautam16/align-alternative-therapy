@@ -11,103 +11,218 @@ import {
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
   useCreateAdminSongMutation,
-  useUpdatePlaylistVisibilityMutation 
+  useUpdatePlaylistVisibilityMutation,
+  useGetPlaylistSongsQuery,      
+  useAddSongToPlaylistMutation,  
+  useRemoveSongFromPlaylistMutation,
+  useAddCategoryToPlaylistMutation,
+  useRemoveCategoryFromPlaylistMutation 
 } from '../../utils/api';
-import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter, X, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit3, Plus, Upload, CheckCircle, Search, Filter, X, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AdminSongCard from '../../components/custom-ui/AdminSongCard';
 import SongBulkUpload from '../../components/admin/SongBulkUpload'
 
-// Custom Image Dropdown Component (kept exactly the same)
-const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
+
+const CategoryMultiSelect = ({ options, selectedIds, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find(opt => opt.id === Number(value));
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredOptions = options.filter(option => 
+    option.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleSelection = (id) => {
+    const newSelection = new Set(selectedIds);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    onChange(Array.from(newSelection));
+  };
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-2 bg-gray-700 rounded text-white flex items-center justify-between hover:bg-gray-600"
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) setSearchTerm('');
+        }}
+        className="w-full p-2 bg-gray-700 rounded text-white flex items-center justify-between hover:bg-gray-600 border border-gray-600"
       >
-        <div className="flex items-center gap-2">
-          {selectedOption ? (
-            <>
-              <img
-                src={selectedOption.image || selectedOption.artwork_filename}
-                alt={selectedOption.title}
-                className="w-6 h-6 rounded object-cover flex-shrink-0"
-                onError={(e) => {
-                  e.target.src = type === 'category' 
-                    ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+'
-                    : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
-                }}
-              />
-              <span className="truncate">{selectedOption.title} (#{selectedOption.id})</span>
-            </>
+        <div className="flex items-center gap-2 overflow-hidden">
+          {selectedIds.length === 0 ? (
+            <span className="text-gray-400">Select Categories...</span>
           ) : (
-            <span className="text-gray-400">{placeholder}</span>
+            <div className="flex flex-wrap gap-1">
+              {selectedIds.map(id => {
+                const opt = options.find(o => o.id === id);
+                return opt ? (
+                  <span key={id} className="text-xs bg-blue-600 px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                    {opt.title}
+                  </span>
+                ) : null;
+              })}
+            </div>
           )}
         </div>
-        <svg 
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
+        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setIsOpen(false)}
-          />
-          
-          <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-y-auto border border-gray-600">
-            <div
-              className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
-              onClick={() => {
-                onChange({ target: { value: '' } });
-                setIsOpen(false);
-              }}
-            >
-              <div className="w-6 h-6 bg-gray-500 rounded flex items-center justify-center flex-shrink-0">
-                <span className="text-xs text-gray-300">—</span>
-              </div>
-              <span className="text-gray-400 truncate">{placeholder}</span>
-            </div>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-hidden border border-gray-600 flex flex-col">
             
-            {options.map((option) => (
-              <div
-                key={option.id}
-                className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
-                onClick={() => {
-                  onChange({ target: { value: option.id } });
-                  setIsOpen(false);
-                }}
-              >
-                <img
-                  src={option.image || option.artwork_filename}
-                  alt={option.title}
-                  className="w-6 h-6 rounded object-cover flex-shrink-0"
-                  onError={(e) => {
-                    e.target.src = type === 'category' 
-                      ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+'
-                      : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCAnd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNCIgZmlsbD0iIzlDQTRBRiIvPjwvc3ZnPg==';
-                  }}
+            {/* 🔍 Search Input - Sticky Header */}
+            <div className="p-2 border-b border-gray-600 sticky top-0 bg-gray-700 z-10">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search categories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClick={(e) => e.stopPropagation()} // Prevent dropdown close
+                  className="w-full pl-8 pr-2 py-1 bg-gray-800 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                  autoFocus
                 />
-                <span className="truncate">{option.title} (#{option.id})</span>
               </div>
-            ))}
+            </div>
+
+            {/* Scrollable Options List */}
+            <div className="overflow-y-auto max-h-48">
+              {filteredOptions.length === 0 ? (
+                <div className="p-3 text-gray-400 text-sm text-center">No categories found</div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = selectedIds.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      className={`p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-3 ${isSelected ? 'bg-gray-600/50' : ''}`}
+                      onClick={() => toggleSelection(option.id)}
+                    >
+                      {isSelected ? (
+                        <CheckSquare size={18} className="text-blue-400 flex-shrink-0" />
+                      ) : (
+                        <Square size={18} className="text-gray-400 flex-shrink-0" />
+                      )}
+                      <img
+                        src={option.image || option.artwork_filename}
+                        alt={option.title}
+                        className="w-6 h-6 rounded object-cover flex-shrink-0"
+                        onError={(e) => { 
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCAnd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+PC9zdmc+'; 
+                        }}
+                      />
+                      <span className="truncate">{option.title}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </>
       )}
     </div>
   );
 };
+
+// // Custom Image Dropdown Component (kept exactly the same)
+// const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
+//   const [isOpen, setIsOpen] = useState(false);
+//   const selectedOption = options.find(opt => opt.id === Number(value));
+
+//   return (
+//     <div className="relative">
+//       <button
+//         type="button"
+//         onClick={() => setIsOpen(!isOpen)}
+//         className="w-full p-2 bg-gray-700 rounded text-white flex items-center justify-between hover:bg-gray-600"
+//       >
+//         <div className="flex items-center gap-2">
+//           {selectedOption ? (
+//             <>
+//               <img
+//                 src={selectedOption.image || selectedOption.artwork_filename}
+//                 alt={selectedOption.title}
+//                 className="w-6 h-6 rounded object-cover flex-shrink-0"
+//                 onError={(e) => {
+//                   e.target.src = type === 'category' 
+//                     ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+'
+//                     : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+';
+//                 }}
+//               />
+//               <span className="truncate">{selectedOption.title} (#{selectedOption.id})</span>
+//             </>
+//           ) : (
+//             <span className="text-gray-400">{placeholder}</span>
+//           )}
+//         </div>
+//         <svg 
+//           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+//           fill="none" 
+//           stroke="currentColor" 
+//           viewBox="0 0 24 24"
+//         >
+//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+//         </svg>
+//       </button>
+
+//       {isOpen && (
+//         <>
+//           <div 
+//             className="fixed inset-0 z-10" 
+//             onClick={() => setIsOpen(false)}
+//           />
+          
+//           <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-y-auto border border-gray-600">
+//             <div
+//               className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
+//               onClick={() => {
+//                 onChange({ target: { value: '' } });
+//                 setIsOpen(false);
+//               }}
+//             >
+//               <div className="w-6 h-6 bg-gray-500 rounded flex items-center justify-center flex-shrink-0">
+//                 <span className="text-xs text-gray-300">—</span>
+//               </div>
+//               <span className="text-gray-400 truncate">{placeholder}</span>
+//             </div>
+            
+//             {options.map((option) => (
+//               <div
+//                 key={option.id}
+//                 className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
+//                 onClick={() => {
+//                   onChange({ target: { value: option.id } });
+//                   setIsOpen(false);
+//                 }}
+//               >
+//                 <img
+//                   src={option.image || option.artwork_filename}
+//                   alt={option.title}
+//                   className="w-6 h-6 rounded object-cover flex-shrink-0"
+//                   onError={(e) => {
+//                     e.target.src = type === 'category' 
+//                       ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxwYXRoIGQ9Ik0xMiA2TDE2IDEySDE2TDEyIDZaIiBmaWxsPSIjOUNBNEFGIi8+CjwvZz4KPC9zdmc+'
+//                       : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCAnd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNCIgZmlsbD0iIzlDQTRBRiIvPjwvc3ZnPg==';
+//                   }}
+//                 />
+//                 <span className="truncate">{option.title} (#{option.id})</span>
+//               </div>
+//             ))}
+//           </div>
+//         </>
+//       )}
+//     </div>
+//   );
+// };
 
 export default function AdminPlaylistDetail() {
   const { id: playlistId } = useParams();
@@ -150,6 +265,21 @@ export default function AdminPlaylistDetail() {
   const [audioUploading, setAudioUploading] = useState(false);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
   const [audioPresignParams, setAudioPresignParams] = useState(null);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+
+
+
+  const { 
+    data: playlistSongs = [], 
+    isLoading: loadingPlaylistSongs, 
+    refetch: refetchPlaylistSongs 
+  } = useGetPlaylistSongsQuery(playlistId);
+
+  // New Mutation Hooks
+  const [addSongToPlaylist] = useAddSongToPlaylistMutation();
+  const [removeSongFromPlaylist] = useRemoveSongFromPlaylistMutation();
+  const [addCategoryToPlaylist] = useAddCategoryToPlaylistMutation();
+  const [removeCategoryFromPlaylist] = useRemoveCategoryFromPlaylistMutation();
 
   const { 
     data: p, 
@@ -218,6 +348,12 @@ export default function AdminPlaylistDetail() {
         paid:             Number(p.paid) || 1,
         is_discoverable:  p.is_discoverable ?? 1, 
       });
+
+      if (p.categories && Array.isArray(p.categories)) {
+        setSelectedCategoryIds(p.categories.map(c => c.id));
+      } else {
+        setSelectedCategoryIds([]);
+      }
     }
   }, [p]);
 
@@ -436,6 +572,8 @@ export default function AdminPlaylistDetail() {
     return Array.isArray(catRaw?.data) ? catRaw.data : [];
   }, [catRaw]);
 
+  const assignedCategories = React.useMemo(() => p?.categories || [], [p]);
+
   const selectedCategory = React.useMemo(() => {
     return categories.find((c) => c.id === form?.category_id);
   }, [categories, form?.category_id]);
@@ -459,12 +597,14 @@ export default function AdminPlaylistDetail() {
 
   const available = React.useMemo(() => {
     if (!allSongs || !playlistId) return [];
-    return allSongs.filter(s => 
-      s.playlist_id !== +playlistId && 
-      s.playlistId !== +playlistId && 
-      s.playlist !== +playlistId
-    );
-  }, [allSongs, playlistId]);
+
+    // 1. Create a Set of IDs that are ALREADY in this playlist (from the new API)
+    const currentSongIds = new Set(playlistSongs.map(s => s.id));
+
+    // 2. Filter out any song that is already in the list
+    return allSongs.filter(s => !currentSongIds.has(s.id));
+    
+  }, [allSongs, playlistSongs]);
 
   const filteredAndSortedAvailable = React.useMemo(() => {
     let filtered = available;
@@ -637,28 +777,27 @@ export default function AdminPlaylistDetail() {
   const toggleSong = async (song, toAssign) => {
     setTogglingId(song.id);
     try {
-      await updateSong({
-        id: song.id,
-        name: song.name || song.title,
-        title: song.title,
-        slug: song.slug || song.title
-          ?.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '') || `song-${song.id}`,
-        description: song.description || '',
-        artist: song.artist || '',
-        tags: song.tags || '',
-        category: song.category || null,
-        playlist: toAssign ? +playlistId : null,
-        artwork_filename: song.artwork_filename || song.image || song.artwork_url || '',
-        cdn_url: song.cdn_url || song.file_url || song.fileUrl || '',
-      }).unwrap();
+      if (toAssign) {
+        // ADD: Use the new mutation
+        await addSongToPlaylist({
+          playlistId: playlistId,
+          songId: song.id
+        }).unwrap();
+        setFlash({ txt: `Added "${song.title}"`, ok: true });
+      } else {
+        // REMOVE: Use the new mutation
+        await removeSongFromPlaylist({
+          playlistId: playlistId,
+          songId: song.id
+        }).unwrap();
+        setFlash({ txt: `Removed "${song.title}"`, ok: true });
+      }
       
-      setFlash({ 
-        txt: toAssign ? `Added "${song.title}"` : `Removed "${song.title}"`, 
-        ok: true 
-      });
-      await refetchSongs();
+      // Refresh the specific playlist songs list
+      await refetchPlaylistSongs();
+      // Optional: Refetch all songs if you still rely on that for other things
+      await refetchSongs(); 
+      
     } catch (err) {
       console.error('Toggle song error:', err);
       setFlash({ txt: 'Operation failed', ok: false });
@@ -666,6 +805,39 @@ export default function AdminPlaylistDetail() {
       setTogglingId(null);
     }
   };
+
+  // const toggleSong = async (song, toAssign) => {
+  //   setTogglingId(song.id);
+  //   try {
+  //     await updateSong({
+  //       id: song.id,
+  //       name: song.name || song.title,
+  //       title: song.title,
+  //       slug: song.slug || song.title
+  //         ?.toLowerCase()
+  //         .replace(/[^a-z0-9]+/g, '-')
+  //         .replace(/(^-|-$)/g, '') || `song-${song.id}`,
+  //       description: song.description || '',
+  //       artist: song.artist || '',
+  //       tags: song.tags || '',
+  //       category: song.category || null,
+  //       playlist: toAssign ? +playlistId : null,
+  //       artwork_filename: song.artwork_filename || song.image || song.artwork_url || '',
+  //       cdn_url: song.cdn_url || song.file_url || song.fileUrl || '',
+  //     }).unwrap();
+      
+  //     setFlash({ 
+  //       txt: toAssign ? `Added "${song.title}"` : `Removed "${song.title}"`, 
+  //       ok: true 
+  //     });
+  //     await refetchSongs();
+  //   } catch (err) {
+  //     console.error('Toggle song error:', err);
+  //     setFlash({ txt: 'Operation failed', ok: false });
+  //   } finally {
+  //     setTogglingId(null);
+  //   }
+  // };
 
     const handleToggleVisibility = async () => {
     try {
@@ -709,6 +881,20 @@ export default function AdminPlaylistDetail() {
           isDiscoverable: Boolean(is_discoverable),
         }).unwrap();
       }
+
+      const originalIds = new Set((p.categories || []).map(c => c.id));
+      const newIds = new Set(selectedCategoryIds);
+
+      const toAdd = [...newIds].filter(id => !originalIds.has(id));
+
+      const toRemove = [...originalIds].filter(id => !newIds.has(id));
+
+      const promises = [
+        ...toAdd.map(catId => addCategoryToPlaylist({ playlistId, categoryId: catId }).unwrap()),
+        ...toRemove.map(catId => removeCategoryFromPlaylist({ playlistId, categoryId: catId }).unwrap())
+      ];
+
+      await Promise.all(promises);
       
       setFlash({ txt: 'Playlist updated.', ok: true });
       setEditMode(false);
@@ -923,7 +1109,7 @@ export default function AdminPlaylistDetail() {
         </div>
 
             {/* Category Dropdown with Images */}
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <label className="block text-gray-400 mb-1">Category</label>
               {editMode ? (
                 <ImageDropdown
@@ -944,6 +1130,35 @@ export default function AdminPlaylistDetail() {
                     }}
                   />
                   <p>{selectedCategory?.title ?? '—'}</p>
+                </div>
+              )}
+            </div> */}
+
+            {/* UPDATED CATEGORY SELECTOR */}
+            <div className="md:col-span-2">
+              <label className="block text-gray-400 mb-1">Categories</label>
+              {editMode ? (
+                <CategoryMultiSelect
+                  options={categories}
+                  selectedIds={selectedCategoryIds}
+                  onChange={setSelectedCategoryIds}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {!assignedCategories || assignedCategories.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No categories assigned</p>
+                  ) : (
+                    assignedCategories.map(c => (
+                      <div key={c.id} className="flex items-center gap-2 bg-gray-700 px-3 py-1 rounded-full border border-gray-600">
+                        <img 
+                          src={c.image || c.artwork_filename} 
+                          className="w-5 h-5 rounded-full object-cover" 
+                          onError={(e) => { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCAnd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+PC9zdmc+'; }} 
+                        />
+                        <span className="text-sm">{c.title}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -1043,11 +1258,11 @@ export default function AdminPlaylistDetail() {
       {/* Assigned Songs */}
       <section className="space-y-4">
         <h3 className="text-2xl font-semibold">Songs in "{p.title}"</h3>
-        {assigned.length === 0 ? (
+        {playlistSongs.length === 0 ? (
           <p className="text-gray-400">No songs in this playlist.</p>
         ) : (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
-            {assigned.map(song => {
+            {playlistSongs.map(song => {
               const isLoading = togglingId === song.id;
               const isSuccess = flash.ok && flash.txt === `Removed "${song.title}"`;
               const isError = !flash.ok && flash.txt === 'Operation failed';

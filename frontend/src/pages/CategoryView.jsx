@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGetCategoriesQuery, useGetDashboardAllPlaylistsQuery } from '../utils/api';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
 import { useSubscription } from '../context/SubscriptionContext';
+import DescriptionModal from '../components/custom-ui/DescriptionModal';
 
 const FALLBACK_BG =
   'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop';
@@ -29,9 +30,32 @@ export default function CategoryView() {
   const loading  = catLoading || plLoading;
   const category = !catLoading && categories.find((c) => c.slug === slug);
 
-  const categoryPlaylists = !loading
-    ? playlists.filter((pl) => pl.categoryId === category?.id)
-    : [];
+  const [showDescModal, setShowDescModal] = React.useState(false);
+  const [isDescTruncated, setIsDescTruncated] = React.useState(false);
+  const descRef = React.useRef(null);
+
+  React.useLayoutEffect(() => {
+    if (descRef.current) {
+      const el = descRef.current;
+      setIsDescTruncated(el.scrollHeight > el.clientHeight + 5);
+    }
+  }, [category?.description]);
+
+  const categoryPlaylists = React.useMemo(() => {
+    if (loading || !category || !playlists) return [];
+
+    return playlists.filter((pl) => {
+      if (pl.categoryIds && Array.isArray(pl.categoryIds)) {
+        return pl.categoryIds.includes(category.id);
+      }
+      
+      if (pl.categoryId) {
+        return pl.categoryId === category.id;
+      }
+
+      return false;
+    });
+  }, [loading, category, playlists]);
 
   if (catError || plError) {
     return (
@@ -78,7 +102,7 @@ console.log(category.image, category.artwork_filename);
         )}
 
         {/* Title + Description block */}
-        <div className="mt-8 sm:mt-10 md:mt-12 flex flex-col items-center text-center">
+        <div className="mt-8 sm:mt-10 md:mt-12 flex flex-col items-center ">
           {loading ? (
             <div className="flex flex-col items-center gap-3">
               <div className="w-48 h-10 bg-gray-700/60 rounded animate-pulse" />
@@ -89,9 +113,29 @@ console.log(category.image, category.artwork_filename);
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">
                 {category?.title}
               </h1>
-              <p className="max-w-2xl mt-3 sm:mt-4 text-sm sm:text-base text-gray-300">
+              <p
+                ref={descRef}
+                className="w-full max-w-2xl mt-3 sm:mt-4 text-sm sm:text-base text-gray-300 line-clamp-3"
+              >
                 {category?.description || FALLBACK_DESC}
               </p>
+
+            {isDescTruncated && (
+              <button
+                onClick={() => setShowDescModal(true)}
+                className="mt-2 text-secondary font-medium hover:underline"
+              >
+                Read more
+              </button>
+            )}
+
+              <DescriptionModal
+              open={showDescModal}
+              onClose={() => setShowDescModal(false)}
+              title={`About ${category?.title}`}
+              description={category?.description || FALLBACK_DESC}
+            />
+
             </>
           )}
         </div>

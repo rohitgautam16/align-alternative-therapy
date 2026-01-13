@@ -70,7 +70,16 @@ export default function AdminSidebar() {
         { to: '/admin/songs', label: 'Songs', icon: Music },
         { to: '/admin/hero-banner', label: 'Hero Banner', icon: FileText },
       ]
-    }
+    },
+    // {
+    //   title: 'Resources',
+    //   icon: Layers,
+    //   isOpen: isContentOpen,
+    //   setOpen: setContentOpen,
+    //   items: [
+    //     { to: '/admin/blogs', label: 'Blogs', icon: FolderOpen },
+    //   ]
+    // }
   ];
 
   const singleItems = [
@@ -145,7 +154,7 @@ export default function AdminSidebar() {
         >
           <Wand2 className="text-white" size={22} />
           {!collapsed && (
-            <span className="font-medium">Personalized Plan Basic</span>
+            <span className="font-medium">Personalized Plan</span>
           )}
         </NavLink>
 

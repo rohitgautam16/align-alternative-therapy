@@ -14,4 +14,4 @@ const ResetPasswordPage = () => {
   );
 };
 
-export default TransitionWrapper(ResetPasswordPage);
+export default ResetPasswordPage;

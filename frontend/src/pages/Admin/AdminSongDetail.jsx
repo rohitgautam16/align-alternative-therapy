@@ -8,100 +8,202 @@ import {
   useListPlaylistsQuery,
   useUploadR2FilesMutation,
   useGetR2PresignUrlQuery,
-  useUpdateSongVisibilityMutation, // ✅ NEW
+  useUpdateSongVisibilityMutation,
+  useAddSongToPlaylistMutation,
+  useRemoveSongFromPlaylistMutation
 } from '../../utils/api';
-import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle, Eye, EyeOff } from 'lucide-react'; // ✅ Added Eye, EyeOff
+import { ArrowLeft, Save, Trash2, Edit3, Upload, CheckCircle, Eye, EyeOff, CheckSquare, Square, Search } from 'lucide-react'; // ✅ Added Eye, EyeOff
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Enhanced placeholder image for better UX
 const DEFAULT_PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjMzc0MTUxIi8+CjxjaXJjbGUgY3g9IjE2MCIgY3k9IjkwIiByPSIyNCIgZmlsbD0iIzZCNzI4MCIvPjxwYXRoIGQ9Ik0xNDQgNzZIMTc2VjEwNEgxNDRWNzZaTTE1MiA4NEgxNjhWOTZIMTUyVjg0WiIgZmlsbD0iIzlDQTNBRiIvPjx0ZXh0IHg9IjE2MCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPg==';
 
-// Custom Image Dropdown Component (Updated with improved placeholders)
-const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find(opt => opt.id === Number(value));
+// // Custom Image Dropdown Component (Updated with improved placeholders)
+// const ImageDropdown = ({ options, value, onChange, placeholder, type }) => {
+//   const [isOpen, setIsOpen] = useState(false);
+//   const selectedOption = options.find(opt => opt.id === Number(value));
 
-  const getPlaceholderForType = (type) => {
-    return type === 'playlist' 
-      ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBNEFGIiBmb250LXNpemU9IjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5QPC90ZXh0Pgo8L3N2Zz4='
-      : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgZmlsbD0iIzlDQTRBRiIvPgo8L3N2Zz4=';
+//   const getPlaceholderForType = (type) => {
+//     return type === 'playlist' 
+//       ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiIGZpbGw9IiM5Q0E0QUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBNEFGIiBmb250LXNpemU9IjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5QPC90ZXh0Pgo8L3N2Zz4='
+//       : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNkI3MjgwIi8+CjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgZmlsbD0iIzlDQTRBRiIvPgo8L3N2Zz4=';
+//   };
+
+//   return (
+//     <div className="relative">
+//       <button
+//         type="button"
+//         onClick={() => setIsOpen(!isOpen)}
+//         className="w-full p-2 bg-gray-700 rounded text-white flex items-center justify-between hover:bg-gray-600"
+//       >
+//         <div className="flex items-center gap-2">
+//           {selectedOption ? (
+//             <>
+//               <img
+//                 src={selectedOption.image || selectedOption.artwork_filename || getPlaceholderForType(type)}
+//                 alt={selectedOption.title}
+//                 className="w-6 h-6 rounded object-cover flex-shrink-0"
+//                 onError={(e) => {
+//                   e.target.src = getPlaceholderForType(type);
+//                 }}
+//               />
+//               <span className="truncate">{selectedOption.title} (#{selectedOption.id})</span>
+//             </>
+//           ) : (
+//             <span className="text-gray-400">{placeholder}</span>
+//           )}
+//         </div>
+//         <svg 
+//           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+//           fill="none" 
+//           stroke="currentColor" 
+//           viewBox="0 0 24 24"
+//         >
+//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+//         </svg>
+//       </button>
+
+//       {isOpen && (
+//         <>
+//           <div 
+//             className="fixed inset-0 z-10" 
+//             onClick={() => setIsOpen(false)}
+//           />
+          
+//           <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-y-auto border border-gray-600">
+//             <div
+//               className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
+//               onClick={() => {
+//                 onChange({ target: { value: '' } });
+//                 setIsOpen(false);
+//               }}
+//             >
+//               <div className="w-6 h-6 bg-gray-500 rounded flex items-center justify-center flex-shrink-0">
+//                 <span className="text-xs text-gray-300">—</span>
+//               </div>
+//               <span className="text-gray-400 truncate">{placeholder}</span>
+//             </div>
+            
+//             {options.map((option) => (
+//               <div
+//                 key={option.id}
+//                 className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
+//                 onClick={() => {
+//                   onChange({ target: { value: option.id } });
+//                   setIsOpen(false);
+//                 }}
+//               >
+//                 <img
+//                   src={option.image || option.artwork_filename || getPlaceholderForType(type)}
+//                   alt={option.title}
+//                   className="w-6 h-6 rounded object-cover flex-shrink-0"
+//                   onError={(e) => {
+//                     e.target.src = getPlaceholderForType(type);
+//                   }}
+//                 />
+//                 <span className="truncate">{option.title} (#{option.id})</span>
+//               </div>
+//             ))}
+//           </div>
+//         </>
+//       )}
+//     </div>
+//   );
+// };
+
+const PlaylistMultiSelect = ({ options, selectedIds, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredOptions = options.filter(option => 
+    option.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleSelection = (id) => {
+    const newSelection = new Set(selectedIds);
+    if (newSelection.has(id)) newSelection.delete(id);
+    else newSelection.add(id);
+    onChange(Array.from(newSelection));
   };
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-2 bg-gray-700 rounded text-white flex items-center justify-between hover:bg-gray-600"
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) setSearchTerm('');
+        }}
+        className="w-full p-2 bg-gray-700 rounded text-white flex items-center justify-between hover:bg-gray-600 border border-gray-600"
       >
-        <div className="flex items-center gap-2">
-          {selectedOption ? (
-            <>
-              <img
-                src={selectedOption.image || selectedOption.artwork_filename || getPlaceholderForType(type)}
-                alt={selectedOption.title}
-                className="w-6 h-6 rounded object-cover flex-shrink-0"
-                onError={(e) => {
-                  e.target.src = getPlaceholderForType(type);
-                }}
-              />
-              <span className="truncate">{selectedOption.title} (#{selectedOption.id})</span>
-            </>
+        <div className="flex items-center gap-2 overflow-hidden">
+          {selectedIds.length === 0 ? (
+            <span className="text-gray-400">Select Playlists...</span>
           ) : (
-            <span className="text-gray-400">{placeholder}</span>
+            <div className="flex flex-wrap gap-1">
+              {selectedIds.map(id => {
+                const opt = options.find(o => o.id === id);
+                return opt ? (
+                  <span key={id} className="text-xs bg-blue-600 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {opt.title}
+                  </span>
+                ) : null;
+              })}
+            </div>
           )}
         </div>
-        <svg 
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
+        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setIsOpen(false)}
-          />
-          
-          <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-y-auto border border-gray-600">
-            <div
-              className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
-              onClick={() => {
-                onChange({ target: { value: '' } });
-                setIsOpen(false);
-              }}
-            >
-              <div className="w-6 h-6 bg-gray-500 rounded flex items-center justify-center flex-shrink-0">
-                <span className="text-xs text-gray-300">—</span>
-              </div>
-              <span className="text-gray-400 truncate">{placeholder}</span>
-            </div>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-20 w-full mt-1 bg-gray-700 rounded shadow-lg max-h-60 overflow-hidden border border-gray-600 flex flex-col">
             
-            {options.map((option) => (
-              <div
-                key={option.id}
-                className="p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
-                onClick={() => {
-                  onChange({ target: { value: option.id } });
-                  setIsOpen(false);
-                }}
-              >
-                <img
-                  src={option.image || option.artwork_filename || getPlaceholderForType(type)}
-                  alt={option.title}
-                  className="w-6 h-6 rounded object-cover flex-shrink-0"
-                  onError={(e) => {
-                    e.target.src = getPlaceholderForType(type);
-                  }}
+            {/* Search Input */}
+            <div className="p-2 border-b border-gray-600 sticky top-0 bg-gray-700 z-10">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search playlists..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full pl-8 pr-2 py-1 bg-gray-800 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                  autoFocus
                 />
-                <span className="truncate">{option.title} (#{option.id})</span>
               </div>
-            ))}
+            </div>
+
+            {/* Options List */}
+            <div className="overflow-y-auto max-h-48">
+              {filteredOptions.length === 0 ? (
+                <div className="p-3 text-gray-400 text-sm text-center">No playlists found</div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = selectedIds.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      className={`p-2 hover:bg-gray-600 cursor-pointer flex items-center gap-3 ${isSelected ? 'bg-gray-600/50' : ''}`}
+                      onClick={() => toggleSelection(option.id)}
+                    >
+                      {isSelected ? <CheckSquare size={18} className="text-blue-400 flex-shrink-0" /> : <Square size={18} className="text-gray-400 flex-shrink-0" />}
+                      <img
+                        src={option.image || option.artwork_filename}
+                        alt={option.title}
+                        className="w-6 h-6 rounded object-cover flex-shrink-0"
+                        onError={(e) => { e.target.src = DEFAULT_PLACEHOLDER; }}
+                      />
+                      <span className="truncate text-sm">{option.title}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </>
       )}
@@ -150,9 +252,14 @@ export default function AdminSongDetail() {
 
   // Local form & UI state
   const [form, setForm] = useState(null);
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [flash, setFlash] = useState({ txt: '', ok: true });
+
+
+  const [addSongToPlaylist] = useAddSongToPlaylistMutation();
+  const [removeSongFromPlaylist] = useRemoveSongFromPlaylistMutation();
 
   const { data: artworkPresign } = useGetR2PresignUrlQuery(
     artworkPresignParams || {
@@ -172,7 +279,6 @@ export default function AdminSongDetail() {
     { skip: !audioPresignParams }
   );
 
-  // ✅ UPDATED - Initialize form with is_free and is_discoverable
   useEffect(() => {
     if (song) {
       setForm({
@@ -183,12 +289,18 @@ export default function AdminSongDetail() {
         artist: song.artist || '',
         tags: song.tags || '',
         category: song.category || '',
-        playlist: song.playlistId || song.playlist_id || song.playlist || '',
+        // playlist: song.playlistId || song.playlist_id || song.playlist || '',
         artwork_filename: song.image || song.artwork_filename || '',
         cdn_url: song.audioUrl || song.cdn_url || '',
         is_free: song.is_free ?? 0,
         is_discoverable: song.is_discoverable ?? 1, // ✅ NEW
       });
+
+      if (song.playlists && Array.isArray(song.playlists)) {
+        setSelectedPlaylistIds(song.playlists.map(p => p.id));
+      } else {
+        setSelectedPlaylistIds([]);
+      }
     }
   }, [song]);
 
@@ -387,6 +499,21 @@ export default function AdminSongDetail() {
           isDiscoverable: Boolean(is_discoverable),
         }).unwrap();
       }
+
+      const originalIds = new Set((song.playlists || []).map(p => p.id));
+      const newIds = new Set(selectedPlaylistIds);
+
+      // Find Added & Removed
+      const toAdd = [...newIds].filter(id => !originalIds.has(id));
+      const toRemove = [...originalIds].filter(id => !newIds.has(id));
+
+      const promises = [
+        // Note argument order: { playlistId: X, songId: Y }
+        ...toAdd.map(pId => addSongToPlaylist({ playlistId: pId, songId: id }).unwrap()),
+        ...toRemove.map(pId => removeSongFromPlaylist({ playlistId: pId, songId: id }).unwrap())
+      ];
+
+      await Promise.all(promises);
       
       setFlash({ txt: 'Song updated.', ok: true });
       setEditMode(false);
@@ -706,10 +833,10 @@ export default function AdminSongDetail() {
             )}
 
             {/* Playlist Dropdown with Images */}
-            <div>
+            {/* <div>
               <label className="block text-gray-400 mb-1">Playlist</label>
               {editMode ? (
-                <ImageDropdown
+                <PlaylistMultiSelect
                   options={playlists}
                   value={form.playlist}
                   onChange={(e) => setForm(f => ({ ...f, playlist: e.target.value }))}
@@ -727,6 +854,29 @@ export default function AdminSongDetail() {
                     }}
                   />
                   <p>{playlists.find(p => p.id === Number(form.playlist))?.title || '—'}</p>
+                </div>
+              )}
+            </div> */}
+
+            {/* PLAYLISTS (Multi-Select) */}
+            <div className="md:col-span-2">
+              <label className="block text-gray-400 mb-1">Playlists</label>
+              {editMode ? (
+                <PlaylistMultiSelect
+                  options={playlists}
+                  selectedIds={selectedPlaylistIds}
+                  onChange={setSelectedPlaylistIds}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {!song.playlists || song.playlists.length === 0 ? <p className="text-gray-500">No playlists assigned</p> : 
+                    song.playlists.map(p => (
+                      <div key={p.id} className="flex items-center gap-2 bg-gray-700 px-3 py-1 rounded-full border border-gray-600">
+                        <img src={p.image || p.artwork_filename} className="w-5 h-5 rounded-full object-cover" onError={(e) => { e.target.src = DEFAULT_PLACEHOLDER; }} />
+                        <span className="text-sm">{p.title}</span>
+                      </div>
+                    ))
+                  }
                 </div>
               )}
             </div>

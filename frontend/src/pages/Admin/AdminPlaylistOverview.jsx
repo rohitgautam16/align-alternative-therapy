@@ -147,11 +147,6 @@ export default function AdminPlaylistsOverview() {
     pageSize: 100,
   });
 
-  // Fetch all songs
-  const {
-    data: allSongsRaw = { data: [] },
-  } = useGetAdminSongsQuery({ page: 1, pageSize: 1000 });
-
   // Create playlist
   const [createPlaylist, { isLoading: creating }] = useCreatePlaylistMutation();
 
@@ -198,29 +193,6 @@ export default function AdminPlaylistsOverview() {
     return Array.isArray(catRaw.data) ? catRaw.data : (Array.isArray(catRaw) ? catRaw : []);
   }, [catRaw]);
 
-  const allSongs = React.useMemo(() => {
-    return Array.isArray(allSongsRaw?.data) ? allSongsRaw.data : (allSongsRaw?.data || []);
-  }, [allSongsRaw]);
-
-  // Create song count mapping
-  const songCounts = React.useMemo(() => {
-    const counts = {};
-    
-    allPlaylists.forEach(playlist => {
-      counts[playlist.id] = 0;
-    });
-    
-    if (Array.isArray(allSongs)) {
-      allSongs.forEach(song => {
-        const playlistId = song.playlist_id || song.playlistId || song.playlist;
-        if (playlistId && counts.hasOwnProperty(playlistId)) {
-          counts[playlistId]++;
-        }
-      });
-    }
-    
-    return counts;
-  }, [allPlaylists, allSongs]);
 
   // ✅ ENHANCED: Filter playlists with discoverability
   const filteredPlaylists = React.useMemo(() => {
@@ -814,7 +786,7 @@ export default function AdminPlaylistsOverview() {
                       onToggle={() => {}}
                       status={{}}
                       hideToggleButton={true}
-                      songCount={songCounts[playlist.id] || 0} 
+                      songCount={playlist.songCount || 0}
                     />
                   </div>
                 );
