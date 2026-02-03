@@ -1388,7 +1388,7 @@ getPbPaymentStatus: build.query({
 
 // blogs
 
-listBlogsAdmin: build.query({
+    listBlogsAdmin: build.query({
       query: () => `/admin/blogs`,
       providesTags: (res) =>
         res?.data?.map(b => ({ type: 'Blogs', id: b.id })) ?? [{ type: 'Blogs', id: 'LIST' }],
@@ -1401,7 +1401,7 @@ listBlogsAdmin: build.query({
 
     createBlogAdmin: build.mutation({
       query: (body) => ({
-        url: `/admin/blogs/new`,
+        url: `/admin/blogs`,
         method: 'POST',
         body,
       }),
@@ -1439,12 +1439,12 @@ listBlogsAdmin: build.query({
     }),
 
     unpublishBlogAdmin: build.mutation({
-  query: (id) => ({
-    url: `/admin/blogs/${id}/unpublish`,
-    method: 'PATCH',
-  }),
-  invalidatesTags: [{ type: 'Blogs', id: 'LIST' }],
-}),
+      query: (id) => ({
+        url: `/admin/blogs/${id}/unpublish`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: [{ type: 'Blogs', id: 'LIST' }],
+    }),
 
     archiveBlogAdmin: build.mutation({
       query: (id) => ({
@@ -1479,7 +1479,42 @@ listBlogsAdmin: build.query({
       ],
     }),
 
+    listBlogCategoriesAdmin: build.query({
+      query: () => `/admin/blog-categories`,
+      providesTags: [{ type: 'BlogCategories', id: 'LIST' }],
+    }),
+
+    createBlogCategoryAdmin: build.mutation({
+      query: (name) => ({
+        url: `/admin/blog-categories`,
+        method: 'POST',
+        body: { name },
+      }),
+      invalidatesTags: [{ type: 'BlogCategories', id: 'LIST' }],
+    }),
+
+    updateBlogCategoryAdmin: build.mutation({
+      query: ({ id, name }) => ({
+        url: `/admin/blog-categories/${id}`,
+        method: 'PATCH',
+        body: { name },
+      }),
+      invalidatesTags: (r,e, {id}) => [
+        { type: 'BlogCategories', id },
+        { type: 'BlogCategories', id: 'LIST' }
+      ],
+    }),
+
+    deleteBlogCategoryAdmin: build.mutation({
+      query: (id) => ({
+        url: `/admin/blog-categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'BlogCategories', id: 'LIST' }],
+    }),
+
     // PUBLIC
+
     listBlogsPublic: build.query({
       query: () => `/blogs`,
     }),
@@ -1487,6 +1522,49 @@ listBlogsAdmin: build.query({
     getBlogBySlug: build.query({
       query: (slug) => `/blogs/${slug}`,
     }),
+
+    listBlogsByCategorySlug: build.query({
+      query: (slug) => `/blogs/category/${slug}`,
+    }),
+
+    // Blog Categories
+    listBlogCategories: build.query({
+      query: () => `/admin/blog-categories`,
+      providesTags: [{ type: 'BlogCategories', id: 'LIST' }],
+    }),
+
+    createBlogCategory: build.mutation({
+      query: (body) => ({
+        url: `/admin/blog-categories`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'BlogCategories', id: 'LIST' }],
+    }),
+
+    updateBlogCategory: build.mutation({
+      query: ({ id, body }) => ({
+        url: `/admin/blog-categories/${id}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (r,e, { id }) => [
+        { type: 'BlogCategories', id },
+        { type: 'BlogCategories', id: 'LIST' },
+      ],
+    }),
+
+    deleteBlogCategory: build.mutation({
+      query: (id) => ({
+        url: `/admin/blog-categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [
+        { type: 'BlogCategories', id: 'LIST' },
+      ],
+    }),
+
+
   }),
 });
 
@@ -1652,8 +1730,18 @@ export const {
   useArchiveBlogAdminMutation,
   useUnarchiveBlogAdminMutation,
   useDeleteBlogAdminMutation,
+  useListBlogCategoriesAdminQuery,
+  useCreateBlogCategoryAdminMutation,
+  useUpdateBlogCategoryAdminMutation,
+  useDeleteBlogCategoryAdminMutation,
+
   useListBlogsPublicQuery,
-  useGetBlogBySlugQuery
+  useGetBlogBySlugQuery,
+  useListBlogsByCategorySlugQuery,
+  useListBlogCategoriesQuery,
+  useCreateBlogCategoryMutation,
+  useUpdateBlogCategoryMutation,
+  useDeleteBlogCategoryMutation,
 
 } = api;
 

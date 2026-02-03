@@ -26,14 +26,21 @@
   background-color: #000;
 }
 
-  h1,
+  /* h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
     font-family: var(--font-heading);
-  }
+  } */
+  
+.blog-content h1 { @apply text-4xl font-bold; }
+.blog-content h2 { @apply text-3xl font-semibold; }
+.blog-content h3 { @apply text-2xl font-semibold; }
+.blog-content h4 { @apply text-xl font-semibold; }
+
+
 }
 
 @layer utilities {

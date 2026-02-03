@@ -31,7 +31,6 @@ export default function AuthGate({ loading }) {
 
   return (
     <>
-      {/* Scoped animation – no global CSS, no Tailwind config */}
       <style>
         {`
           @keyframes spin {
@@ -53,8 +52,8 @@ export default function AuthGate({ loading }) {
         {/* Loader ring */}
         <div
           className="
-            h-[200px] w-[200px]
-            rounded-full
+            h-16 w-16 md:h-32 md:w-32
+            rounded-full 
             motion-safe:[animation:spin_1s_linear_infinite]
           "
           style={{

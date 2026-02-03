@@ -18,7 +18,9 @@ import {
   UserCheck,
   UserCog,
   Layers,
-  Wand2
+  Wand2,
+  NotebookText,
+  Rss
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
 
@@ -71,15 +73,15 @@ export default function AdminSidebar() {
         { to: '/admin/hero-banner', label: 'Hero Banner', icon: FileText },
       ]
     },
-    // {
-    //   title: 'Resources',
-    //   icon: Layers,
-    //   isOpen: isContentOpen,
-    //   setOpen: setContentOpen,
-    //   items: [
-    //     { to: '/admin/blogs', label: 'Blogs', icon: FolderOpen },
-    //   ]
-    // }
+    {
+      title: 'Resources',
+      icon: NotebookText,
+      isOpen: isContentOpen,
+      setOpen: setContentOpen,
+      items: [
+        { to: '/admin/blogs', label: 'Blogs', icon: Rss },
+      ]
+    }
   ];
 
   const singleItems = [

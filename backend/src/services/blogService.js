@@ -1,54 +1,92 @@
 // src/services/blogService.js
 const db = require('../db');
 const slugify = require('../utils/slugify');
+const blogCatService = require('./blogCategoryService');
 
+/* =============================
+   ADMIN LIST
+============================= */
 async function listBlogsAdmin() {
   const [rows] = await db.query(`
-    SELECT id, slug, title, excerpt, cover_image, categories, author, status, archived, published_at, updated_at, created_at
+    SELECT id, slug, title, excerpt, cover_image, author, status,
+           archived, published_at, created_at, updated_at
     FROM blogs
     ORDER BY updated_at DESC
   `);
 
-  // parse categories JSON
-  return rows.map(r => ({
-    ...r,
-    categories: r.categories ? JSON.parse(r.categories) : [],
-  }));
+  for (const r of rows) {
+    r.categories = await blogCatService.getCategoriesForBlog(r.id);
+
+    if (Array.isArray(r.categories)) {
+      r.categories.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
+  return rows;
 }
 
+/* =============================
+   PUBLIC LIST
+============================= */
 async function listBlogsPublic() {
   const [rows] = await db.query(`
-    SELECT id, slug, title, excerpt, cover_image, categories, author, published_at
+    SELECT id, slug, title, excerpt, cover_image, author, published_at
     FROM blogs
     WHERE status='published' AND archived=0
     ORDER BY published_at DESC
   `);
 
-  return rows.map(r => ({
-    ...r,
-    categories: r.categories ? JSON.parse(r.categories) : [],
-  }));
+  for (const r of rows) {
+    r.categories = await blogCatService.getCategoriesForBlog(r.id);
+
+    if (Array.isArray(r.categories)) {
+      r.categories.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
+  return rows;
 }
 
+/* =============================
+   ADMIN GET (single)
+============================= */
 async function getBlogAdmin(id) {
-  const [rows] = await db.query(`SELECT * FROM blogs WHERE id=?`, [id]);
+  const [rows] = await db.query(`SELECT * FROM blogs WHERE id=? LIMIT 1`, [id]);
   const b = rows[0];
   if (!b) return null;
-  b.categories = b.categories ? JSON.parse(b.categories) : [];
+
+  b.categories = await blogCatService.getCategoriesForBlog(id);
+
+  if (Array.isArray(b.categories)) {
+    b.categories.sort((a, b2) => a.name.localeCompare(b2.name));
+  }
+
   return b;
 }
 
+/* =============================
+   PUBLIC GET BY SLUG
+============================= */
 async function getBlogBySlug(slug) {
   const [rows] = await db.query(
-    `SELECT * FROM blogs WHERE slug=? AND archived=0`,
+    `SELECT * FROM blogs WHERE slug=? AND archived=0 LIMIT 1`,
     [slug]
   );
   const b = rows[0];
   if (!b) return null;
-  b.categories = b.categories ? JSON.parse(b.categories) : [];
+
+  b.categories = await blogCatService.getCategoriesForBlog(b.id);
+
+  if (Array.isArray(b.categories)) {
+    b.categories.sort((a, b2) => a.name.localeCompare(b2.name));
+  }
+
   return b;
 }
 
+/* =============================
+   REDIRECT (SEO)
+============================= */
 async function getRedirect(slug) {
   const [rows] = await db.query(
     `SELECT * FROM blog_redirects WHERE old_slug=? ORDER BY id DESC LIMIT 1`,
@@ -57,81 +95,126 @@ async function getRedirect(slug) {
   return rows[0] || null;
 }
 
+/* =============================
+   CREATE (DRAFT ALWAYS)
+============================= */
 async function createBlog(data) {
-  const slug = slugify(data.slug || data.title);
-  const sql = `
-    INSERT INTO blogs (slug, title, excerpt, content, cover_image, categories, author, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')
-  `;
+  const newSlug = slugify(data.slug || data.title);
 
-  const [result] = await db.query(sql, [
-    slug,
-    data.title,
-    data.excerpt,
-    data.content,
-    data.cover_image,
-    JSON.stringify(data.categories || []),
-    data.author,
-  ]);
+  const [result] = await db.query(
+    `
+    INSERT INTO blogs (slug, title, excerpt, content, cover_image,
+                       author, status, archived, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'draft', 0, NOW(), NOW())
+    `,
+    [
+      newSlug,
+      data.title,
+      data.excerpt,
+      data.content,
+      data.cover_image,
+      data.author,
+    ]
+  );
 
-  return result.insertId;
+  const blogId = result.insertId;
+
+  if (Array.isArray(data.category_ids)) {
+    await blogCatService.setBlogCategories(blogId, data.category_ids);
+  }
+
+  return blogId;
 }
 
+/* =============================
+   UPDATE (with redirect)
+============================= */
 async function updateBlog(id, data) {
   const blog = await getBlogAdmin(id);
   if (!blog) throw new Error('Blog not found');
 
-  // slug change → redirect
+  let newSlug = blog.slug;
   if (data.slug && data.slug !== blog.slug) {
-    const newSlug = slugify(data.slug);
+    newSlug = slugify(data.slug);
     await db.query(
-      `INSERT INTO blog_redirects (blog_id, old_slug, new_slug) VALUES (?,?,?)`,
+      `
+      INSERT INTO blog_redirects (blog_id, old_slug, new_slug)
+      VALUES (?,?,?)
+      `,
       [id, blog.slug, newSlug]
     );
-    blog.slug = newSlug;
   }
 
-  const sql = `
+  await db.query(
+    `
     UPDATE blogs
-    SET slug=?, title=?, excerpt=?, content=?, cover_image=?, categories=?, author=?
+    SET slug=?, title=?, excerpt=?, content=?, cover_image=?, author=?,
+        updated_at=NOW()
     WHERE id=?
-  `;
-  await db.query(sql, [
-    blog.slug,
-    data.title,
-    data.excerpt,
-    data.content,
-    data.cover_image,
-    JSON.stringify(data.categories || []),
-    data.author,
-    id,
-  ]);
+    `,
+    [
+      newSlug,
+      data.title,
+      data.excerpt,
+      data.content,
+      data.cover_image,
+      data.author,
+      id,
+    ]
+  );
+
+  if (Array.isArray(data.category_ids)) {
+    await blogCatService.setBlogCategories(id, data.category_ids);
+  }
 
   return true;
 }
 
+/* =============================
+   STATUS ACTIONS
+============================= */
 async function publishBlog(id) {
-  await db.query(`
+  await db.query(
+    `
     UPDATE blogs
-    SET status='published', published_at=NOW()
+    SET status='published', published_at=NOW(), updated_at=NOW()
     WHERE id=?
-  `, [id]);
+    `,
+    [id]
+  );
 }
 
 async function unpublishBlog(id) {
-  await db.query(`
+  await db.query(
+    `
     UPDATE blogs
-    SET status='draft'
+    SET status='draft', updated_at=NOW()
     WHERE id=?
-  `, [id]);
+    `,
+    [id]
+  );
 }
 
 async function archiveBlog(id) {
-  await db.query(`UPDATE blogs SET archived=1 WHERE id=?`, [id]);
+  await db.query(
+    `
+    UPDATE blogs
+    SET archived=1, updated_at=NOW()
+    WHERE id=?
+    `,
+    [id]
+  );
 }
 
 async function unarchiveBlog(id) {
-  await db.query(`UPDATE blogs SET archived=0 WHERE id=?`, [id]);
+  await db.query(
+    `
+    UPDATE blogs
+    SET archived=0, updated_at=NOW()
+    WHERE id=?
+    `,
+    [id]
+  );
 }
 
 async function deleteBlog(id) {

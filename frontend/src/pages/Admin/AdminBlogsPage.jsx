@@ -8,6 +8,7 @@ import {
   useUnarchiveBlogAdminMutation,
   useDeleteBlogAdminMutation,
 } from '../../utils/api';
+import BlogCard from '../../components/admin/BlogCard.jsx';
 
 export default function AdminBlogsPage() {
   const navigate = useNavigate();
@@ -20,19 +21,30 @@ export default function AdminBlogsPage() {
   const [deleteBlog] = useDeleteBlogAdminMutation();
 
   const [tab, setTab] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState(null); // {id, name, slug}
 
+  const blogs = data?.data || [];
+
+  // computed filtered list
   const filtered = useMemo(() => {
-    if (!data?.data) return [];
-
-    return data.data
+    return blogs
       .filter(b => {
+        // status logic
         if (tab === 'draft') return b.status === 'draft' && !b.archived;
         if (tab === 'published') return b.status === 'published' && !b.archived;
         if (tab === 'archived') return b.archived === 1;
+
+        // tab === all
         return true;
       })
+      .filter(b => {
+        // category filter logic
+        if (!categoryFilter) return true;
+        return Array.isArray(b.categories) &&
+          b.categories.some(c => c.id === categoryFilter.id);
+      })
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-  }, [data, tab]);
+  }, [blogs, tab, categoryFilter]);
 
   const handlePublish = async (id) => {
     await publishBlog(id).unwrap();
@@ -68,13 +80,36 @@ export default function AdminBlogsPage() {
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Blog Posts</h1>
-        <button
-          onClick={() => navigate('/admin/blogs/new')}
-          className="bg-secondary text-black px-4 py-2 rounded-full"
-        >
-          New Post
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('/admin/blog-categories')}
+            className="bg-white/10 text-white px-4 py-2 rounded-full"
+          >
+            Manage Categories
+          </button>
+          <button
+            onClick={() => navigate('/admin/blogs/new')}
+            className="bg-secondary text-black px-4 py-2 rounded-full"
+          >
+            New Post
+          </button>
+        </div>
       </div>
+
+      {/* CATEGORY FILTER CHIP */}
+      {categoryFilter && (
+        <div className="flex gap-2 items-center">
+          <span className="text-sm px-3 py-1 rounded-full bg-secondary text-black">
+            {categoryFilter.name}
+          </span>
+          <button
+            className="text-white/70 text-sm"
+            onClick={() => setCategoryFilter(null)}
+          >
+            Clear Filter ✕
+          </button>
+        </div>
+      )}
 
       {/* TABS */}
       <div className="flex gap-2">
@@ -93,105 +128,37 @@ export default function AdminBlogsPage() {
 
       {/* EMPTY */}
       {filtered.length === 0 && (
-        <div className="text-white/60">No blogs in this category.</div>
+        <div className="text-white/60">
+          {categoryFilter
+            ? `No blogs in this category.`
+            : `No blogs found.`}
+        </div>
       )}
 
-      {/* LIST */}
-      <div className="space-y-3">
-        {filtered.map(b => (
-          <div
-            key={b.id}
-            className="border border-white/10 p-4 rounded-lg flex justify-between items-center"
-          >
-            {/* LEFT */}
-            <div className="flex flex-col">
-              <div className="font-medium text-white">
-                {b.title || '(untitled)'}
-              </div>
-              <div className="text-sm text-white/60">
-                {b.slug} • {b.author || '—'}
-              </div>
 
-              <div className="flex gap-2 mt-1">
-                {b.archived ? (
-                  <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-white">
-                    Archived
-                  </span>
-                ) : (
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      b.status === 'published'
-                        ? 'bg-green-600 text-black'
-                        : 'bg-yellow-500 text-black'
-                    }`}
-                  >
-                    {b.status}
-                  </span>
-                )}
-              </div>
-            </div>
+{/* GRID */}
+<div className="
+  grid gap-4
+  grid-cols-1
+  sm:grid-cols-2
+  lg:grid-cols-3
+  xl:grid-cols-4
+">
+  {filtered.map(b => (
+    <BlogCard
+      key={b.id}
+      blog={b}
+      onPublish={handlePublish}
+      onUnpublish={handleUnpublish}
+      onArchive={handleArchive}
+      onUnarchive={handleUnarchive}
+      onDelete={handleDelete}
+      onCategoryClick={setCategoryFilter}
+    />
+  ))}
+</div>
 
-            {/* ACTIONS */}
-            <div className="flex gap-2">
 
-              <button
-                onClick={() => navigate(`/dashboard/admin/blogs/${b.id}`)}
-                className="bg-white/10 text-white px-3 py-1 rounded-full text-sm"
-              >
-                Edit
-              </button>
-
-              {/* Publish / Unpublish */}
-              {!b.archived && b.status === 'draft' && (
-                <button
-                  onClick={() => handlePublish(b.id)}
-                  className="bg-green-600 text-black px-3 py-1 rounded-full text-sm"
-                >
-                  Publish
-                </button>
-              )}
-
-              {!b.archived && b.status === 'published' && (
-                <button
-                  onClick={() => handleUnpublish(b.id)}
-                  className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm"
-                >
-                  Unpublish
-                </button>
-              )}
-
-              {/* Archive / Unarchive */}
-              {!b.archived && (
-                <button
-                  onClick={() => handleArchive(b.id)}
-                  className="bg-white/10 text-white px-3 py-1 rounded-full text-sm"
-                >
-                  Archive
-                </button>
-              )}
-
-              {b.archived && (
-                <button
-                  onClick={() => handleUnarchive(b.id)}
-                  className="bg-secondary text-black px-3 py-1 rounded-full text-sm"
-                >
-                  Unarchive
-                </button>
-              )}
-
-              {/* Delete */}
-              {b.archived && (
-                <button
-                  onClick={() => handleDelete(b.id)}
-                  className="bg-red-600 text-black px-3 py-1 rounded-full text-sm"
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

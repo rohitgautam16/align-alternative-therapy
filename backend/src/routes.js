@@ -705,13 +705,24 @@ const {
 
 router.get('/admin/blogs', requireAuth, requireAdmin, listBlogsAdmin);
 router.get('/admin/blogs/:id', requireAuth, requireAdmin, getBlogAdmin);
-router.post('/admin/blogs/new', requireAuth, requireAdmin, createBlogAdmin);
+router.post('/admin/blogs', requireAuth, requireAdmin, createBlogAdmin);
 router.patch('/admin/blogs/:id', requireAuth, requireAdmin, updateBlogAdmin);
 router.patch('/admin/blogs/:id/publish', requireAuth, requireAdmin, publishBlogAdmin);
 router.patch('/admin/blogs/:id/unpublish', requireAuth, requireAdmin, unpublishBlogAdmin);
 router.patch('/admin/blogs/:id/archive', requireAuth, requireAdmin, archiveBlogAdmin);
 router.patch('/admin/blogs/:id/unarchive', requireAuth, requireAdmin, unarchiveBlogAdmin);
 router.delete('/admin/blogs/:id', requireAuth, requireAdmin, deleteBlogAdmin);
+
+
+const adminBlogCategoryController = require('./controllers/admin Controllers/adminBlogCategoryController');
+
+router.get('/admin/blog-categories', adminBlogCategoryController.listCategoriesAdmin);
+router.post('/admin/blog-categories', adminBlogCategoryController.createCategoryAdmin);
+router.patch('/admin/blog-categories/:id', adminBlogCategoryController.updateCategoryAdmin);
+router.delete('/admin/blog-categories/:id', adminBlogCategoryController.deleteCategoryAdmin);
+router.post('/admin/blog-categories/inline', adminBlogCategoryController.inlineCreateCategoryAdmin);
+router.get('/blogs/category/:slug', adminBlogCategoryController.listBlogsByCategorySlugPublic);
+
 
 
 const {

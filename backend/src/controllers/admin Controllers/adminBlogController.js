@@ -1,30 +1,41 @@
+// src/controllers/admin Controllers/adminBlogController.js
+
 const blogService = require('../../services/blogService');
 const slugify = require('../../utils/slugify');
 
+/* ================================
+   LIST
+================================ */
 exports.listBlogsAdmin = async (req, res) => {
   try {
-    const rows = await blogService.listBlogsAdmin();
-    return res.json({ success: true, data: rows });
+    const data = await blogService.listBlogsAdmin();
+    return res.json({ success: true, data });
   } catch (err) {
     console.error('listBlogsAdmin error:', err);
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
+/* ================================
+   GET ONE
+================================ */
 exports.getBlogAdmin = async (req, res) => {
   try {
     const id = req.params.id;
-    const blog = await blogService.getBlogAdmin(id);
-    if (!blog) {
+    const b = await blogService.getBlogAdmin(id);
+    if (!b) {
       return res.status(404).json({ success: false, error: 'Blog not found' });
     }
-    return res.json({ success: true, data: blog });
+    return res.json({ success: true, data: b });
   } catch (err) {
     console.error('getBlogAdmin error:', err);
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
+/* ================================
+   CREATE (always draft)
+================================ */
 exports.createBlogAdmin = async (req, res) => {
   try {
     const {
@@ -33,11 +44,11 @@ exports.createBlogAdmin = async (req, res) => {
       excerpt,
       content,
       cover_image,
-      category,
       author,
+      category_ids,
     } = req.body;
 
-    if (!title) {
+    if (!title || !title.trim()) {
       return res.status(400).json({ success: false, error: 'Title required' });
     }
 
@@ -47,8 +58,8 @@ exports.createBlogAdmin = async (req, res) => {
       excerpt,
       content,
       cover_image,
-      category,
       author,
+      category_ids: Array.isArray(category_ids) ? category_ids : [],
     });
 
     return res.status(201).json({ success: true, id });
@@ -58,118 +69,106 @@ exports.createBlogAdmin = async (req, res) => {
   }
 };
 
+/* ================================
+   UPDATE (save draft)
+================================ */
 exports.updateBlogAdmin = async (req, res) => {
   try {
     const id = req.params.id;
-
     const {
       title,
       slug,
       excerpt,
       content,
       cover_image,
-      category,
       author,
+      category_ids,
     } = req.body;
 
-    const existing = await blogService.getBlogAdmin(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Blog not found' });
-    }
-
     await blogService.updateBlog(id, {
-      title: title ?? existing.title,
-      slug: slug ?? existing.slug,
-      excerpt: excerpt ?? existing.excerpt,
-      content: content ?? existing.content,
-      cover_image: cover_image ?? existing.cover_image,
-      category: category ?? existing.category,
-      author: author ?? existing.author,
+      title,
+      slug,
+      excerpt,
+      content,
+      cover_image,
+      author,
+      category_ids: Array.isArray(category_ids) ? category_ids : undefined,
     });
 
     return res.json({ success: true });
   } catch (err) {
     console.error('updateBlogAdmin error:', err);
+    if (err.message === 'Blog not found') {
+      return res.status(404).json({ success: false, error: 'Blog not found' });
+    }
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
+/* ================================
+   STATUS OPS
+================================ */
 exports.publishBlogAdmin = async (req, res) => {
   try {
-    const id = req.params.id;
-    const existing = await blogService.getBlogAdmin(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Blog not found' });
-    }
-
-    await blogService.publishBlog(id);
+    await blogService.publishBlog(req.params.id);
     return res.json({ success: true });
   } catch (err) {
     console.error('publishBlogAdmin error:', err);
+    if (err.message === 'Blog not found') {
+      return res.status(404).json({ success: false, error: 'Blog not found' });
+    }
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
 exports.unpublishBlogAdmin = async (req, res) => {
   try {
-    const id = req.params.id;
-    const existing = await blogService.getBlogAdmin(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Blog not found' });
-    }
-
-    await blogService.unpublishBlog(id);
+    await blogService.unpublishBlog(req.params.id);
     return res.json({ success: true });
   } catch (err) {
     console.error('unpublishBlogAdmin error:', err);
+    if (err.message === 'Blog not found') {
+      return res.status(404).json({ success: false, error: 'Blog not found' });
+    }
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
 exports.archiveBlogAdmin = async (req, res) => {
   try {
-    const id = req.params.id;
-    const existing = await blogService.getBlogAdmin(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Blog not found' });
-    }
-
-    await blogService.archiveBlog(id);
+    await blogService.archiveBlog(req.params.id);
     return res.json({ success: true });
   } catch (err) {
     console.error('archiveBlogAdmin error:', err);
+    if (err.message === 'Blog not found') {
+      return res.status(404).json({ success: false, error: 'Blog not found' });
+    }
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
 exports.unarchiveBlogAdmin = async (req, res) => {
   try {
-    const id = req.params.id;
-    const existing = await blogService.getBlogAdmin(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Blog not found' });
-    }
-
-    await blogService.unarchiveBlog(id);
+    await blogService.unarchiveBlog(req.params.id);
     return res.json({ success: true });
   } catch (err) {
     console.error('unarchiveBlogAdmin error:', err);
+    if (err.message === 'Blog not found') {
+      return res.status(404).json({ success: false, error: 'Blog not found' });
+    }
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
 exports.deleteBlogAdmin = async (req, res) => {
   try {
-    const id = req.params.id;
-    const existing = await blogService.getBlogAdmin(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Blog not found' });
-    }
-
-    await blogService.deleteBlog(id);
+    await blogService.deleteBlog(req.params.id);
     return res.json({ success: true });
   } catch (err) {
     console.error('deleteBlogAdmin error:', err);
+    if (err.message === 'Blog not found') {
+      return res.status(404).json({ success: false, error: 'Blog not found' });
+    }
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 };

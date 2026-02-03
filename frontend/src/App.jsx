@@ -10,6 +10,7 @@ import About from './pages/About'
 import ContactPage from './pages/ContactPage'
 import BlogsPage from './pages/BlogsPage'
 import BlogPostPage from './pages/BlogPostPage'
+import BlogCategoryPage from './pages/BlogCategoryPage'
 import DashboardLayout from './components/dashboard/DashboardLayout'
 import DashboardHome from './pages/DashboardHome'
 import MyPlaylists from './pages/MyPlaylists'
@@ -55,6 +56,7 @@ import ResetPassword from './pages/ResetPassword';
 import FAQPage from './pages/FaqPage';
 import AdminBlogsPage from './pages/Admin/AdminBlogsPage';
 import AdminBlogEditor from './pages/Admin/AdminBlogEditor';
+import AdminBlogCategoryManager from './pages/Admin/AdminBlogCategoryManager';
 
 
 
@@ -137,6 +139,7 @@ export default function App() {
           <Route path="personalize" element={<PersonalizeSection />} />
           <Route path="blog" element={<BlogsPage />} />
           <Route path="blog/:slug" element={<BlogPostPage />} />
+          <Route path="blog/category/:slug" element={<BlogCategoryPage />} />
           <Route path="faqs" element={<FAQPage />} />
         </Route>
 
@@ -172,6 +175,7 @@ export default function App() {
          <Route path="personalize-users" element={<UserRecommendationsList />} />
          <Route path="blogs" element={<AdminBlogsPage />} />
          <Route path="blogs/:id" element={<AdminBlogEditor />} />
+         <Route path="blog-categories" element={<AdminBlogCategoryManager />} />
        </Route>
 
         {/* Fallback */}
