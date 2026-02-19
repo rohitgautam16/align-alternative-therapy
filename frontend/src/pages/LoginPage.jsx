@@ -8,7 +8,6 @@ const LoginPage = () => {
 
   return (
     <div className="login-page">
-      <Header />
       <Login />
     </div>
   );

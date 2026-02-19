@@ -6,6 +6,8 @@ import CarouselSection from '../components/dashboard/CarouselSection';
 import CategorySection from '../components/dashboard/CategorySection';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
 import SongCard     from '../components/custom-ui/SongCard';
+import MediaStripList from '../components/custom-ui/MediaStripList';
+import VerticalStripCarousel from '../components/custom-ui/VerticalStripCarousel';
 import PersonalizeBanner from '../components/dashboard/Personalized Service/PersonalizeBanner';
 import { useSubscription } from '../context/SubscriptionContext';
 import PersonalizeCTA from '../components/dashboard/Personalized Service/PersonalizeCTA';
@@ -70,10 +72,7 @@ const DashboardHome = () => {
 
       {/* <PersonalizeBanner /> */}
 
-      
-     <PBMyRecommendations />
-
-      {!isRecommendationOnly && (
+      {/* {!isRecommendationOnly && (
       <CarouselSection
         title="New Releases"
         items={combinedNew}
@@ -83,7 +82,37 @@ const DashboardHome = () => {
             : <SongCard     key={`s-${data.id}`}  song={data}      />
         }
       />
+      )} */}
+
+      {!isRecommendationOnly && (
+        <>
+          {/* 📱 Mobile Vertical Carousel */}
+          <div className="lg:hidden">
+            <VerticalStripCarousel
+              title="New Releases"
+              items={combinedNew}
+            />
+          </div>
+
+          {/* 🖥 Desktop Existing Horizontal Carousel */}
+          <div className="hidden lg:block">
+            <CarouselSection
+              title="New Releases"
+              items={combinedNew}
+              renderItem={({ type, data }) =>
+                type === 'playlist'
+                  ? <PlaylistCard key={`pl-${data.id}`} playlist={data} />
+                  : <SongCard     key={`s-${data.id}`}  song={data}      />
+              }
+            />
+          </div>
+        </>
       )}
+
+
+      <PBMyRecommendations />
+
+
 
       {/* Recently Played */}
       {/* {!isRecommendationOnly && !rpL && !rpE && recentItems.length > 0 && (

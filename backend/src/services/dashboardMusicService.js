@@ -302,40 +302,45 @@ async function searchDashboardEverything(term) {
 async function fetchDashboardNewReleases({ playlistLimit = 12, songLimit = 8 } = {}) {
   // fetch latest playlists
   const [plRows] = await db.query(
-    `SELECT
-       id,
-       title,
-       slug,
-       paid,
-       artwork_filename AS image,
-       category_id      AS categoryId,
-       created          AS createdAt
-     FROM playlists
-     WHERE is_discoverable = 1
-     ORDER BY created DESC
-     LIMIT ?`,
-    [playlistLimit]
-  );
+  `SELECT
+     p.id,
+     p.title,
+     p.slug,
+     p.paid,
+     p.artwork_filename AS image,
+     p.category_id      AS categoryId,
+     c.title             AS category_name,
+     p.created          AS createdAt
+   FROM playlists p
+   LEFT JOIN categories c ON p.category_id = c.id
+   WHERE p.is_discoverable = 1
+   ORDER BY p.created DESC
+   LIMIT ?`,
+  [playlistLimit]
+);
 
   // fetch latest songs
   const [songRows] = await db.query(
-    `SELECT
-       id,
-       name,
-       title,
-       slug,
-       artist,
-       artwork_filename AS image,
-       cdn_url         AS audioUrl,
-       playlist        AS playlistId,
-       created         AS createdAt,
-       is_free
-     FROM audio_metadata
-     WHERE is_discoverable = 1
-     ORDER BY created DESC
-     LIMIT ?`,
-    [songLimit]
-  );
+  `SELECT
+     s.id,
+     s.name,
+     s.title,
+     s.slug,
+     s.artist,
+     s.artwork_filename AS image,
+     s.cdn_url         AS audioUrl,
+     s.playlist        AS playlistId,
+     p.title           AS playlistTitle,
+     s.created         AS createdAt,
+     s.is_free
+   FROM audio_metadata s
+   LEFT JOIN playlists p ON s.playlist = p.id
+   WHERE s.is_discoverable = 1
+   ORDER BY s.created DESC
+   LIMIT ?`,
+  [songLimit]
+);
+
 
   const songsWithFlags = attachAccessFlags(songRows, 'song');
 

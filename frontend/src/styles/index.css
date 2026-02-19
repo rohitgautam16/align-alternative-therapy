@@ -195,3 +195,15 @@ transform-origin: top;
      0 2px 0 white,
      0 -2px 0 white;
 }
+
+.slick-dots {
+    display: flex !important;
+    width: 100%;
+    justify-content: center !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+}
+
+.slick-dots li {
+    margin: 0 !important;
+}

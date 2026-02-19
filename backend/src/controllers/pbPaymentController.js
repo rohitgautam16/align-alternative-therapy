@@ -154,21 +154,20 @@ exports.getRecommendationPaymentStatus = async function (req, res) {
 
     let status = rec.payment_status;
 
-    // ⚡️ Instant Stripe fallback check if not yet paid
+
     if (status !== 'paid' && rec.payment_link_url) {
       try {
-        // Extract the payment link ID from the URL
+
         const match = rec.payment_link_url.match(/links\/(pl_[A-Za-z0-9]+)/);
         if (match) {
           const linkId = match[1];
           const link = await stripe.paymentLinks.retrieve(linkId);
 
-          // Check latest payment if available
+
           if (link.active === false || link.after_completion) {
-            // optionally confirm via PaymentIntent if you store it
+            
           }
 
-          // Alternative: query PaymentIntents filtered by metadata (recommended)
           const payments = await stripe.paymentIntents.list({
             limit: 1,
             metadata: { recommendation_id: String(rec.id) },
@@ -177,7 +176,6 @@ exports.getRecommendationPaymentStatus = async function (req, res) {
           if (intent && intent.status === 'succeeded') {
             status = 'paid';
 
-            // update DB instantly to reflect the real payment state
             await db.query(
               `UPDATE pb_recommendations
                  SET payment_status='paid', paid_at=NOW()

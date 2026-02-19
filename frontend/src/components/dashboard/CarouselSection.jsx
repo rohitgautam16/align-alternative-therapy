@@ -114,6 +114,41 @@ export default function CarouselSection({
         <FiChevronRight size={34} />
       </button>
 
+      {/* Mobile Navigation Arrows */}
+      <div className="flex md:hidden absolute top-2 right-4 space-x-2 z-50">
+        <button
+          onClick={() => scroll('left')}
+          disabled={!canScrollLeft}
+          className={`
+            p-2 rounded-full border border-white
+            text-white
+            transition-all duration-1000 ease-out
+            active:scale-95
+            active:bg-secondary active:text-black active:border-secondary
+            ${canScrollLeft ? 'opacity-100' : 'opacity-40 cursor-not-allowed'}
+          `}
+        >
+          <FiChevronLeft size={16} />
+        </button>
+
+        <button
+          onClick={() => scroll('right')}
+          disabled={!canScrollRight}
+          className={`
+            p-2 rounded-full border border-white
+            text-white
+            transition-all duration-200 ease-out
+            active:scale-95
+            active:bg-secondary active:text-black active:border-secondary
+            ${canScrollRight ? 'opacity-100' : 'opacity-40 cursor-not-allowed'}
+          `}
+        >
+          <FiChevronRight size={16} />
+        </button>
+      </div>
+
+
+
       <div
         ref={carouselRef}
         className="flex space-x-4 overflow-x-auto pb-2 snap-x snap-mandatory custom-scrollbar"
