@@ -11,7 +11,7 @@ import {
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
-const FULL = '100vh';
+const FULL = '100svh';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7'; // <-- fallback
 
 function fmt(sec = 0) {
@@ -226,7 +226,7 @@ useEffect(() => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            className="pointer-events-auto text-white h-svh pb-10 pt-5"
+            className="pointer-events-auto text-white h-svh pb-15 pt-5"
             style={{ height: '100svh' }}
           >
             {/* Background with fallback */}

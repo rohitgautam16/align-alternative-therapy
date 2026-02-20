@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,9 +7,35 @@ const FALLBACK_IMAGE =
 
 const ITEMS_PER_PAGE = 3;
 
-export default function VerticalStripCarousel({ title, items = [] }) {
+/* ---------------- Skeleton ---------------- */
+
+function StripSkeleton() {
+  return (
+    <div className="flex items-center gap-4 p-2 animate-pulse">
+      <div className="w-14 h-14 bg-white/10 rounded-md shrink-0" />
+      <div className="flex-1">
+        <div className="h-4 w-40 bg-white/20 rounded mb-2" />
+        <div className="h-3 w-28 bg-white/15 rounded mb-1" />
+        <div className="h-3 w-20 bg-white/10 rounded" />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Component ---------------- */
+
+export default function VerticalStripCarousel({
+  title,
+  items = [],
+  isLoading = false
+}) {
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
+
+  /* Reset page when items change (important on tag change) */
+  useEffect(() => {
+    setPage(0);
+  }, [items]);
 
   const pages = useMemo(() => {
     const chunks = [];
@@ -33,20 +59,32 @@ export default function VerticalStripCarousel({ title, items = [] }) {
     }
   };
 
+  /* -------- Loading State -------- */
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 px-6 py-2">
+        {Array.from({ length: ITEMS_PER_PAGE }).map((_, idx) => (
+          <StripSkeleton key={idx} />
+        ))}
+      </div>
+    );
+  }
+
+  /* -------- Normal Render -------- */
+
   return (
     <div className="space-y-4 px-6 py-2">
-
       {/* Header */}
       <div className="flex items-center justify-between relative">
         <h2 className="text-2xl font-semibold">{title}</h2>
 
-        <div className="flex top-2 absolute -right-3.5 space-x-2 z-50 gap-2">
+        <div className="flex top-2 absolute -right-1 space-x-2 z-50">
           <button
             onClick={() => scroll('left')}
             disabled={!canScrollLeft}
             className={`
-              p-2 rounded-full border border-white
-              text-white
+              p-2 rounded-full border border-white text-white
               transition-all duration-300 ease-out
               active:scale-95
               active:bg-secondary active:text-black active:border-secondary
@@ -60,8 +98,7 @@ export default function VerticalStripCarousel({ title, items = [] }) {
             onClick={() => scroll('right')}
             disabled={!canScrollRight}
             className={`
-              p-2 rounded-full border border-white
-              text-white
+              p-2 rounded-full border border-white text-white
               transition-all duration-300 ease-out
               active:scale-95
               active:bg-secondary active:text-black active:border-secondary
@@ -99,11 +136,11 @@ export default function VerticalStripCarousel({ title, items = [] }) {
                 let subtitle = '';
 
                 if (type === 'song') {
-                const playlistName = data.playlistTitle || data.playlist_name;
-                subtitle = playlistName ? `from ${playlistName}` : '';
+                  const playlistName = data.playlistTitle || data.playlist_name;
+                  subtitle = playlistName ? `from ${playlistName}` : '';
                 } else {
-                const categoryName = data.category_name;
-                subtitle = categoryName ? `from ${categoryName}` : '';
+                  const categoryName = data.category_name;
+                  subtitle = categoryName ? `from ${categoryName}` : '';
                 }
 
                 const link =
@@ -134,9 +171,9 @@ export default function VerticalStripCarousel({ title, items = [] }) {
 
                       {subtitle && (
                         <p className="text-xs text-gray-400 truncate">
-                            {subtitle}
+                          {subtitle}
                         </p>
-                    )}
+                      )}
                     </div>
                   </div>
                 );

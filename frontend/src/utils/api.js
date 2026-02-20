@@ -798,7 +798,10 @@ getPlaylistSongs: build.query({
     }),
 
     getDashboardAllPlaylists: build.query({
-      query: () => `dashboard/playlists`,          
+      query: ({ tag } = {}) => ({
+        url: 'dashboard/playlists',
+        params: tag ? { tag } : undefined
+      }),
       providesTags: ['Playlists'],
     }),
 
@@ -833,19 +836,32 @@ getPlaylistSongs: build.query({
       /**
        * @arg {{ playlistLimit?: number, songLimit?: number }}
        */
-      query: ({ playlistLimit = 12, songLimit = 8 } = {}) => ({
-        url: `dashboard/playlists/new-releases`,
-        params: { playlistLimit, songLimit }
+      query: ({ playlistLimit = 12, songLimit = 8, tag } = {}) => ({
+        url: 'dashboard/playlists/new-releases',
+        params: {
+          playlistLimit,
+          songLimit,
+          ...(tag && { tag })
+        }
       }),
-      // no tags needed unless you invalidate
     }),
 
     getAllSongs: build.query({
-      query: () => `dashboard/songs`,
+      query: ({ tag } = {}) => ({
+        url: 'dashboard/songs',
+        params: tag ? { tag } : undefined
+      }),
       providesTags: (result) =>
         result
           ? [...result.map(({ id }) => ({ type: 'Songs', id })), { type: 'Songs', id: 'LIST' }]
           : [{ type: 'Songs', id: 'LIST' }],
+    }),
+
+    getDashboardTags: build.query({
+      query: (limit = 20) => ({
+        url: `dashboard/tags?limit=${limit}`,
+        method: 'GET'
+      })
     }),
 
     getUserPlaylists: build.query({
@@ -1643,6 +1659,7 @@ export const {
   useGetSongBySlugQuery,
   useGetDashboardNewReleasesQuery,
   useGetAllSongsQuery,
+  useGetDashboardTagsQuery,
   useCreateUserPlaylistMutation,
   useGetUserPlaylistsQuery,
   useGetUserPlaylistBySlugQuery,

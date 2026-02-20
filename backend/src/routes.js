@@ -586,7 +586,8 @@ const {
   getSongBySlugController,
   searchDashboardController,
   getDashboardNewReleasesController,
-  getDashboardAllSongsController
+  getDashboardAllSongsController,
+  getDashboardTags
 } = require('./controllers/dashboardMusicController');
 
 router.get('/categories',    getDashboardCategoriesController);
@@ -599,6 +600,7 @@ router.get('/songs/slug/:slug', getSongBySlugController);
 router.get('/search',        searchDashboardController);
 router.get('/dashboard/playlists/new-releases', getDashboardNewReleasesController);
 router.get('/dashboard/songs', requireAuth, getDashboardAllSongsController);
+router.get('/dashboard/tags', requireAuth, getDashboardTags);
 
 
 // --- Basic Personalize Service: public request form ---

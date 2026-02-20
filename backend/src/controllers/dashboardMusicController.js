@@ -10,7 +10,8 @@ const {
   fetchDashboardSongBySlug,
   searchDashboardEverything,
   fetchDashboardNewReleases,
-  fetchDashboardAllSongs
+  fetchDashboardAllSongs,
+  fetchDashboardTags
 } = require('../services/dashboardMusicService');
 
 async function getDashboardCategoriesController(req, res, next) {
@@ -40,7 +41,10 @@ async function getDashboardPlaylistsByCategoryController(req, res, next) {
 
 async function getDashboardAllPlaylistsController(req, res, next) {
   try {
-    const playlists = await fetchDashboardAllPlaylists();
+    const { tag } = req.query;
+    const playlists = await fetchDashboardAllPlaylists({
+      tagSlug: tag
+    });
     res.json(playlists);
   } catch (err) {
     console.error('getDashboardAllPlaylistsController error:', err);
@@ -105,10 +109,11 @@ async function searchDashboardController(req, res, next) {
 
 async function getDashboardNewReleasesController(req, res, next) {
   try {
-    const { playlistLimit, songLimit } = req.query;
+    const { playlistLimit, songLimit, tag } = req.query;
     const data = await fetchDashboardNewReleases({
       playlistLimit: parseInt(playlistLimit, 10) || 12,
       songLimit:     parseInt(songLimit, 10)     || 8,
+      tagSlug: tag
     });
     res.json(data);
   } catch (err) {
@@ -119,13 +124,34 @@ async function getDashboardNewReleasesController(req, res, next) {
 
 async function getDashboardAllSongsController(_req, res, next) {
   try {
-    const songs = await fetchDashboardAllSongs();
+    const { tag } = req.query;
+
+    const songs = await fetchDashboardAllSongs({
+      tagSlug: tag
+    });
+
     res.json(songs);
   } catch (err) {
     console.error('getDashboardAllSongsController error:', err);
     next(err);
   }
 }
+
+async function getDashboardTags(req, res) {
+  try {
+    const { limit } = req.query;
+
+    const tags = await fetchDashboardTags({
+      limit: limit ? Number(limit) : 20
+    });
+
+    res.json(tags);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch tags' });
+  }
+}
+
 
 
 module.exports = {
@@ -138,5 +164,6 @@ module.exports = {
   getSongBySlugController,
   searchDashboardController,
   getDashboardNewReleasesController,
-  getDashboardAllSongsController
+  getDashboardAllSongsController,
+  getDashboardTags
 };

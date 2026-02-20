@@ -64,7 +64,7 @@ export default function CategorySection() {
 
     const skeletons = Array.from({ length: slidesVisible });
     return (
-      <section className="space-y-4 p-6">
+      <section className="space-y-4 p-4">
         {/* Dots placeholder */}
         <div className="flex justify-center gap-2 mb-2">
           <span className="h-2 w-2 rounded-full bg-white/15 animate-pulse" />
@@ -106,7 +106,7 @@ export default function CategorySection() {
   };
 
   return (
-    <section className="space-y-4 p-6">
+    <section className="space-y-4 px-2 py-4 md:px-6 md:py-6">
       <Slider
         ref={sliderRef}
         {...settings}

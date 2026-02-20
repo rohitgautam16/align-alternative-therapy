@@ -41,34 +41,48 @@ async function fetchDashboardPlaylistsByCategory(categoryId) {
 }
 
 /** GET /playlists */
-/** GET /playlists */
-async function fetchDashboardAllPlaylists() {
-  // 1. Fetch all discoverable playlists
-  const [rows] = await db.query(
-    `SELECT
-       p.id,
-       p.title            AS name,
-       p.slug,
-       p.description,
-       p.tags,
-       p.paid,
-       p.artwork_filename AS image,
-       p.created          AS createdAt
-     FROM playlists p
-     WHERE p.is_discoverable = 1`
-  );
+async function fetchDashboardAllPlaylists({ tagSlug } = {}) {
+  let sql = `
+    SELECT
+      p.id,
+      p.title            AS name,
+      p.slug,
+      p.description,
+      p.paid,
+      p.artwork_filename AS image,
+      p.created          AS createdAt
+    FROM playlists p
+    WHERE p.is_discoverable = 1
+  `;
 
-  // 2. Fetch all category connections
+  const params = [];
+
+  if (tagSlug) {
+    sql += `
+      AND p.id IN (
+        SELECT pt.playlist_id
+        FROM playlist_tags pt
+        INNER JOIN tags t ON t.id = pt.tag_id
+        WHERE t.slug = ?
+      )
+    `;
+    params.push(tagSlug);
+    console.log("TAG RECEIVED:", tagSlug);
+  }
+
+  sql += ` ORDER BY p.created DESC`;
+
+  const [rows] = await db.query(sql, params);
+
+  // KEEP EXISTING CATEGORY LOGIC INTACT
   const [links] = await db.query(
     `SELECT playlist_id, category_id 
      FROM category_playlists`
   );
 
-  // 3. Attach category IDs to playlists
   const playlistMap = new Map();
   rows.forEach(p => {
-    p.categoryIds = []; // Initialize array
-    // p.categoryId = null; // Optional: keep for legacy support if needed
+    p.categoryIds = [];
     playlistMap.set(p.id, p);
   });
 
@@ -76,8 +90,6 @@ async function fetchDashboardAllPlaylists() {
     const p = playlistMap.get(link.playlist_id);
     if (p) {
       p.categoryIds.push(link.category_id);
-      // Optional: Set legacy field to the first found category for backward compatibility
-      // if (!p.categoryId) p.categoryId = link.category_id;
     }
   });
 
@@ -299,52 +311,88 @@ async function searchDashboardEverything(term) {
 }
 
 
-async function fetchDashboardNewReleases({ playlistLimit = 12, songLimit = 8 } = {}) {
-  // fetch latest playlists
-  const [plRows] = await db.query(
-  `SELECT
-     p.id,
-     p.title,
-     p.slug,
-     p.paid,
-     p.artwork_filename AS image,
-     p.category_id      AS categoryId,
-     c.title             AS category_name,
-     p.created          AS createdAt
-   FROM playlists p
-   LEFT JOIN categories c ON p.category_id = c.id
-   WHERE p.is_discoverable = 1
-   ORDER BY p.created DESC
-   LIMIT ?`,
-  [playlistLimit]
-);
+async function fetchDashboardNewReleases(
+  { playlistLimit = 12, songLimit = 8, tagSlug } = {}
+) {
+  const playlistParams = [];
+  const songParams = [];
 
-  // fetch latest songs
-  const [songRows] = await db.query(
-  `SELECT
-     s.id,
-     s.name,
-     s.title,
-     s.slug,
-     s.artist,
-     s.artwork_filename AS image,
-     s.cdn_url         AS audioUrl,
-     s.playlist        AS playlistId,
-     p.title           AS playlistTitle,
-     s.created         AS createdAt,
-     s.is_free
-   FROM audio_metadata s
-   LEFT JOIN playlists p ON s.playlist = p.id
-   WHERE s.is_discoverable = 1
-   ORDER BY s.created DESC
-   LIMIT ?`,
-  [songLimit]
-);
+  let playlistSql = `
+    SELECT
+      p.id,
+      p.title,
+      p.slug,
+      p.paid,
+      p.artwork_filename AS image,
+      p.category_id      AS categoryId,
+      c.title            AS category_name,
+      p.created          AS createdAt
+    FROM playlists p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_discoverable = 1
+  `;
 
+  if (tagSlug) {
+    playlistSql += `
+      AND p.id IN (
+        SELECT pt.playlist_id
+        FROM playlist_tags pt
+        INNER JOIN tags t ON t.id = pt.tag_id
+        WHERE t.slug = ?
+      )
+    `;
+    playlistParams.push(tagSlug);
+  }
+
+  playlistSql += `
+    ORDER BY p.created DESC
+    LIMIT ?
+  `;
+  playlistParams.push(playlistLimit);
+
+  const [plRows] = await db.query(playlistSql, playlistParams);
+
+  // ---- SONGS ----
+
+  let songSql = `
+    SELECT
+      s.id,
+      s.name,
+      s.title,
+      s.slug,
+      s.artist,
+      s.artwork_filename AS image,
+      s.cdn_url          AS audioUrl,
+      s.playlist         AS playlistId,
+      p.title            AS playlistTitle,
+      s.created          AS createdAt,
+      s.is_free
+    FROM audio_metadata s
+    LEFT JOIN playlists p ON s.playlist = p.id
+    WHERE s.is_discoverable = 1
+  `;
+
+  if (tagSlug) {
+    songSql += `
+      AND s.id IN (
+        SELECT st.song_id
+        FROM song_tags st
+        INNER JOIN tags t ON t.id = st.tag_id
+        WHERE t.slug = ?
+      )
+    `;
+    songParams.push(tagSlug);
+  }
+
+  songSql += `
+    ORDER BY s.created DESC
+    LIMIT ?
+  `;
+  songParams.push(songLimit);
+
+  const [songRows] = await db.query(songSql, songParams);
 
   const songsWithFlags = attachAccessFlags(songRows, 'song');
-
-  console.log(songsWithFlags.map(song => ({ id: song.id, is_free: song.is_free })));
 
   return {
     playlists: attachAccessFlags(plRows, 'playlist'),
@@ -352,29 +400,85 @@ async function fetchDashboardNewReleases({ playlistLimit = 12, songLimit = 8 } =
   };
 }
 
-async function fetchDashboardAllSongs() {
-  const [rows] = await db.query(
-    `SELECT
-       id,
-       name,
-       title,
-       slug,
-       description,
-       artist,
-       tags,
-       category       AS categoryId,
-       playlist       AS playlistId,
-       artwork_filename AS image,
-       cdn_url         AS audioUrl,
-       created         AS createdAt,
-       is_free
-     FROM audio_metadata
-     WHERE is_discoverable = 1
-     ORDER BY createdAt DESC`
-  );
+async function fetchDashboardAllSongs({ tagSlug } = {}) {
+  let sql = `
+    SELECT
+      s.id,
+      s.name,
+      s.title,
+      s.slug,
+      s.description,
+      s.artist,
+      s.category       AS categoryId,
+      s.playlist       AS playlistId,
+      s.artwork_filename AS image,
+      s.cdn_url         AS audioUrl,
+      s.created         AS createdAt,
+      s.is_free
+    FROM audio_metadata s
+    WHERE s.is_discoverable = 1
+  `;
+
+  const params = [];
+
+  if (tagSlug) {
+    sql += `
+      AND s.id IN (
+        SELECT st.song_id
+        FROM song_tags st
+        INNER JOIN tags t ON t.id = st.tag_id
+        WHERE t.slug = ?
+      )
+    `;
+    params.push(tagSlug);
+  }
+
+  sql += ` ORDER BY s.created DESC`;
+
+  const [rows] = await db.query(sql, params);
+
   return attachAccessFlags(rows, 'song');
 }
 
+async function fetchDashboardTags({ limit = 20 } = {}) {
+  const sql = `
+    SELECT
+      t.id,
+      t.name,
+      t.slug,
+      (
+        COUNT(DISTINCT pt.playlist_id) +
+        COUNT(DISTINCT st.song_id)
+      ) AS usageCount
+    FROM tags t
+
+    LEFT JOIN playlist_tags pt
+      ON pt.tag_id = t.id
+    LEFT JOIN playlists p
+      ON p.id = pt.playlist_id
+      AND p.is_discoverable = 1
+
+    LEFT JOIN song_tags st
+      ON st.tag_id = t.id
+    LEFT JOIN audio_metadata s
+      ON s.id = st.song_id
+      AND s.is_discoverable = 1
+
+    GROUP BY t.id
+    HAVING usageCount > 0
+    ORDER BY usageCount DESC, t.name ASC
+    LIMIT ?
+  `;
+
+  const [rows] = await db.query(sql, [limit]);
+
+  return rows.map(tag => ({
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    usageCount: Number(tag.usageCount)
+  }));
+}
 
 module.exports = {
   fetchDashboardCategories,
@@ -386,5 +490,6 @@ module.exports = {
   fetchDashboardSongBySlug,
   searchDashboardEverything,
   fetchDashboardNewReleases,
-  fetchDashboardAllSongs
+  fetchDashboardAllSongs,
+  fetchDashboardTags
 };

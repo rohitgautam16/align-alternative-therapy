@@ -1,12 +1,11 @@
 // src/pages/DashboardHome.jsx
 import React from 'react';
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import CarouselSection from '../components/dashboard/CarouselSection';
 import CategorySection from '../components/dashboard/CategorySection';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
 import SongCard     from '../components/custom-ui/SongCard';
-import MediaStripList from '../components/custom-ui/MediaStripList';
 import VerticalStripCarousel from '../components/custom-ui/VerticalStripCarousel';
 import PersonalizeBanner from '../components/dashboard/Personalized Service/PersonalizeBanner';
 import { useSubscription } from '../context/SubscriptionContext';
@@ -18,7 +17,8 @@ import {
   useGetDashboardFreePlaylistsQuery,
   useGetDashboardNewReleasesQuery,
   useGetRecentPlaysQuery,
-  useGetRecentPlaylistsQuery
+  useGetRecentPlaylistsQuery,
+  useGetDashboardTagsQuery
 } from '../utils/api';
 
 const DashboardHome = () => {
@@ -36,10 +36,24 @@ const DashboardHome = () => {
     }
   }, [navigate])
 
+  const [selectedTag, setSelectedTag] = useState(null);
+  const { data: tags = [] } = useGetDashboardTagsQuery();
 
 
-  const { data: nrRaw = {}, isLoading: nrL, isError: nrE } =
-    useGetDashboardNewReleasesQuery({ playlistLimit: 12, songLimit: 8 });
+  const {
+    data: nrRaw = {},
+    isLoading: nrL,
+    isFetching: nrF,
+    isError: nrE
+  } = useGetDashboardNewReleasesQuery({
+    playlistLimit: 12,
+    songLimit: 8,
+    tag: selectedTag
+  });
+  const isNewReleasesLoading = nrL || nrF;
+  const isInitialLoading = nrL || nrF;
+  const isRefetching = !nrL && nrF; 
+  const isFiltering = selectedTag && nrF;
   const newPlaylists = Array.isArray(nrRaw.playlists) ? nrRaw.playlists : [];
   const newSongs     = Array.isArray(nrRaw.songs)     ? nrRaw.songs     : [];
   const combinedNew  = [
@@ -66,9 +80,46 @@ const DashboardHome = () => {
   }));
 
 
+
   return (
-      <div className="space-y-1 sm:space-y-6 rounded-2xl">
+      <div className="space-y-1 sm:space-y-6 rounded-2xl overflow-hidden">
       <CategorySection />
+
+      <div className="relative">
+      {isFiltering && (
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] z-40 transition-opacity duration-300 pointer-events-none" />
+      )}
+
+      <div className="flex gap-3 md:gap-5 overflow-x-auto px-6 py-4">
+        <button
+          onClick={() => setSelectedTag(null)}
+          className={`
+            px-4 py-1.5 rounded-full border text-sm whitespace-nowrap transition-all duration-200
+            ${!selectedTag
+              ? 'bg-secondary text-black border-secondary'
+              : 'border-white text-white hover:bg-white/10'}
+          `}
+        >
+          All
+        </button>
+
+        {tags.map(tag => (
+          <button
+            key={tag.slug}
+            onClick={() =>
+              setSelectedTag(prev => prev === tag.slug ? null : tag.slug)
+            }
+            className={`
+              px-4 py-1.5 rounded-full border text-sm whitespace-nowrap transition-all duration-200
+              ${selectedTag === tag.slug
+                ? 'bg-secondary text-black border-secondary'
+                : 'border-white text-white hover:bg-white/10'}
+            `}
+          >
+            {tag.name}
+          </button>
+        ))}
+      </div>
 
       {/* <PersonalizeBanner /> */}
 
@@ -86,27 +137,41 @@ const DashboardHome = () => {
 
       {!isRecommendationOnly && (
         <>
-          {/* 📱 Mobile Vertical Carousel */}
-          <div className="lg:hidden">
+          {/* 📱 Mobile */}
+          <div className="md:hidden">
             <VerticalStripCarousel
               title="New Releases"
               items={combinedNew}
+              isLoading={nrL || nrF}
             />
           </div>
 
-          {/* 🖥 Desktop Existing Horizontal Carousel */}
-          <div className="hidden lg:block">
-            <CarouselSection
-              title="New Releases"
-              items={combinedNew}
-              renderItem={({ type, data }) =>
-                type === 'playlist'
-                  ? <PlaylistCard key={`pl-${data.id}`} playlist={data} />
-                  : <SongCard     key={`s-${data.id}`}  song={data}      />
-              }
-            />
+          {/* 🖥 Desktop */}
+          <div className="hidden md:block">
+            {(nrL || nrF) ? (
+              <CarouselSection title="New Releases" items={[]} />
+            ) : (
+              <CarouselSection
+                title="New Releases"
+                items={combinedNew}
+                renderItem={({ type, data }) =>
+                  type === 'playlist'
+                    ? <PlaylistCard playlist={data} />
+                    : <SongCard song={data} />
+                }
+              />
+            )}
           </div>
         </>
+      )}
+
+      {!isRecommendationOnly && (
+      <CarouselSection
+        title="All Playlists"
+        useQuery={useGetDashboardAllPlaylistsQuery}
+        queryArg={{ tag: selectedTag }}
+        renderItem={(pl) => <PlaylistCard key={pl.id} playlist={pl} />}
+      />
       )}
 
 
@@ -148,17 +213,21 @@ const DashboardHome = () => {
       />
 
       {/* All Playlists */}
-      {!isRecommendationOnly && (
+      {/* {!isRecommendationOnly && (
       <CarouselSection
         title="All Playlists"
         useQuery={useGetDashboardAllPlaylistsQuery}
+        queryArg={{ tag: selectedTag }}
         renderItem={(pl) => <PlaylistCard key={pl.id} playlist={pl} />}
       />
-      )}
+      )} */}
 
       <PersonalizeCTA/>
+
+      </div>
+  </div>
       
-    </div>
+
     
   );
 };
