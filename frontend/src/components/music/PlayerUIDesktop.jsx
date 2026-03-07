@@ -23,7 +23,7 @@ export const PLAYER_HEIGHT = 72;
 export const HANDLE_HEIGHT = 4;
 
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7';
+const FALLBACK_IMAGE = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 
 function fmt(sec = 0) {
   const s = Math.max(0, Math.floor(sec));
@@ -62,7 +62,6 @@ export default function PlayerUIDesktop(props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const sliderRef = useRef(null);
 
-  console.log(currentTrack);
 
   // Keep fallback-safe background
   // useEffect(() => {
@@ -82,7 +81,7 @@ export default function PlayerUIDesktop(props) {
   );
   const initialSlide = currentIndex >= 0 ? currentIndex : 0;
 
-  console.log(currentTrack);
+  // console.log(currentTrack);
 
   useEffect(() => {
     if (!currentTrack) return;
@@ -137,7 +136,7 @@ export default function PlayerUIDesktop(props) {
     ? `linear-gradient(to bottom, rgba(0,0,0,0.4), black), url(${bgImage})`
     : 'transparent';
 
-  console.log(currentTrack);
+  // console.log(currentTrack);
 
 
   return (

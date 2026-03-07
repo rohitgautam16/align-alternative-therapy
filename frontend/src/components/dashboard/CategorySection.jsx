@@ -7,13 +7,15 @@ import CategoryBanner from '../custom-ui/CategoryBanner';
 
 function SkeletonBanner() {
   return (
-    <div className="relative w-full overflow-hidden rounded-xl bg-black ring-1 ring-white/10 animate-pulse">
-      {/* image/banner area */}
-      <div className="h-48 sm:h-56 md:h-64 bg-white/10" />
-      {/* content overlay skeleton */}
-      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 md:p-6">
-        <div className="h-4 w-40 sm:w-48 md:w-56 rounded bg-white/20 mb-2" />
-        <div className="h-3 w-28 sm:w-32 md:w-36 rounded bg-white/15" />
+    <div className="relative w-full h-16 sm:h-40 md:h-54 rounded-lg overflow-hidden 
+                    bg-black ring-1 ring-white/10 animate-pulse">
+      <div className="absolute inset-0 bg-white/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <div className="relative z-10 flex items-end justify-between h-full p-4">
+        <div className="space-y-2 max-w-[70%]">
+          <div className="h-4 sm:h-6 md:h-7 w-24 sm:w-40 md:w-48 bg-white/20 rounded" />
+        </div>
+        <div className="h-6 sm:h-8 w-20 sm:w-28 bg-white/20 rounded-lg flex-shrink-0" />
       </div>
     </div>
   );
@@ -106,7 +108,7 @@ export default function CategorySection() {
   };
 
   return (
-    <section className="space-y-4 px-2 py-4 md:px-6 md:py-6">
+    <section className="space-y-4 px-2 pt-4 pb-1 md:px-6 md:py-6">
       <Slider
         ref={sliderRef}
         {...settings}

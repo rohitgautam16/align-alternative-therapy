@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&h=400&fit=crop';
+const FALLBACK_IMAGE = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = 'Explore this category';
 
 export default function CategoryBanner({ category }) {
@@ -25,7 +25,7 @@ export default function CategoryBanner({ category }) {
 
   return (
     <div
-      className="relative group w-full h-48 sm:h-40 md:h-54 rounded-lg overflow-hidden cursor-pointer
+      className="relative group w-full h-16 sm:h-40 md:h-54 rounded-lg overflow-hidden cursor-pointer
                  transform transition-transform duration-300 hover:scale-[1.02] hover:shadow-lg"
       onClick={handleClick}
       tabIndex={0}

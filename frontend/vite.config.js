@@ -16,11 +16,18 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    strictPort: true,
     headers: {
       "Service-Worker-Allowed": "/",
       "Cache-Control": "no-store",
     },
-    strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 
   build: {

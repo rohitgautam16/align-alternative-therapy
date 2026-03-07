@@ -18,7 +18,7 @@ import {
 import { setQueue, setTrack, setIsPlaying } from '../store/playerSlice';
 import DescriptionModal from '../components/custom-ui/DescriptionModal';
 
-const FALLBACK_BG = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
+const FALLBACK_BG = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = '';
 const FALLBACK_SONG_IMG = FALLBACK_BG;
 
@@ -147,7 +147,7 @@ export default function PlaylistView() {
       : `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.image)}`
     : playlist?.artwork_filename
     ? `https://cdn.align-alternativetherapy.com/align-images/playlists/${encodeURIComponent(playlist.artwork_filename)}`
-    : undefined;
+    : FALLBACK_SONG_IMG;
 
 
   const bgUrl = bgImage

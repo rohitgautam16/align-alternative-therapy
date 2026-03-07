@@ -9,13 +9,13 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { canAccessContent } from '../../utils/permissions';
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
+  'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 
 export default function PlaylistCard({ playlist, isLockedOverlay = false, disableTierCheck = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { userTier, loading } = useSubscription();
-  const { data: songs = [] } = useGetSongsQuery(playlist.id);
+  const { data: songs = [], isLoading: isLoading } = useGetSongsQuery(playlist.id);
   const firstSong = songs?.[0];
 
   const locked = disableTierCheck
@@ -70,6 +70,21 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
     }
   };
 
+  function PlaylistCardSkeleton() {
+    return (
+      <div className="flex flex-col items-start relative">
+        <div className="w-45 md:w-65 aspect-square rounded-lg overflow-hidden bg-white/5 animate-pulse">
+          <div className="w-full h-full bg-white/10" />
+        </div>
+
+        <div className="mt-3 w-28 h-4 bg-white/10 rounded animate-pulse"></div>
+      </div>
+    );
+  }
+
+  if (isLoading || loading) {
+    return <PlaylistCardSkeleton />;
+  }
 
   const handleCardClick = () => {
     if (locked || isLockedOverlay) {
@@ -98,7 +113,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
     <div className="flex flex-col items-start relative">
       {/* Main card */}
       <div
-        className={`relative group/item w-65 aspect-square shrink-0 overflow-hidden rounded-lg
+        className={`relative group/item w-45 md:w-65 aspect-square shrink-0 overflow-hidden rounded-lg
                    cursor-pointer transform transition-all duration-500 hover:scale-100`}
         onClick={handleCardClick}
         tabIndex={0}

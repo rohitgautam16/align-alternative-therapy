@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import ReactHowler from 'react-howler';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   togglePlay, setProgress, nextTrack, prevTrack, setVolume,
-  toggleShuffle, toggleRepeatOne, setTrack
+  toggleShuffle, toggleRepeatOne, setTrack, setIsPlaying
 } from '../../store/playerSlice';
 import { usePlayerUI } from '../../context/PlayerUIContext';
 import { useHowler } from '../../hooks/useHowler';
@@ -14,7 +14,7 @@ const FALLBACK = '/rain.mp3';
 export default function PlayerShell() {
   const dispatch = useDispatch();
   const isMobile = useIsMobile(640);
-  const { expanded, toggleExpanded } = usePlayerUI();
+  const { expanded, toggleExpanded, visible, hidePlayer, showPlayer } = usePlayerUI();
 
   const {
     currentTrack, audioSrc, isPlaying, progress, volume,
@@ -25,7 +25,6 @@ export default function PlayerShell() {
   const primary = audioSrc || currentTrack?.audioUrl;
   const srcs = primary ? [primary, FALLBACK] : [FALLBACK];
   const howlerKey = `${currentTrack?.id ?? 'noid'}::${primary ?? 'fallback'}`;
-  const nextTrackSrc = queue[currentIndex + 1]?.audioUrl;
 
   // howler hook
   const { soundRef, duration, seekTo, handleLoad, handleEnd, isLoading } = useHowler({
@@ -58,6 +57,10 @@ export default function PlayerShell() {
     return () => cancelAnimationFrame(raf);
   }, [dispatch, isPlaying, soundRef]);
 
+  useEffect(() => {
+    if (isPlaying) showPlayer();
+  }, [isPlaying, showPlayer]);
+
   if (!currentTrack) return null; 
 
 
@@ -70,12 +73,17 @@ export default function PlayerShell() {
   const onToggleRepeatOne  = () => dispatch(toggleRepeatOne());
   const onToggleExpanded   = () => toggleExpanded();
   const onSelectTrack      = (track) => dispatch(setTrack(track));
+  const onDismissPlayer    = () => {
+    dispatch(setIsPlaying(false));
+    hidePlayer();
+  };
 
   const sharedProps = {
     currentTrack, queue, isPlaying, progress, duration, volume,
     shuffle, repeatOne, expanded,
     onTogglePlay, onNext, onPrev, onSeek, onVolume,
     onToggleShuffle, onToggleRepeatOne, onToggleExpanded, onSelectTrack,
+    onDismiss: onDismissPlayer,
   };
 
   return (
@@ -92,10 +100,11 @@ export default function PlayerShell() {
         onEnd={handleEnd}
       />
 
-      {isMobile
-        ? <PlayerUIMobile {...sharedProps}  isLoading={isLoading} />
-        : <PlayerUIDesktop {...sharedProps}  isLoading={isLoading} />
-      }
+      {visible && (
+        isMobile
+          ? <PlayerUIMobile {...sharedProps} isLoading={isLoading} />
+          : <PlayerUIDesktop {...sharedProps} isLoading={isLoading} />
+      )}
     </>
   );
 }

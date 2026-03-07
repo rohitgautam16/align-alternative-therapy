@@ -34,10 +34,10 @@ function useIsMobile(breakpoint = 640) {
  */
 export function usePlayerBarPadding() {
   const { currentTrack } = useSelector(s => s.player);
-  const { expanded } = usePlayerUI();
+  const { expanded, visible } = usePlayerUI();
   const isMobile = useIsMobile(640);
 
-  if (!currentTrack) return '0px';
+  if (!currentTrack || !visible) return '0px';
   if (!expanded) return `${HANDLE_HEIGHT}px`;
 
   const bar = isMobile ? MOBILE_BAR_HEIGHT : DESKTOP_BAR_HEIGHT;

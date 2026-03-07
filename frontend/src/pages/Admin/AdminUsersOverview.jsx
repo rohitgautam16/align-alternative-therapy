@@ -55,6 +55,7 @@ useEffect(() => {
     status_message: '',
     profile_type: 'free',
     one_time_fee_amount: null,
+    recommendation_option: null,
     premium_option: null,
     plan: 'monthly',
   });
@@ -105,7 +106,14 @@ useEffect(() => {
     setNewUser({ 
       ...newUser, 
       profile_type: profileType,
-      one_time_fee_amount: profileType === 'recommendations_only' ? newUser.one_time_fee_amount : null,
+      one_time_fee_amount:
+        profileType === 'recommendations_only' && newUser.recommendation_option !== 'free_access'
+          ? newUser.one_time_fee_amount
+          : null,
+      recommendation_option:
+        profileType === 'recommendations_only'
+          ? newUser.recommendation_option || 'charge'
+          : null,
       premium_option: profileType === 'premium_full' ? 'checkout' : null,
       plan: profileType === 'premium_full' ? newUser.plan : 'monthly',
     });
@@ -153,6 +161,7 @@ useEffect(() => {
         status_message: '',
         profile_type: 'free',
         one_time_fee_amount: null,
+        recommendation_option: null,
         premium_option: null,
         plan: 'monthly',
       });
@@ -552,28 +561,87 @@ useEffect(() => {
                   <h4 className="text-sm font-semibold text-orange-400 flex items-center gap-2">
                     <CreditCard size={16} /> Recommendations Only Setup
                   </h4>
-                  
+
                   <div>
-                    <label className="block text-gray-400 text-sm mb-1">
-                      One-Time Fee Amount * <span className="text-xs">(CAD)</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="10.00"
-                      value={newUser.one_time_fee_amount || ''}
-                      onChange={(e) => setNewUser({ 
-                        ...newUser, 
-                        one_time_fee_amount: e.target.value ? parseFloat(e.target.value) : null 
-                      })}
-                      required
-                      className="w-full p-2 bg-gray-700 rounded text-white text-sm"
-                    />
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                      <Info size={12} /> Persistent payment link will be auto-generated
-                    </p>
+                    <label className="block text-gray-400 text-sm mb-2">Recommendation Access Type *</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewUser({
+                            ...newUser,
+                            recommendation_option: 'charge',
+                          })
+                        }
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          newUser.recommendation_option === 'charge'
+                            ? 'border-orange-500 bg-orange-600/20'
+                            : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <CreditCard size={16} className="text-orange-300" />
+                          <span className="font-medium text-sm">Charge User</span>
+                        </div>
+                        <p className="text-xs text-gray-400">Create Stripe one-time payment link</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewUser({
+                            ...newUser,
+                            recommendation_option: 'free_access',
+                            one_time_fee_amount: null,
+                          })
+                        }
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          newUser.recommendation_option === 'free_access'
+                            ? 'border-blue-500 bg-blue-600/20'
+                            : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Gift size={16} className="text-blue-300" />
+                          <span className="font-medium text-sm">No Charge</span>
+                        </div>
+                        <p className="text-xs text-gray-400">Grant rec-only access without payment</p>
+                      </button>
+                    </div>
                   </div>
+
+                  {newUser.recommendation_option !== 'free_access' && (
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-1">
+                        One-Time Fee Amount * <span className="text-xs">(CAD)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="10.00"
+                        value={newUser.one_time_fee_amount || ''}
+                        onChange={(e) =>
+                          setNewUser({
+                            ...newUser,
+                            one_time_fee_amount: e.target.value ? parseFloat(e.target.value) : null,
+                          })
+                        }
+                        required={newUser.recommendation_option !== 'free_access'}
+                        className="w-full p-2 bg-gray-700 rounded text-white text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <Info size={12} /> Persistent payment link will be auto-generated
+                      </p>
+                    </div>
+                  )}
+
+                  {newUser.recommendation_option === 'free_access' && (
+                    <div className="bg-blue-600/10 border border-blue-600/30 rounded p-2 text-xs text-blue-300">
+                      <Gift size={12} className="inline mr-1" />
+                      User will be created in Recommendations Only tier with no joining fee
+                    </div>
+                  )}
                 </div>
               )}
 

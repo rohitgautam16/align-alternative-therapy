@@ -97,6 +97,7 @@ async function createUserController(req, res, next) {
       profile_type = 'free',
       user_tier_id = null,
       one_time_fee_amount = null,
+      recommendation_option = null,
       plan = null,             
       premium_option = null    
     } = req.body;
@@ -110,6 +111,7 @@ async function createUserController(req, res, next) {
       full_name,
       profile_type,
       one_time_fee_amount,
+      recommendation_option,
       plan,
       premium_option,
     });
@@ -124,6 +126,7 @@ async function createUserController(req, res, next) {
       profile_type,
       user_tier_id,
       one_time_fee_amount,
+      recommendation_option,
       plan,
       premium_option,  
     });

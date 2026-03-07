@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play } from 'lucide-react';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
+const FALLBACK_IMAGE = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 
 export default function UserPlaylistCard({ playlist }) {
   const navigate = useNavigate();

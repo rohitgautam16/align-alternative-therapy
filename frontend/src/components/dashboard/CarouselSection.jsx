@@ -88,7 +88,7 @@ export default function CarouselSection({
   }
 
   return (
-    <section className="relative space-y-4 px-6 py-2 group">
+    <section className="relative space-y-4 px-4 md:px-6 py-2 group">
       <h2 className="text-2xl font-semibold">{title}</h2>
 
       {/* Desktop Arrows */}
@@ -96,7 +96,7 @@ export default function CarouselSection({
         onClick={() => scroll('left')}
         disabled={!canScrollLeft}
         className={`absolute left-2 top-1/2 -translate-y-1/2 z-50 p-2 rounded-full
-        text-white transition-opacity
+        text-white transition-opacity cursor-pointer backdrop-blur-xs
         ${canScrollLeft ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}
         hidden md:flex group-hover:flex`}
       >
@@ -107,12 +107,42 @@ export default function CarouselSection({
         onClick={() => scroll('right')}
         disabled={!canScrollRight}
         className={`absolute right-2 top-1/2 -translate-y-1/2 z-50 p-2 rounded-full
-        text-white transition-opacity
+        text-white transition-opacity cursor-pointer backdrop-blur-xs
         ${canScrollRight ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}
         hidden md:flex group-hover:flex`}
       >
         <FiChevronRight size={34} />
       </button>
+
+      <div className="flex top-2 absolute right-4 space-x-2 z-50 md:hidden">
+          <button
+            onClick={() => scroll('left')}
+            disabled={!canScrollLeft}
+            className={`
+              p-2 rounded-full border border-white text-white
+              transition-all duration-300 ease-out
+              active:scale-95
+              active:bg-secondary active:text-black active:border-secondary
+              ${canScrollLeft ? 'opacity-100' : 'opacity-40 cursor-not-allowed'}
+            `}
+          >
+            <FiChevronLeft size={16} />
+          </button>
+
+          <button
+            onClick={() => scroll('right')}
+            disabled={!canScrollRight}
+            className={`
+              p-2 rounded-full border border-white text-white
+              transition-all duration-300 ease-out
+              active:scale-95
+              active:bg-secondary active:text-black active:border-secondary
+              ${canScrollRight ? 'opacity-100' : 'opacity-40 cursor-not-allowed'}
+            `}
+          >
+            <FiChevronRight size={16} />
+          </button>
+      </div>
 
       {/* Carousel Content */}
       <div

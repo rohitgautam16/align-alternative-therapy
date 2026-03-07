@@ -8,7 +8,7 @@ import { useAuthStatus } from '../../../hooks/useAuthStatus';
 const BG_IMG =
   'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0';
 const FALLBACK_IMG =
-  'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1169&auto=format&fit=crop';
+  'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 
 export default function PersonalizeBanner() {
   const navigate = useNavigate();

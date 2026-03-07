@@ -11,7 +11,7 @@ import { setQueue, setTrack, setIsPlaying } from '../store/playerSlice';
 import { AnimatePresence, motion } from 'framer-motion';
 import { buildImageUrl } from '../utils/imageHelpers';
 
-const FALLBACK_IMG = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
+const FALLBACK_IMG = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = '';
 
 export default function SongView() {

@@ -1,5 +1,5 @@
 // src/components/music/PlayerUIMobile.jsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Slider from 'react-slick';
 import {
@@ -11,8 +11,10 @@ import {
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
-const FULL = '100svh';
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7'; // <-- fallback
+const FALLBACK_IMAGE = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png'; // <-- fallback
+const COMPACT_DISMISS_DISTANCE = 90;
+const COMPACT_DISMISS_VELOCITY = 700;
+const DRAG_CLICK_GUARD_PX = 6;
 
 function fmt(sec = 0) {
   const s = Math.max(0, Math.floor(sec));
@@ -33,20 +35,20 @@ export default function PlayerUIMobile(props) {
     repeatOne,
     expanded,
     onTogglePlay,
-    onNext,
-    onPrev,
     onSeek,
     onVolume,
     onToggleShuffle,
     onToggleRepeatOne,
     onToggleExpanded,
     onSelectTrack,
+    onDismiss,
     isLoading
   } = props;
 
   if (!currentTrack) return null;
 
   const sliderRef = useRef(null);
+  const compactDragRef = useRef(false);
   const volumePct = Math.round((volume ?? 0) * 100);
 
   // --- handle shuffle ---
@@ -135,6 +137,13 @@ useEffect(() => {
   };
 }, [activeIdx, JSON.stringify(shuffledQueue.map(t => t.id)), currentTrack?.id]);
 
+  const handleCompactTap = () => {
+    if (compactDragRef.current) {
+      compactDragRef.current = false;
+      return;
+    }
+    onToggleExpanded?.();
+  };
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
@@ -164,16 +173,28 @@ useEffect(() => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 90, opacity: 0 }}
             transition={{ type: 'tween', duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            drag="y"
+            dragDirectionLock
+            dragConstraints={{ top: 0, bottom: 140 }}
+            dragElastic={{ top: 0, bottom: 0.22 }}
+            onDragEnd={(_event, info) => {
+              const didDrag = Math.abs(info.offset.y) > DRAG_CLICK_GUARD_PX;
+              compactDragRef.current = didDrag;
+              const shouldDismiss =
+                info.offset.y > COMPACT_DISMISS_DISTANCE ||
+                info.velocity.y > COMPACT_DISMISS_VELOCITY;
+              if (shouldDismiss) onDismiss?.();
+            }}
             className="
               pointer-events-auto mx-4 mb-4
               rounded-2xl bg-white/10 backdrop-blur-xl
               ring-1 ring-white/15 shadow-[0_8px_24px_rgba(0,0,0,0.35)]
               text-white p-3 flex items-center justify-between
             "
-            onClick={onToggleExpanded}
+            onClick={handleCompactTap}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="h-20 rounded-xl overflow-hidden ring-1 ring-white/10">
+              <div className="h-20 rounded-xl overflow-hidden ring-1 ring-white/10 min-w-20">
                 <img
                   src={currentTrack.image || FALLBACK_IMAGE}
                   alt=""

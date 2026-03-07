@@ -1,17 +1,27 @@
 // src/context/PlayerUIContext.jsx
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
 
 const PlayerUIContext = createContext();
 export function PlayerUIProvider({ children }) {
   const [expanded, setExpanded] = useState(true);
   const [fullScreen, setFullScreen] = useState(false);
+  const [visible, setVisible] = useState(true);
+
+  const toggleExpanded = useCallback(() => setExpanded(e => !e), []);
+  const toggleFullScreen = useCallback(() => setFullScreen(f => !f), []);
+  const hidePlayer = useCallback(() => setVisible(false), []);
+  const showPlayer = useCallback(() => setVisible(true), []);
+
   return (
     <PlayerUIContext.Provider
       value={{
         expanded,
-        toggleExpanded: () => setExpanded(e => !e),
+        toggleExpanded,
         fullScreen,
-        toggleFullScreen: () => setFullScreen(f => !f),
+        toggleFullScreen,
+        visible,
+        hidePlayer,
+        showPlayer,
       }}
     >
       {children}

@@ -7,7 +7,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 import DescriptionModal from '../components/custom-ui/DescriptionModal';
 
 const FALLBACK_BG =
-  'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop';
+  'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = '';
 
 export default function CategoryView() {

@@ -226,6 +226,7 @@ async function createUserAdmin({
   profile_type = 'free',
   user_tier_id = null,
   one_time_fee_amount = null,
+  recommendation_option = null, // 'charge' | 'free_access'
   premium_option = null, // 'checkout', 'trial', 'free_access'
   plan = 'monthly',      // used for premium upgrades (optional)
 }) {
@@ -234,6 +235,7 @@ async function createUserAdmin({
     full_name,
     profile_type,
     one_time_fee_amount,
+    recommendation_option,
     premium_option,
     plan,
   });
@@ -364,37 +366,79 @@ if (profile_type === 'premium_full') {
   // ----------------------------------------------------------
   // 🟣 Normal flow for Recommendations Only users
   // ----------------------------------------------------------
-  if (profile_type === 'recommendations_only' && one_time_fee_amount) {
-    try {
-      console.log('🟢 Creating one-time Stripe payment link...');
-      const paymentData = await generateOneTimePaymentLink(userId, one_time_fee_amount);
+  if (profile_type === 'recommendations_only') {
+    const normalizedRecommendationOption =
+      recommendation_option === 'charge' || recommendation_option === 'free_access'
+        ? recommendation_option
+        : null;
 
-      await db.query(
-        `UPDATE users
-           SET one_time_fee_amount = ?,
-               stripe_payment_link_id = ?,
-               stripe_payment_intent_id = ?,
-               one_time_payment_status = 'joining fee paid',
-               updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [
-          one_time_fee_amount,
-          paymentData.paymentLinkId,
-          paymentData.paymentIntentId,
-          userId,
-        ]
+    const shouldChargeRecommendation =
+      normalizedRecommendationOption === 'charge' ||
+      (
+        normalizedRecommendationOption === null &&
+        one_time_fee_amount !== null &&
+        one_time_fee_amount !== undefined &&
+        Number(one_time_fee_amount) > 0
       );
 
-      console.log('✅ Stripe payment link stored and joining fee marked as paid.');
+    if (shouldChargeRecommendation) {
+      const feeAmount = Number(one_time_fee_amount);
+      if (!Number.isFinite(feeAmount) || feeAmount <= 0) {
+        throw new Error('one_time_fee_amount must be > 0 when recommendation_option is charge');
+      }
 
-      await syncUserSubscriptionFlag(userId);
+      try {
+        console.log('🟢 Creating one-time Stripe payment link...');
+        const paymentData = await generateOneTimePaymentLink(userId, feeAmount);
 
-      console.log('✅ Payment link stored in DB.');
+        await db.query(
+          `UPDATE users
+             SET one_time_fee_amount = ?,
+                 stripe_payment_link_id = ?,
+                 stripe_payment_intent_id = ?,
+                 one_time_payment_status = 'joining fee paid',
+                 updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [
+            feeAmount,
+            paymentData.paymentLinkId,
+            paymentData.paymentIntentId,
+            userId,
+          ]
+        );
+
+        console.log('✅ Stripe payment link stored and joining fee marked as paid.');
+
+        await syncUserSubscriptionFlag(userId);
+
+        console.log('✅ Payment link stored in DB.');
+        const user = await getUserById(userId);
+        return { ...user, checkout_url: paymentData.url };
+      } catch (err) {
+        console.error('❌ Failed to generate Stripe link:', err);
+        const user = await getUserById(userId);
+        return user;
+      }
+    }
+
+    try {
+      await db.query(
+        `UPDATE users
+           SET is_subscribed = 1,
+               one_time_fee_amount = 0,
+               stripe_payment_link_id = NULL,
+               stripe_payment_intent_id = NULL,
+               one_time_payment_status = 'granted',
+               updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [userId]
+      );
+
       const user = await getUserById(userId);
-      return { ...user, checkout_url: paymentData.url };
-
+      user.note = 'Recommendations-only access granted without charge by admin';
+      return user;
     } catch (err) {
-      console.error('❌ Failed to generate Stripe link:', err);
+      console.error('❌ Failed to grant recommendations-only free access:', err);
       const user = await getUserById(userId);
       return user;
     }

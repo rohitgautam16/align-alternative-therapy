@@ -10,7 +10,7 @@ import { canAccessContent } from '../../utils/permissions';
 import { useRecordPlayMutation } from '../../utils/api';
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop';
+  'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 
 export default function SongCard({ song, playlist, disableTierCheck = false }) {
   const navigate = useNavigate();
