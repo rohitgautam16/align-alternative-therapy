@@ -11,6 +11,7 @@ import { useDispatch } from 'react-redux';
 import {
   useGetCategoriesQuery,
   useGetDashboardAllPlaylistsQuery,
+  useGetDashboardPlaylistBySlugQuery,
   useGetSongsQuery,
   useGetUserQuery,
   useRecordPlayMutation
@@ -34,12 +35,22 @@ export default function PlaylistView() {
   const dispatch = useDispatch();
 
   const { data: allPlaylists = [], isLoading: plLoading, isError: plError } = useGetDashboardAllPlaylistsQuery();
-  const playlist = allPlaylists.find(p => p.slug === slug);
+  const cachedPlaylist = allPlaylists.find(p => p.slug === slug);
+
+  const {
+    data: remotePlaylist,
+    isLoading: remotePlaylistLoading,
+    isError: remotePlaylistError,
+  } = useGetDashboardPlaylistBySlugQuery(slug, {
+    skip: !slug || !!cachedPlaylist,
+  });
+
+  const playlist = cachedPlaylist || remotePlaylist;
 
   const [recordPlay] = useRecordPlayMutation();
   const lastRecordedRef = useRef({ songId: null, ts: 0 });
 
-  const { data: songs = [], isLoading: songsLoading, isError: songsError } = useGetSongsQuery(playlist?.id);
+  const { data: songs = [], isLoading: songsLoading, isError: songsError } = useGetSongsQuery(playlist?.id, { skip: !playlist?.id });
   const { data: categories = [] } = useGetCategoriesQuery();
   const { data: user, isLoading: userLoading } = useGetUserQuery();
 
@@ -79,11 +90,19 @@ export default function PlaylistView() {
 }, []);
 
 
-  if (plLoading || songsLoading || userLoading || !playlist) {
+  const loading = plLoading || remotePlaylistLoading || songsLoading || userLoading;
+  const hasError = plError || remotePlaylistError || songsError;
+
+  if (loading) {
     return <div className="text-white text-center py-20">Loading playlist…</div>;
   }
-  if (plError || songsError) {
+
+  if (hasError) {
     return <div className="text-red-500 text-center py-20">Error loading playlist.</div>;
+  }
+
+  if (!playlist) {
+    return <div className="text-gray-200 text-center py-20">Playlist not found or not accessible.</div>;
   }
 
   const categoryObj = categories.find(c => c.id === playlist.categoryId);
@@ -300,7 +319,7 @@ export default function PlaylistView() {
                 />
                 <div className="min-w-0">
                   {/* mobile: wrap; tablet: clamp to 2 lines; desktop: can be single line by design */}
-                  <p className="font-semibold whitespace-normal break-words md:line-clamp-2 md:leading-snug">
+                  <p className="font-semibold whitespace-normal wrap-break-word md:line-clamp-2 md:leading-snug">
                     {song.name || song.title}
                   </p>
                   <p className="text-gray-400 text-xs md:text-sm truncate">{song.artistName}</p>

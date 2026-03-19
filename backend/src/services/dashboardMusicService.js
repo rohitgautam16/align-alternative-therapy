@@ -96,6 +96,51 @@ async function fetchDashboardAllPlaylists({ tagSlug } = {}) {
   return attachAccessFlags(rows, 'playlist');
 }
 
+async function fetchDashboardPlaylistBySlug(slug) {
+  const [rows] = await db.query(
+    `SELECT
+       p.id,
+       p.title            AS name,
+       p.slug,
+       p.description,
+       p.paid,
+       p.artwork_filename AS image,
+       p.created          AS createdAt,
+       p.is_discoverable,
+       p.category_id      AS categoryId
+     FROM playlists p
+     WHERE p.slug = ?
+     LIMIT 1`,
+    [slug]
+  );
+  return rows[0] || null;
+}
+
+async function canUserAccessPlaylist(userId, playlistId) {
+  if (!userId || !playlistId) return false;
+
+  const [rows] = await db.query(
+    `SELECT 1 FROM (
+      SELECT i.playlist_id
+      FROM personalize_recommendation_items i
+      JOIN personalize_recommendations r ON r.id = i.recommendation_id AND r.deleted_at IS NULL
+      JOIN personalize_questions q ON q.id = r.question_id AND q.deleted_at IS NULL
+      WHERE q.user_id = ? AND i.playlist_id = ? AND i.deleted_at IS NULL
+
+      UNION ALL
+
+      SELECT i.playlist_id
+      FROM pb_recommendation_items i
+      JOIN pb_recommendations r ON r.id = i.recommendation_id AND r.deleted_at IS NULL
+      WHERE r.user_id = ? AND i.playlist_id = ? AND i.deleted_at IS NULL
+    ) t
+    LIMIT 1`,
+    [userId, playlistId, userId, playlistId]
+  );
+
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 async function fetchDashboardFreePlaylists() {
   const [rows] = await db.query(
     `SELECT
@@ -485,6 +530,8 @@ module.exports = {
   fetchDashboardPlaylistsByCategory,
   fetchDashboardAllPlaylists,
   fetchDashboardFreePlaylists,
+  fetchDashboardPlaylistBySlug,
+  canUserAccessPlaylist,
   fetchDashboardSongsByPlaylist,
   fetchDashboardSongById,
   fetchDashboardSongBySlug,

@@ -5,6 +5,8 @@ const {
   fetchDashboardPlaylistsByCategory,
   fetchDashboardAllPlaylists,
   fetchDashboardFreePlaylists,
+  fetchDashboardPlaylistBySlug,
+  canUserAccessPlaylist,
   fetchDashboardSongsByPlaylist,
   fetchDashboardSongById,
   fetchDashboardSongBySlug,
@@ -13,6 +15,8 @@ const {
   fetchDashboardAllSongs,
   fetchDashboardTags
 } = require('../services/dashboardMusicService');
+
+const { attachAccessFlags } = require('../utils/attachAccessFlags');
 
 async function getDashboardCategoriesController(req, res, next) {
   try {
@@ -69,6 +73,32 @@ async function getDashboardSongsByPlaylistController(req, res, next) {
     res.json(songs);
   } catch (err) {
     console.error('getDashboardSongsByPlaylistController error:', err);
+    next(err);
+  }
+}
+
+async function getDashboardPlaylistBySlugController(req, res, next) {
+  try {
+    const slug = req.params.slug;
+    if (!slug) return res.status(400).json({ error: 'Playlist slug is required' });
+
+    const playlist = await fetchDashboardPlaylistBySlug(slug);
+    if (!playlist) return res.status(404).json({ error: 'Playlist not found' });
+
+    if (!playlist.is_discoverable) {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+      const hasAccess = await canUserAccessPlaylist(userId, playlist.id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Not accessible' });
+      }
+    }
+
+    const normalized = attachAccessFlags([playlist], 'playlist')[0];
+    res.json(normalized);
+  } catch (err) {
+    console.error('getDashboardPlaylistBySlugController error:', err);
     next(err);
   }
 }
@@ -159,6 +189,7 @@ module.exports = {
   getDashboardPlaylistsByCategoryController,
   getDashboardAllPlaylistsController,
   getDashboardFreePlaylistsController,
+  getDashboardPlaylistBySlugController,
   getDashboardSongsByPlaylistController,
   getDashboardSongByIdController,
   getSongBySlugController,

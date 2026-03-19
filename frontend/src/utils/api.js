@@ -811,6 +811,12 @@ getPlaylistSongs: build.query({
         result ? [{ type: 'Playlists', id: result.id }] : [],
     }),
 
+    getDashboardPlaylistBySlug: build.query({
+      query: (slug) => `dashboard/playlists/slug/${slug}`,
+      providesTags: (result) =>
+        result ? [{ type: 'Playlists', id: result.id }] : [],
+    }),
+
     getSongs: build.query({
       query: (playlistId) => `playlists/${playlistId}/songs`,
       providesTags: (result, error, arg) => [{ type: 'Songs', id: arg }],
@@ -1654,6 +1660,7 @@ export const {
   useGetDashboardFreePlaylistsQuery,
   useGetDashboardAllPlaylistsQuery,
   useGetDashboardPlaylistByIdQuery,
+  useGetDashboardPlaylistBySlugQuery,
   useGetSongsQuery,
   useGetSongByIdQuery,
   useGetSongBySlugQuery,

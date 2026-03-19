@@ -54,7 +54,7 @@ export default function Login() {
         email,
         password
       });
-      console.log('Logged in payload:', { accessToken, refreshToken, user });
+      //console.log('Logged in payload:', { accessToken, refreshToken, user });
     } catch (err) {
       if (err.originalStatus === 403 || err.data?.code === 'ACCOUNT_DELETED') {
         navigate('/restore', {

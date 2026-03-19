@@ -15,7 +15,9 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { userTier, loading } = useSubscription();
-  const { data: songs = [], isLoading: isLoading } = useGetSongsQuery(playlist.id);
+  const { data: songs = [], isLoading: isLoading } = useGetSongsQuery(playlist?.id, {
+    skip: !playlist?.id,
+  });
   const firstSong = songs?.[0];
 
   const locked = disableTierCheck
