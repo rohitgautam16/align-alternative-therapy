@@ -28,15 +28,15 @@ exports.createBasicPersonalizeRequest = async function createBasicPersonalizeReq
     const adminBase = process.env.ADMIN_BASE_URL || 'http://localhost:3000';
     const adminUrl  = `${adminBase.replace(/\/+$/,'')}/admin/basic-personalize/${id}`;
 
-    // send emails (admin + user)
-    await sendPersonalizeBasicEmails({
+    // send emails (admin + user) asynchronously so request returns quickly
+    sendPersonalizeBasicEmails({
       id,
       name,
       email,
       mobile,
       notes,
       adminUrl,
-    });
+    }).catch((err) => console.error('personalize-basic email failed:', err));
 
     return res.status(201).json({
       ok: true,

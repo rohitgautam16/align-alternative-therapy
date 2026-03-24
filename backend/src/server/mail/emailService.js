@@ -40,13 +40,25 @@ async function sendPersonalizeBasicEmails({ id, name, email, mobile, notes, admi
   // → user acknowledgement
   const userTpl = personalizeBasicUserAckTemplate({ name });
 
-  await sendMail({
-    to: email,
-    subject: userTpl.subject,
-    html: userTpl.html,
-    text: userTpl.text,
-    tags: ['personalize-basic', 'user-ack'],
-  });
+  // send both emails in parallel and tolerate one failing without blocking
+  await Promise.allSettled([
+    sendMail({
+      to: ADMIN_EMAIL,
+      subject: adminTpl.subject,
+      html: adminTpl.html,
+      text: adminTpl.text,
+      replyTo: { email, name },
+      tags: ['personalize-basic', 'lead'],
+    }),
+    sendMail({
+      to: email,
+      subject: userTpl.subject,
+      html: userTpl.html,
+      text: userTpl.text,
+      tags: ['personalize-basic', 'user-ack'],
+    }),
+  ]);
+
 }
 
 /** 2) Password reset token email (you pass resetLink) */
