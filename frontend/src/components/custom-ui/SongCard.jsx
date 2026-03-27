@@ -78,7 +78,7 @@ export default function SongCard({ song, playlist, disableTierCheck = false }) {
   return (
     <div className="flex flex-col items-start relative">
       <div
-        className="relative group/item w-64 h-64 overflow-hidden rounded-lg cursor-pointer
+        className="relative group/item w-35 md:w-65 aspect-square shrink-0 overflow-hidden rounded-lg cursor-pointer
                    transition-all duration-500 hover:scale-100"
         onClick={handleCardClick}
         tabIndex={0}

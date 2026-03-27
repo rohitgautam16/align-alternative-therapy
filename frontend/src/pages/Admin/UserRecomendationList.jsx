@@ -73,7 +73,7 @@ function UserAvatar({ name, className = "" }) {
 }
 
 // ✅ Updated cleaner user card
-function UserCard({ user, onManageClick }) {
+function UserCard({ user, onManageClick, onPrescribeClick }) {
   const isActive = user.active === 1;
   const isSubscribed = user.is_subscribed === 1;
   const isAdmin = user.user_roles === 1;
@@ -85,26 +85,26 @@ function UserCard({ user, onManageClick }) {
       <div className="flex items-start gap-4 mb-5">
         <UserAvatar 
           name={user.full_name} 
-          className="w-12 h-12 text-lg flex-shrink-0"
+          className="w-12 h-12 text-lg shrink-0"
         />
         
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0 flex-1">
               {/* ✅ Allow name to wrap */}
-              <h3 className="font-semibold text-white text-lg leading-tight break-words">
+              <h3 className="font-semibold text-white text-lg leading-tight wrap-break-word">
                 {user.full_name || '(No name)'}
               </h3>
               {/* ✅ Allow email to wrap */}
               <p className="text-gray-400 text-sm mt-1 flex items-start gap-2 break-all">
-                <Mail size={14} className="flex-shrink-0 mt-0.5" />
+                <Mail size={14} className="shrink-0 mt-0.5" />
                 <span>{user.email}</span>
               </p>
             </div>
             
             {/* Admin Crown */}
             {isAdmin && (
-              <Crown size={16} className="text-purple-400 flex-shrink-0" />
+              <Crown size={16} className="text-purple-400 shrink-0" />
             )}
           </div>
 
@@ -162,15 +162,24 @@ function UserCard({ user, onManageClick }) {
         )}
       </div>
 
-      {/* ✅ Manage Button */}
-      <button
-        onClick={() => onManageClick(user)}
-        className={cx(BTN_BASE, BTN_SECONDARY, 'w-full justify-start')}
-      >
-        {/* <Eye size={16} /> */}
-        Manage Recommendations
-        <ArrowRight size={16} />
-      </button>
+      {/* ✅ Manage + Prescribe Buttons */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => onManageClick(user)}
+          className={cx(BTN_BASE, BTN_SECONDARY, 'justify-center')}
+        >
+          Manage
+          <ArrowRight size={16} />
+        </button>
+
+        <button
+          onClick={() => onPrescribeClick(user)}
+          className={cx(BTN_BASE, BTN_PRIMARY, 'justify-center')}
+        >
+          Prescribe
+          <ArrowRight size={16} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -359,13 +368,21 @@ export default function UserRecommendationsList() {
           </p>
         </div>
 
-        <button
-          onClick={handleCreateNew}
-          className={cx(BTN_BASE, BTN_PRIMARY, 'text-base px-6 py-3')}
-        >
-          <Plus size={18} />
-          Create New Recommendation
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleCreateNew}
+            className={cx(BTN_BASE, BTN_PRIMARY, 'text-base px-6 py-3')}
+          >
+            <Plus size={18} />
+            Create New Recommendation
+          </button>
+          <button
+            onClick={() => navigate('/admin/personalize-basic-submissions')}
+            className={cx(BTN_BASE, BTN_GHOST, 'text-base px-6 py-3')}
+          >
+            View Prescribe Requests
+          </button>
+        </div>
       </div>
 
       {/* ✅ Simplified Stats Overview - Only 2 stats */}
@@ -480,6 +497,7 @@ export default function UserRecommendationsList() {
                   key={user.id}
                   user={user}
                   onManageClick={handleUserClick}
+                  onPrescribeClick={(user) => navigate('/admin/personalize-basic', { state: { selectedUser: user } })}
                 />
               ))}
             </div>

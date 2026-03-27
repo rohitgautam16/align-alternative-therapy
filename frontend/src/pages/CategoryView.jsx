@@ -115,7 +115,7 @@ console.log(category.image, category.artwork_filename);
               </h1>
               <p
                 ref={descRef}
-                className="w-full max-w-2xl mt-3 sm:mt-4 text-sm sm:text-base text-gray-300 line-clamp-3"
+                className="w-full max-w-2xl text-center mt-3 sm:mt-4 text-sm sm:text-base text-gray-300 line-clamp-3"
               >
                 {category?.description || FALLBACK_DESC}
               </p>
@@ -163,7 +163,7 @@ console.log(category.image, category.artwork_filename);
              * - This prevents column shrink/overlap at any viewport.
              * - On mobile we center; from sm+ we left-align for a denser look.
              */
-            <div className="flex flex-wrap gap-6 justify-center sm:justify-center md:justify-center lg:justify-start items-start">
+            <div className="flex flex-wrap gap-6 justify-center sm:justify-center md:justify-center lg:justify-center items-center">
               {categoryPlaylists.map((pl) => (
                 <div key={pl.id} className="flex-none">
                   <PlaylistCard playlist={pl} isLockedOverlay={isRecommendationOnly} />

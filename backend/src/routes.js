@@ -613,6 +613,8 @@ const personalizeBasic = require('./controllers/PersonalizeBasicController');
 router.post('/personalize-basic/request', personalizeBasic.createBasicPersonalizeRequest);
 
 router.get('/personalize-basic/ping', (req, res) => res.json({ ok: true }));
+router.get('/admin/personalize-basic/submissions', requireAuth, requireAdmin, personalizeBasic.listBasicPersonalizeSubmissions);
+router.patch('/admin/personalize-basic/submissions/:id/status', requireAuth, requireAdmin, personalizeBasic.updateBasicPersonalizeStatus);
 
 // --- Basic personalize (admin sends recs directly to a user) ---
 const pb = require('./controllers/admin Controllers/adminbasicPersonalizecontroller');

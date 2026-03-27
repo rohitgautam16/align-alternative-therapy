@@ -43,6 +43,7 @@ import AdminUpload from './pages/Admin/AdminR2FileManager'
 import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
 import AdminPersonalize from './pages/Admin/AdminPersonalize';
 import BasicPersonalize from './pages/Admin/BasicPersonalize';
+import BasicPersonalizeSubmissions from './pages/Admin/BasicPersonalizeSubmissions';
 import UserRecommendationsList from './pages/Admin/UserRecomendationList';
 import RecentlyPlayed from './pages/RecentlyPlayed'
 import useOneTimePreloader from './hooks/useOneTimePreloader'
@@ -172,6 +173,7 @@ export default function App() {
          <Route path="upload" element={<AdminUpload />} />
          <Route path="personalize" element={<AdminPersonalize />} />
          <Route path="personalize-basic" element={<BasicPersonalize />} />
+         <Route path="personalize-basic-submissions" element={<BasicPersonalizeSubmissions />} />
          <Route path="personalize-users" element={<UserRecommendationsList />} />
          <Route path="blogs" element={<AdminBlogsPage />} />
          <Route path="blogs/:id" element={<AdminBlogEditor />} />

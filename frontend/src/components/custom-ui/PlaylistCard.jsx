@@ -75,7 +75,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
   function PlaylistCardSkeleton() {
     return (
       <div className="flex flex-col items-start relative">
-        <div className="w-45 md:w-65 aspect-square rounded-lg overflow-hidden bg-white/5 animate-pulse">
+        <div className="w-35 md:w-65 aspect-square rounded-lg overflow-hidden bg-white/5 animate-pulse">
           <div className="w-full h-full bg-white/10" />
         </div>
 
@@ -115,7 +115,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
     <div className="flex flex-col items-start relative">
       {/* Main card */}
       <div
-        className={`relative group/item w-45 md:w-65 aspect-square shrink-0 overflow-hidden rounded-lg
+        className={`relative group/item w-35 md:w-65 aspect-square shrink-0 overflow-hidden rounded-lg
                    cursor-pointer transform transition-all duration-500 hover:scale-100`}
         onClick={handleCardClick}
         tabIndex={0}

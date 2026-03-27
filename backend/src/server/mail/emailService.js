@@ -28,20 +28,11 @@ async function sendPersonalizeBasicEmails({ id, name, email, mobile, notes, admi
     adminUrl,
   });
 
-  await sendMail({
-    to: ADMIN_EMAIL,
-    subject: adminTpl.subject,
-    html: adminTpl.html,
-    text: adminTpl.text,
-    replyTo: { email, name },
-    tags: ['personalize-basic', 'lead'],
-  });
-
   // → user acknowledgement
   const userTpl = personalizeBasicUserAckTemplate({ name });
 
-  // send both emails in parallel and tolerate one failing without blocking
-  await Promise.allSettled([
+  // send both emails in parallel and log failures
+  const results = await Promise.allSettled([
     sendMail({
       to: ADMIN_EMAIL,
       subject: adminTpl.subject,
@@ -59,6 +50,30 @@ async function sendPersonalizeBasicEmails({ id, name, email, mobile, notes, admi
     }),
   ]);
 
+  // Log results for debugging
+  const summary = {
+    adminEmailStatus: results[0]?.status === 'fulfilled' ? 'sent' : 'failed',
+    userEmailStatus: results[1]?.status === 'fulfilled' ? 'sent' : 'failed',
+    emailsError: null,
+  };
+
+  const errors = [];
+  results.forEach((result, idx) => {
+    const recipient = idx === 0 ? 'admin' : 'user';
+    if (result.status === 'fulfilled') {
+      console.log(`[personalize-basic] Email to ${recipient} sent successfully`);
+    } else {
+      const reason = result.reason?.message || String(result.reason);
+      errors.push(`${recipient}: ${reason}`);
+      console.error(`[personalize-basic] Email to ${recipient} failed:`, result.reason);
+    }
+  });
+
+  if (errors.length) {
+    summary.emailsError = errors.join(' | ');
+  }
+
+  return summary;
 }
 
 /** 2) Password reset token email (you pass resetLink) */

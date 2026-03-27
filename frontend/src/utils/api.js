@@ -1263,6 +1263,31 @@ getPlaylistSongs: build.query({
         }),
       }),
 
+      adminPbListSubmissions: build.query({
+        query: ({ page = 1, pageSize = 20, status, q } = {}) => ({
+          url: '/admin/personalize-basic/submissions',
+          params: { page, pageSize, status, q },
+        }),
+        transformResponse: (response) => ({
+          data: response.data || [],
+          total: Number(response.total || 0),
+          page: Number(response.page || 1),
+          pageSize: Number(response.pageSize || 20),
+        }),
+        providesTags: (result) =>
+          result?.data?.length
+            ? [{ type: 'PBSUB', id: 'LIST' }, ...result.data.map((item) => ({ type: 'PBSUB', id: item.id }))]
+            : [{ type: 'PBSUB', id: 'LIST' }],
+      }),
+
+      adminPbUpdateSubmissionStatus: build.mutation({
+        query: ({ id, status }) => ({
+          url: `/admin/personalize-basic/submissions/${id}/status`,
+          method: 'PATCH',
+          body: { status },
+        }),
+        invalidatesTags: (result, error, { id }) => [{ type: 'PBSUB', id }, { type: 'PBSUB', id: 'LIST' }],
+      }),
 
       // --- PB Admin CRUD ---
       adminPbListForUser: build.query({
@@ -1723,6 +1748,8 @@ export const {
   useAdminPbSearchUsersQuery,
   useAdminPbSearchSongsQuery,
   useAdminPbSearchPlaylistsQuery,
+  useAdminPbListSubmissionsQuery,
+  useAdminPbUpdateSubmissionStatusMutation,
 
   useAdminPbListForUserQuery,
   useAdminPbCreateMutation,
