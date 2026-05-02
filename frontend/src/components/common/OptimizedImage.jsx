@@ -1,5 +1,8 @@
 import React, { forwardRef, useMemo, useState } from 'react';
-import { getOptimizedImageSrcSet, getOptimizedImageUrl } from '../../utils/imageHelpers';
+import {
+  getOptimizedImageSrcSet,
+  getOptimizedImageUrl,
+} from '../../utils/imageHelpers';
 
 const DEFAULT_WIDTHS = [320, 480, 640, 960, 1280];
 
@@ -25,16 +28,16 @@ const OptimizedImage = forwardRef(function OptimizedImage({
     () => ({ width, height, quality, fit }),
     [fit, height, quality, width]
   );
-  const optimizedSrc = getOptimizedImageUrl(activeSrc, transformOptions);
-  const optimizedSrcSet = getOptimizedImageSrcSet(activeSrc, widths, transformOptions);
+  const imageSrc = getOptimizedImageUrl(activeSrc, transformOptions);
+  const imageSrcSet = getOptimizedImageSrcSet(activeSrc, widths, transformOptions);
 
   return (
     <img
       {...props}
       ref={ref}
-      src={optimizedSrc}
-      srcSet={optimizedSrcSet}
-      sizes={optimizedSrcSet ? sizes : undefined}
+      src={imageSrc}
+      srcSet={imageSrcSet}
+      sizes={imageSrcSet ? sizes : undefined}
       width={width}
       height={height}
       alt={alt}
@@ -43,7 +46,6 @@ const OptimizedImage = forwardRef(function OptimizedImage({
       decoding={decoding}
       onError={(event) => {
         if (fallback && !failed) {
-          event.currentTarget.removeAttribute('srcset');
           setFailed(true);
           return;
         }

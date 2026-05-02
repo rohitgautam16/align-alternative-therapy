@@ -19,7 +19,7 @@ export function buildImageUrl(basePath, image, artwork, fallback) {
   return url;
 }
 
-const TRANSFORM_PREFIX = '/cdn-cgi/image/';
+const DEFAULT_TRANSFORM_HOST = 'https://cdn.align-alternativetherapy.com';
 const DEFAULT_IMAGE_QUALITY = 85;
 const TRANSFORMABLE_HOSTS = new Set([
   'cdn.align-alternativetherapy.com',
@@ -28,6 +28,7 @@ const TRANSFORMABLE_HOSTS = new Set([
   'images.pexels.com',
   'cdn.pixabay.com',
 ]);
+const NON_TRANSFORMABLE_EXTENSIONS = new Set(['.avif', '.webp', '.svg', '.gif']);
 
 function isLocalDevHost() {
   if (typeof window === 'undefined') return false;
@@ -36,29 +37,58 @@ function isLocalDevHost() {
   return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
 }
 
-function normalizeImageSource(src) {
+function transformsEnabled() {
+  return import.meta.env?.VITE_ENABLE_CLOUDFLARE_IMAGES !== 'false';
+}
+
+function getTransformPrefix() {
+  const configuredHost =
+    import.meta.env?.VITE_CLOUDFLARE_IMAGE_HOST || DEFAULT_TRANSFORM_HOST;
+  const host = configuredHost.replace(/\/+$/, '');
+
+  return `${host}/cdn-cgi/image/`;
+}
+
+export function normalizeImageSource(src) {
   if (!src || typeof src !== 'string') return '';
   return src.trim().replace(/ /g, '%20');
 }
 
+function getImagePathname(src) {
+  const pathWithoutQuery = src.split('?')[0].toLowerCase();
+
+  if (pathWithoutQuery.startsWith('/')) {
+    return pathWithoutQuery;
+  }
+
+  try {
+    return new URL(src).pathname.toLowerCase();
+  } catch {
+    return pathWithoutQuery;
+  }
+}
+
+function hasNonTransformableExtension(src) {
+  const pathname = getImagePathname(src);
+  return [...NON_TRANSFORMABLE_EXTENSIONS].some((extension) =>
+    pathname.endsWith(extension)
+  );
+}
+
 function canTransformImage(src) {
+  if (!transformsEnabled()) return false;
   if (!src || isLocalDevHost()) return false;
-  if (src.startsWith(TRANSFORM_PREFIX) || src.includes('/cdn-cgi/image/')) return false;
+  if (src.includes('/cdn-cgi/image/')) return false;
   if (src.startsWith('data:') || src.startsWith('blob:')) return false;
+  if (hasNonTransformableExtension(src)) return false;
 
   if (src.startsWith('/')) {
-    const pathname = src.split('?')[0].toLowerCase();
-    return !pathname.endsWith('.svg') && !pathname.endsWith('.gif');
+    return true;
   }
 
   try {
     const url = new URL(src);
-    const pathname = url.pathname.toLowerCase();
-
-    if (!TRANSFORMABLE_HOSTS.has(url.hostname)) return false;
-    if (pathname.endsWith('.svg') || pathname.endsWith('.gif')) return false;
-
-    return true;
+    return TRANSFORMABLE_HOSTS.has(url.hostname);
   } catch {
     return false;
   }
@@ -87,7 +117,7 @@ export function getOptimizedImageUrl(src, options = {}) {
     ? normalizedSrc.replace(/^\/+/, '')
     : normalizedSrc;
 
-  return `${TRANSFORM_PREFIX}${buildTransformOptions(options)}/${transformSrc}`;
+  return `${getTransformPrefix()}${buildTransformOptions(options)}/${transformSrc}`;
 }
 
 export function getOptimizedBackgroundImage(src, options = {}) {
