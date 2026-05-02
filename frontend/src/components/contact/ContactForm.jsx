@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
+import OptimizedImage from '../common/OptimizedImage';
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -146,7 +147,7 @@ const ContactForm = () => {
             <div className="space-y-3 bg-transparent border border-white px-6 py-3 rounded-2xl transition-colors duration-200 ease-in-out">
               <h3 className="text-3xl font-medium text-white leading-relaxed">Explore Our Sound‑Therapy Sessions</h3>
               <p className="inline-block text-white font-medium"
-                style={{ fontFamily: 'Bosch' }}>
+                style={{ fontFamily: 'Roboto' }}>
                 Curious about how our sessions, customizable packages, or pricing can support your journey? 
                 Discover an approach that resonates with your unique needs—let us guide you through what's 
                 available and find the best fit for your path to alignment.
@@ -156,7 +157,7 @@ const ContactForm = () => {
             <div className="space-y-3 bg-transparent border border-white px-6 py-3 rounded-2xl transition-colors duration-200 ease-in-out">
               <h3 className="text-3xl font-medium text-white leading-relaxed">Share Your Thoughts & Questions</h3>
               <div className="inline-block text-white font-medium"
-                   style={{ fontFamily: 'Bosch' }}>
+                   style={{ fontFamily: 'Roboto' }}>
                 Have a question, feedback, or something on your mind? We warmly welcome your voice—whether 
                 you're exploring options or reflecting on your experience. Reach out anytime, and expect a 
                 caring, thoughtful response by the next business day.
@@ -166,7 +167,7 @@ const ContactForm = () => {
             <div className="space-y-3 bg-transparent border border-white px-6 py-3 rounded-2xl transition-colors duration-200 ease-in-out">
               <h3 className="text-3xl font-medium text-white leading-relaxed">How Can We Support You Now?</h3>
               <div className="inline-block text-white font-medium"
-                   style={{ fontFamily: 'Bosch' }}>
+                   style={{ fontFamily: 'Roboto' }}>
                 Already on this healing journey, or ready to begin? Let us know where you are and how we can assist—whether 
                 it's booking your next session, addressing concerns, or offering guidance. We're here alongside you, every 
                 step forward.
@@ -179,7 +180,7 @@ const ContactForm = () => {
 
           {/* Form and Image Section */}
           <div className="grid lg:grid-cols-2 gap-16 items-start"
-               style={{ fontFamily: 'Bosch' }}>
+               style={{ fontFamily: 'Roboto' }}>
             {/* Form */}
             <div className='order-2 lg:order-1'>
               <h3 ref={formTitleRef} className="text-4xl font-bold mb-12">Reach Out to Us</h3>
@@ -248,9 +249,13 @@ const ContactForm = () => {
 
             {/* Image */}
             <div ref={imageRef} className="relative h-full order-1 lg:order-2">
-              <img
+              <OptimizedImage
                 src="https://cdn.align-alternativetherapy.com/static-pages-media/pexels-airamdphoto-9158464.jpg"
                 alt="Aerial view of green agricultural fields"
+                width={800}
+                height={600}
+                widths={[400, 800, 1200]}
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 className="w-full h-full max-h-[600px] object-cover rounded-2xl shadow-2xl"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>

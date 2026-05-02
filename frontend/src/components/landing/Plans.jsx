@@ -1,7 +1,8 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import { motion } from 'framer-motion';
-import PlanImg from '../../assets/images/girl-piano.jpg';
+import OptimizedImage from '../common/OptimizedImage';
+import { STATIC_IMAGES } from '../../constants/imageSources';
 
 
 const cardVariants = {
@@ -140,8 +141,12 @@ export default function Plans() {
             className="relative bg-[#ffffffcd] rounded-3xl p-6 overflow-hidden h-full flex flex-col"
           >
             <div className="aspect-video mb-6">
-              <img
-                src={PlanImg}
+              <OptimizedImage
+                src={STATIC_IMAGES.girlPiano}
+                width={640}
+                height={360}
+                widths={[320, 480, 640, 960]}
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                 alt="Featured"
                 className="w-full h-full object-cover rounded-2xl"
               />

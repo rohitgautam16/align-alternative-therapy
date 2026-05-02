@@ -4,21 +4,21 @@ import { useDispatch } from 'react-redux';
 import { Play, Lock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { setQueue, setTrack, setIsPlaying } from '../../store/playerSlice';
-import { useGetSongsQuery, useRecordPlayMutation  } from '../../utils/api';
+import { useRecordPlayMutation  } from '../../utils/api';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { canAccessContent } from '../../utils/permissions';
+import OptimizedImage from '../common/OptimizedImage';
 
 const FALLBACK_IMAGE =
   'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
+const RECORD_DEBOUNCE_MS = 30000;
+const CARD_IMAGE_SIZE = 360;
 
 export default function PlaylistCard({ playlist, isLockedOverlay = false, disableTierCheck = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { userTier, loading } = useSubscription();
-  const { data: songs = [], isLoading: isLoading } = useGetSongsQuery(playlist?.id, {
-    skip: !playlist?.id,
-  });
-  const firstSong = songs?.[0];
+  const firstSong = playlist?.previewSong || null;
 
   const locked = disableTierCheck
   ? false
@@ -46,7 +46,12 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
       return;
     }
 
-    dispatch(setQueue(songs));
+    if (!song?.id) {
+      handleCardClick();
+      return;
+    }
+
+    dispatch(setQueue([song]));
     dispatch(
       setTrack({
         id: song.id,
@@ -84,7 +89,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
     );
   }
 
-  if (isLoading || loading) {
+  if (loading) {
     return <PlaylistCardSkeleton />;
   }
 
@@ -115,16 +120,20 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
     <div className="flex flex-col items-start relative">
       {/* Main card */}
       <div
-        className={`relative group/item w-35 md:w-65 aspect-square shrink-0 overflow-hidden rounded-lg
+        className={`relative group/item w-35 md:w-45 aspect-square shrink-0 overflow-hidden rounded-lg
                    cursor-pointer transform transition-all duration-500 hover:scale-100`}
         onClick={handleCardClick}
         tabIndex={0}
       >
-        <img
+        <OptimizedImage
           src={playlist.image || FALLBACK_IMAGE}
+          widths={[180, 360, 540]}
+          sizes="(min-width: 768px) 11.25rem, 8.75rem"
+          width={CARD_IMAGE_SIZE}
+          height={CARD_IMAGE_SIZE}
           alt={playlist.name || 'Playlist'}
+          fallback={FALLBACK_IMAGE}
           className="w-full h-full object-cover transition-transform duration-700 group-hover/item:scale-115"
-          onError={(e) => (e.target.src = FALLBACK_IMAGE)}
         />
 
         {/* Locked overlay - only icon */}
@@ -132,6 +141,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
           <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
             <button
               onClick={handleLockClick}
+              aria-label="View playlist subscription details"
               className="p-4 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 cursor-pointer transition"
             >
               <Lock className="w-8 h-8 text-white" />
@@ -143,6 +153,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
         {isLockedOverlay && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 pointer-events-none">
             <button
+              aria-label="Locked playlist"
               className="p-4 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition"
             >
               <Lock className="w-8 h-8 text-white" />
@@ -157,6 +168,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
                             opacity-0 group-hover/item:opacity-100 transition-all duration-300" />
             <button
               onClick={(e) => handlePlaySong(e, firstSong)}
+              aria-label={`Play ${playlist.name || playlist.title || 'playlist'}`}
               className="absolute bottom-4 right-4 w-12 h-12 bg-secondary rounded-full flex 
                          items-center justify-center transform translate-y-4 opacity-0 
                          group-hover/item:translate-y-0 group-hover/item:opacity-100 cursor-pointer
@@ -190,6 +202,7 @@ export default function PlaylistCard({ playlist, isLockedOverlay = false, disabl
             >
               <button
                 onClick={() => setShowPopup(false)}
+                aria-label="Close subscription prompt"
                 className="absolute top-3 right-3 cursor-pointer text-white hover:text-gray-300"
               >
                 <X className="w-5 h-5" />

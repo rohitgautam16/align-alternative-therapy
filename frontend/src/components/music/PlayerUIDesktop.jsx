@@ -18,6 +18,8 @@ import {
 // Slick carousel CSS
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import OptimizedImage from '../common/OptimizedImage';
+import { getOptimizedBackgroundImage } from '../../utils/imageHelpers';
 
 export const PLAYER_HEIGHT = 72;
 export const HANDLE_HEIGHT = 4;
@@ -171,7 +173,10 @@ export default function PlayerUIDesktop(props) {
               key={bgImage}
               className="absolute inset-0 bg-cover bg-center"
               style={{
-                backgroundImage: `url(${bgImage})`,
+                backgroundImage: getOptimizedBackgroundImage(bgImage, {
+                  width: 1600,
+                  quality: 85,
+                }),
                 filter: 'blur(8px)'
               }}
               initial={{ opacity: 0.7 }}
@@ -208,11 +213,15 @@ export default function PlayerUIDesktop(props) {
                             if (track.id !== currentTrack.id) onSelectTrack?.(track);
                           }}
                         >
-                          <img
+                          <OptimizedImage
                             src={track.image || FALLBACK_IMAGE}
+                            width={304}
+                            height={304}
+                            widths={[228, 304, 456, 608]}
+                            sizes="19rem"
                             alt={track.title}
+                            fallback={FALLBACK_IMAGE}
                             className="w-full h-full object-cover rounded-lg shadow-2xl cursor-pointer"
-                            onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                           />
                           {track.id === currentTrack.id && (
                             <div className="absolute inset-0 bg-black/20 rounded-lg" />
@@ -235,11 +244,15 @@ export default function PlayerUIDesktop(props) {
                   ) : (
                     <div className="px-2">
                       <div className="w-56 h-56 mx-auto relative">
-                        <img
+                        <OptimizedImage
                           src={currentTrack.image || FALLBACK_IMAGE}
+                          width={224}
+                          height={224}
+                          widths={[224, 336, 448]}
+                          sizes="14rem"
                           alt={currentTrack.title}
+                          fallback={FALLBACK_IMAGE}
                           className="w-full h-full object-cover rounded-lg shadow-2xl"
-                          onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                         />
                       </div>
                     </div>
@@ -270,11 +283,15 @@ export default function PlayerUIDesktop(props) {
               <div className="flex">
                 {/* Left (1/3): Album art + Title/Artist */}
                 <div className="flex items-center gap-1 w-1/3 px-4">
-                  <img
+                  <OptimizedImage
                     src={currentTrack.image || FALLBACK_IMAGE}
+                    width={48}
+                    height={48}
+                    widths={[48, 96]}
+                    sizes="3rem"
                     alt={currentTrack.title}
+                    fallback={FALLBACK_IMAGE}
                     className="w-12 h-12 rounded-lg"
-                    onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                   />
                   <div className="min-w-0">
                     <h3 className="text-white font-semibold text-sm truncate">{currentTrack.name || currentTrack.title}</h3>
@@ -354,11 +371,15 @@ export default function PlayerUIDesktop(props) {
         >
           {/* Left: artwork + info */}
           <div className="flex items-center space-x-4 w-1/4">
-            <img
+            <OptimizedImage
               src={currentTrack.image || FALLBACK_IMAGE}
+              width={48}
+              height={48}
+              widths={[48, 96]}
+              sizes="3rem"
               alt={currentTrack.title}
+              fallback={FALLBACK_IMAGE}
               className="h-12 w-12 rounded"
-              onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
             />
             <div className="truncate">
               <p className="font-semibold truncate">{currentTrack.name || currentTrack.title}</p>

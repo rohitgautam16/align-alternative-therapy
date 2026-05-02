@@ -1,5 +1,8 @@
 // src/services/r2UploadService.js
 const AWS = require('aws-sdk');
+const crypto = require('crypto');
+const path = require('path');
+
 const bucket = process.env.R2_BUCKET_NAME;
 const s3 = new AWS.S3({
   endpoint:         process.env.R2_ENDPOINT,
@@ -11,6 +14,40 @@ const s3 = new AWS.S3({
 
 
 const CDN_URL = process.env.R2_CDN_URL; 
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
+function slugifyFilenamePart(value) {
+  return String(value || 'file')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'file';
+}
+
+function extensionFromMime(mimetype) {
+  if (!mimetype) return '';
+  if (mimetype === 'image/jpeg') return '.jpg';
+  if (mimetype === 'image/png') return '.png';
+  if (mimetype === 'image/webp') return '.webp';
+  if (mimetype === 'image/avif') return '.avif';
+  if (mimetype === 'image/gif') return '.gif';
+  return '';
+}
+
+function normalizeUploadName(file) {
+  const parsed = path.parse(file.originalname || 'file');
+  const base = slugifyFilenamePart(parsed.name);
+  const ext = (parsed.ext || extensionFromMime(file.mimetype)).toLowerCase();
+  const hash = crypto
+    .createHash('sha256')
+    .update(file.buffer)
+    .digest('hex')
+    .slice(0, 10);
+
+  return `${base}-${hash}${ext}`;
+}
 
 async function createFolder(prefix) {
   if (!prefix.endsWith('/')) prefix += '/';
@@ -22,14 +59,25 @@ async function uploadFilesToFolder(prefix, files) {
   if (prefix && !prefix.endsWith('/')) prefix += '/';
   const results = [];
   for (let file of files) {
-    const key = `${prefix || ''}${file.originalname}`;
+    const filename = normalizeUploadName(file);
+    const key = `${prefix || ''}${filename}`;
     await s3.putObject({
       Bucket:      bucket,
       Key:         key,
       Body:        file.buffer,
       ContentType: file.mimetype,
+      CacheControl: file.mimetype?.startsWith('image/')
+        ? IMMUTABLE_CACHE_CONTROL
+        : undefined,
     }).promise();
-    results.push({ key, size: file.buffer.length });
+    results.push({
+      key,
+      filename,
+      originalName: file.originalname,
+      size: file.buffer.length,
+      contentType: file.mimetype,
+      url: `${CDN_URL}/${key}`,
+    });
   }
   return results;
 }

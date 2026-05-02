@@ -4,7 +4,8 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { ArrowRight, Home, Music2Icon } from 'lucide-react';
-import BinuralBeats from "../../assets/images/binural beats.jpg";
+import OptimizedImage from '../common/OptimizedImage';
+import { STATIC_IMAGES } from '../../constants/imageSources';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -283,8 +284,12 @@ const AnimatedCTA = () => {
                   backfaceVisibility: 'hidden'
                 }}
               >
-                <img
-                  src={BinuralBeats}
+                <OptimizedImage
+                  src={STATIC_IMAGES.binauralBeats}
+                  width={720}
+                  height={400}
+                  widths={[360, 540, 720, 960]}
+                  sizes="(min-width: 1024px) 40vw, 100vw"
                   alt="Luxurious modern house with stunning architecture at night"
                   className="w-full h-[300px] lg:h-[400px] object-cover transition-transform duration-600"
                   style={{ 

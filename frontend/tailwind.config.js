@@ -3,8 +3,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'heading': ['Billiers', 'serif'],
-        'sans': ['Bosch', 'sans-serif'], // This makes Bosch the default
+        'heading': ['Roboto', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'sans': ['Roboto', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       }
     }
   }

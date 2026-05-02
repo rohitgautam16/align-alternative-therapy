@@ -1,7 +1,8 @@
 // src/pages/DashboardHome.jsx
 import React from 'react';
 import { useEffect, useState, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion';
 import CarouselSection from '../components/dashboard/CarouselSection';
 import CategorySection from '../components/dashboard/CategorySection';
 import PlaylistCard from '../components/custom-ui/PlaylistCard';
@@ -13,6 +14,7 @@ import PersonalizeCTA from '../components/dashboard/Personalized Service/Persona
 import PBMyRecommendations from '../components/dashboard/Personalized Service/PBMyRecommendations';
 import MobilePagedGrid from '../components/custom-ui/MobilePagedGrid';
 import { SquareMediaCard } from '../components/custom-ui/SquareMediaCard';
+import TagResultsSection from '../components/dashboard/TagResultsSection';
 
 import {
   useGetDashboardAllPlaylistsQuery,
@@ -26,7 +28,6 @@ import {
 const DashboardHome = () => {
 
   const navigate = useNavigate()
-  const location = useLocation()
   const { isRecommendationOnly } = useSubscription();
 
   useEffect(() => {
@@ -48,14 +49,9 @@ const DashboardHome = () => {
     isFetching: nrF,
     isError: nrE
   } = useGetDashboardNewReleasesQuery({
-    playlistLimit: 12,
-    songLimit: 8,
-    tag: selectedTag
+    playlistLimit: 8,
+    songLimit: 8
   });
-  const isNewReleasesLoading = nrL || nrF;
-  const isInitialLoading = nrL || nrF;
-  const isRefetching = !nrL && nrF; 
-  const isFiltering = selectedTag && nrF;
   const newPlaylists = Array.isArray(nrRaw.playlists) ? nrRaw.playlists : [];
   const newSongs     = Array.isArray(nrRaw.songs)     ? nrRaw.songs     : [];
   const combinedNew  = [
@@ -75,7 +71,7 @@ const DashboardHome = () => {
    slug: s?.slug ?? s?.song_slug ?? s?.id?.toString(),
  }));
 
- const { data: rplRaw, isLoading: rplL, isError: rplE } = useGetRecentPlaylistsQuery(8);
+ const { data: rplRaw, isLoading: rplL, isError: rplE } = useGetRecentPlaylistsQuery(15);
   const recentPlaylists = Array.isArray(rplRaw) ? rplRaw : (rplRaw?.items ?? []);
   
   const normalizedRecentPlaylists = recentPlaylists.map(p => ({
@@ -99,16 +95,19 @@ const DashboardHome = () => {
     []
   );
 
+  const activeTag = tags.find((tag) => tag.slug === selectedTag) ?? null;
+  const activeTagLabel = activeTag
+    ? activeTag.name.charAt(0).toUpperCase() + activeTag.name.slice(1)
+    : null;
+
 
   return (
       <div className="space-y-1 sm:space-y-6 rounded-2xl overflow-hidden">
-      <CategorySection />
+      <div className="lg:hidden">
+        <CategorySection />
+      </div>
 
       <div className="relative">
-      {isFiltering && (
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] z-40 transition-opacity duration-300 pointer-events-none" />
-      )}
-
      <div className="flex gap-3 md:gap-5 overflow-x-auto px-6 py-4">
 
         {(!tags || tags.length === 0) ? (
@@ -121,7 +120,7 @@ const DashboardHome = () => {
           ))
         ) : (
           <>
-            <button
+            {/* <button
               onClick={() => setSelectedTag(null)}
               className={`
                 px-4 py-1.5 rounded-full cursor-pointer border text-sm whitespace-nowrap transition-all duration-200
@@ -131,7 +130,7 @@ const DashboardHome = () => {
               `}
             >
               All
-            </button>
+            </button> */}
 
             {tags.map(tag => (
               <button
@@ -154,7 +153,39 @@ const DashboardHome = () => {
 
       </div>
 
-      <PBMyRecommendations />
+      <AnimatePresence initial={false}>
+        {selectedTag && activeTagLabel && (
+          <TagResultsSection
+            key={selectedTag}
+            tagSlug={selectedTag}
+            tagLabel={activeTagLabel}
+          />
+        )}
+      </AnimatePresence>
+
+      <PBMyRecommendations hideDesktop />
+
+      <section
+        className={`hidden md:grid gap-5 px-4 py-2 md:px-6 ${
+          isRecommendationOnly ? 'grid-cols-1' : 'grid-cols-2'
+        }`}
+      >
+        <PBMyRecommendations
+          hideMobile
+          desktopVariant="strip"
+        />
+
+        {!isRecommendationOnly && !rplE && (rplL || combinedRecentPlaylists.length > 0) && (
+          <VerticalStripCarousel
+            title="Recently Played"
+            items={combinedRecentPlaylists}
+            isLoading={rplL}
+            itemsPerPage={4}
+            wrapperClassName="min-w-0 px-0 py-0"
+            pageClassName="w-full shrink-0 grid grid-cols-1 auto-rows-min gap-3 h-fit content-start"
+          />
+        )}
+      </section>
 
       {/* <PersonalizeBanner /> */}
 
@@ -182,32 +213,22 @@ const DashboardHome = () => {
       {!isRecommendationOnly && (
         <>
           {/* 📱 Mobile Grid */}
-          <MobilePagedGrid
-            title="Recently Played"
-            items={combinedRecentPlaylists}
-            isLoading={rplL}
-            renderItem={renderGridItem}
-          />
+          <div className="md:hidden">
+            <MobilePagedGrid
+              title="Recently Played"
+              items={combinedRecentPlaylists}
+              isLoading={rplL}
+              renderItem={renderGridItem}
+            />
+          </div>
 
-          {/* 🖥 Desktop Carousel */}
-          {!rplL && !rplE && normalizedRecentPlaylists.length > 0 && (
-            <div className="hidden md:block">
-              <CarouselSection
-                title="Recently Played"
-                items={normalizedRecentPlaylists}
-                renderItem={(pl) => (
-                  <PlaylistCard playlist={pl} />
-                )}
-              />
-            </div>
-          )}
         </>
       )}
 
 {!isRecommendationOnly && (
         <>
           {/* 📱 Mobile */}
-          <div className="md:hidden">
+          <div className="xl:hidden">
             <VerticalStripCarousel
               title="Explore"
               items={combinedNew}
@@ -216,7 +237,7 @@ const DashboardHome = () => {
           </div>
 
           {/* 🖥 Desktop */}
-          <div className="hidden md:block">
+          <div className="hidden md:block xl:hidden">
             {(nrL || nrF) ? (
               <CarouselSection title="Explore" items={[]} />
             ) : (
@@ -239,6 +260,7 @@ const DashboardHome = () => {
       <CarouselSection
         title="Free Playlists"
         useQuery={useGetDashboardFreePlaylistsQuery}
+        queryArg={{ limit: 18, offset: 0 }}
         renderItem={(pl) => <PlaylistCard key={pl.id} playlist={pl} />}
       />
 
@@ -246,7 +268,7 @@ const DashboardHome = () => {
       <CarouselSection
         title="All Playlists"
         useQuery={useGetDashboardAllPlaylistsQuery}
-        queryArg={{ tag: selectedTag }}
+        queryArg={{ limit: 18, offset: 0 }}
         renderItem={(pl) => <PlaylistCard key={pl.id} playlist={pl} />}
       />
       )}

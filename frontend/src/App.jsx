@@ -1,63 +1,67 @@
-import React from 'react'
+/* eslint-disable react/prop-types */
+import { Suspense, lazy } from 'react'
 import { useLocation, Navigate, Routes, Route } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useAuthStatus } from './hooks/useAuthStatus';
-import RestoreAccountPage from './pages/RestoreAccountPage';
-import Layout from './Layout'
-import Homepage from './pages/Homepage'
-import LoginPage from './pages/LoginPage'
-import About from './pages/About'
-import ContactPage from './pages/ContactPage'
-import BlogsPage from './pages/BlogsPage'
-import BlogPostPage from './pages/BlogPostPage'
-import BlogCategoryPage from './pages/BlogCategoryPage'
-import DashboardLayout from './components/dashboard/DashboardLayout'
-import DashboardHome from './pages/DashboardHome'
-import MyPlaylists from './pages/MyPlaylists'
-import CategoryView from './pages/CategoryView'
-import PlaylistView from './pages/PlaylistView'
-import UserPlaylistView from './pages/UserPlaylistView';
-import SongView from './pages/SongView'
-import Search from './pages/Search'
-import ProfilePage from './pages/ProfilePage'
-import Devices from './pages/DevicesSection';
-import TransitionWrapper from './components/custom-ui/transition'
 import AuthGate from './components/common/AuthGate'
-import SubscribePage from './pages/SubscribePage'
-import PaymentSuccesful from './components/landing/PaymentSuccesful'
-import ManageSubscription from './pages/ManageSubscription'
-import PersonalizeSection from './components/dashboard/Personalized Service/PersonalizeSection';
-import AdminRoute from './components/admin/AdminRoutes'
-import AdminDashboardLayout from './components/admin/AdminDashboardLayout'
-import AdminUsersOverview from './pages/Admin/AdminUsersOverview';
-import AdminUserDetailPage from './pages/Admin/AdminUserDetailPage';
-import AdminLoginPage from './pages/Admin/AdminLoginPage'
-import AdminCategoriesOverview from './pages/Admin/AdminCategoriesOverview'
-import AdminCategoryDetail from './pages/Admin/AdminCategoryDetail'
-import AdminPlaylistsOverview from './pages/Admin/AdminPlaylistOverview'
-import AdminPlaylistDetail from './pages/Admin/AdminPlaylistDetail'
-import AdminSongsOverview from './pages/Admin/AdminSongsOverview'
-import AdminSongDetail from './pages/Admin/AdminSongDetail'
-import AdminHeroBannerEditor from './pages/Admin/AdminHeroBannerEditor'
-import AdminUpload from './pages/Admin/AdminR2FileManager'
-import AdminAdminsOverview from './pages/Admin/AdminAdminsOverview'
-import AdminPersonalize from './pages/Admin/AdminPersonalize';
-import BasicPersonalize from './pages/Admin/BasicPersonalize';
-import BasicPersonalizeSubmissions from './pages/Admin/BasicPersonalizeSubmissions';
-import UserRecommendationsList from './pages/Admin/UserRecomendationList';
-import RecentlyPlayed from './pages/RecentlyPlayed'
-import useOneTimePreloader from './hooks/useOneTimePreloader'
-import Preloader from './components/custom-ui/Preloader'
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import ScrollToTop from './components/common/ScrollToTop'
 import useScrollToTop from './hooks/useScrollToTop';
-import PWAInstallBanner from "./components/common/PWAInstallBanner";
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import FAQPage from './pages/FaqPage';
-import AdminBlogsPage from './pages/Admin/AdminBlogsPage';
-import AdminBlogEditor from './pages/Admin/AdminBlogEditor';
-import AdminBlogCategoryManager from './pages/Admin/AdminBlogCategoryManager';
+
+const Layout = lazy(() => import('./Layout'));
+const Homepage = lazy(() => import('./pages/Homepage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const RestoreAccountPage = lazy(() => import('./pages/RestoreAccountPage'));
+const About = lazy(() => import('./pages/About'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const SubscribePage = lazy(() => import('./pages/SubscribePage'));
+const PaymentSuccesful = lazy(() => import('./components/landing/PaymentSuccesful'));
+
+const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'));
+const DashboardHome = lazy(() => import('./pages/DashboardHome'));
+const MyPlaylists = lazy(() => import('./pages/MyPlaylists'));
+const CategoryView = lazy(() => import('./pages/CategoryView'));
+const PlaylistView = lazy(() => import('./pages/PlaylistView'));
+const UserPlaylistView = lazy(() => import('./pages/UserPlaylistView'));
+const SongView = lazy(() => import('./pages/SongView'));
+const Search = lazy(() => import('./pages/Search'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const Devices = lazy(() => import('./pages/DevicesSection'));
+const ManageSubscription = lazy(() => import('./pages/ManageSubscription'));
+const PersonalizeSection = lazy(() => import('./components/dashboard/Personalized Service/PersonalizeSection'));
+const RecentlyPlayed = lazy(() => import('./pages/RecentlyPlayed'));
+const BlogsPage = lazy(() => import('./pages/BlogsPage'));
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage'));
+const BlogCategoryPage = lazy(() => import('./pages/BlogCategoryPage'));
+const FAQPage = lazy(() => import('./pages/FaqPage'));
+
+const AdminRoute = lazy(() => import('./components/admin/AdminRoutes'));
+const AdminDashboardLayout = lazy(() => import('./components/admin/AdminDashboardLayout'));
+const AdminLoginPage = lazy(() => import('./pages/Admin/AdminLoginPage'));
+const AdminUsersOverview = lazy(() => import('./pages/Admin/AdminUsersOverview'));
+const AdminUserDetailPage = lazy(() => import('./pages/Admin/AdminUserDetailPage'));
+const AdminAdminsOverview = lazy(() => import('./pages/Admin/AdminAdminsOverview'));
+const AdminCategoriesOverview = lazy(() => import('./pages/Admin/AdminCategoriesOverview'));
+const AdminCategoryDetail = lazy(() => import('./pages/Admin/AdminCategoryDetail'));
+const AdminPlaylistsOverview = lazy(() => import('./pages/Admin/AdminPlaylistOverview'));
+const AdminPlaylistDetail = lazy(() => import('./pages/Admin/AdminPlaylistDetail'));
+const AdminSongsOverview = lazy(() => import('./pages/Admin/AdminSongsOverview'));
+const AdminSongDetail = lazy(() => import('./pages/Admin/AdminSongDetail'));
+const AdminHeroBannerEditor = lazy(() => import('./pages/Admin/AdminHeroBannerEditor'));
+const AdminUpload = lazy(() => import('./pages/Admin/AdminR2FileManager'));
+const AdminPersonalize = lazy(() => import('./pages/Admin/AdminPersonalize'));
+const BasicPersonalize = lazy(() => import('./pages/Admin/BasicPersonalize'));
+const BasicPersonalizeSubmissions = lazy(() => import('./pages/Admin/BasicPersonalizeSubmissions'));
+const UserRecommendationsList = lazy(() => import('./pages/Admin/UserRecomendationList'));
+const AdminBlogsPage = lazy(() => import('./pages/Admin/AdminBlogsPage'));
+const AdminBlogEditor = lazy(() => import('./pages/Admin/AdminBlogEditor'));
+const AdminBlogCategoryManager = lazy(() => import('./pages/Admin/AdminBlogCategoryManager'));
+
+function PageFallback() {
+  return <div className="min-h-screen bg-black text-white" />;
+}
 
 
 
@@ -100,6 +104,7 @@ export default function App() {
       {/* <PWAInstallBanner /> */}
       {/* {show && <Preloader isVisible onComplete={complete} />} */}
       <ScrollToTop delay={150} />
+      <Suspense fallback={<PageFallback />}>
       <AnimatePresence initial={false} mode="wait">
       <Routes location={location} >
         {/* Public routes under your global Layout */}
@@ -184,6 +189,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
+    </Suspense>
     </SubscriptionProvider>
     </>
     

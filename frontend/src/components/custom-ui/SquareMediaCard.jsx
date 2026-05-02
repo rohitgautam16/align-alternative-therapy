@@ -1,5 +1,8 @@
 import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import OptimizedImage from '../common/OptimizedImage';
+
+const CARD_IMAGE_SIZE = 360;
 
 export const SquareMediaCard = memo(function SquareMediaCard({
   type,
@@ -25,16 +28,14 @@ export const SquareMediaCard = memo(function SquareMediaCard({
       onClick={() => navigate(link)}
       className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
     >
-      <img
+      <OptimizedImage
         src={image}
+        widths={[160, 320, 480]}
+        sizes="33vw"
+        width={CARD_IMAGE_SIZE}
+        height={CARD_IMAGE_SIZE}
         alt={data?.title || 'media'}
-        loading="lazy"                 
-        decoding="async"
-        onError={(e) => {
-          if (e.currentTarget.src !== fallback) {
-            e.currentTarget.src = fallback;
-          }
-        }}
+        fallback={fallback}
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
 

@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMenu } from '../../context/MenuContext';
-import Logo from '../../assets/images/logo-with-text-removebg-preview.png';
+import OptimizedImage from './OptimizedImage';
 import { usePWAInstallPrompt } from '../../hooks/usePWAInstallPrompt';
 import { Download } from 'lucide-react'; 
 
@@ -20,7 +20,13 @@ export default function Header() {
           className="absolute left-6 top-1 transform text-white cursor-pointer"
           onClick={() => navigate('/')}
         >
-          <img src={Logo} alt="Align Logo" className="h-18 sm:h-20 w-auto" />
+          <OptimizedImage 
+            src="https://cdn.align-alternativetherapy.com/static-pages-media/logo-with-text-removebg-preview.png" 
+            alt="Align Logo" 
+            widths={[150, 300, 450]} 
+            sizes="(min-width: 768px) 150px, 120px" 
+            className="h-18 sm:h-20 w-auto" 
+          />
         </div>
 
         {/* RIGHT ACTION BUTTONS */}

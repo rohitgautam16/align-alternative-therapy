@@ -23,6 +23,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 
 const FALLBACK_BG   = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = 'No description available for this playlist.';
+const RECORD_DEBOUNCE_MS = 30000;
 
 export default function UserPlaylistView() {
   const { slug }    = useParams();

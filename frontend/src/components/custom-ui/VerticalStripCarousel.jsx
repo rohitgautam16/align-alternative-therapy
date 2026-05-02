@@ -5,11 +5,13 @@ import { Lock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { canAccessContent } from '../../utils/permissions';
+import OptimizedImage from '../common/OptimizedImage';
 
 const FALLBACK_IMAGE =
   'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 
-const ITEMS_PER_PAGE = 6;
+const DEFAULT_ITEMS_PER_PAGE = 6;
+const STRIP_IMAGE_SIZE = 112;
 const LOCKED_PLAYLIST_MESSAGE = 'This playlist is available only for premium subscribers.';
 const LOCKED_CONTENT_MESSAGE =
   'This content is not included in your plan. Subscribe to a premium plan.';
@@ -29,19 +31,154 @@ function StripSkeleton() {
   );
 }
 
+export function VerticalStripSkeleton() {
+  return <StripSkeleton />;
+}
+
+export function VerticalStripItem({
+  type,
+  data,
+  disableTierCheck = false,
+  lockedOverride,
+  titleOverride,
+  subtitleOverride,
+  badge,
+  linkOverride,
+  onLocked,
+  className = '',
+}) {
+  const navigate = useNavigate();
+  const { userTier, loading: subscriptionLoading } = useSubscription();
+
+  const permissionLocked = useMemo(() => {
+    if (disableTierCheck || subscriptionLoading || !data) {
+      return false;
+    }
+
+    if (type === 'playlist') {
+      return !canAccessContent(userTier, data);
+    }
+
+    if (type === 'song') {
+      const playlist = data?.playlist || data?.playlistData || null;
+      return !canAccessContent(userTier, playlist, data);
+    }
+
+    return false;
+  }, [data, disableTierCheck, subscriptionLoading, type, userTier]);
+
+  const locked =
+    typeof lockedOverride === 'boolean' ? lockedOverride : permissionLocked;
+
+  const image =
+    data?.image ||
+    data?.artwork_filename ||
+    data?.cover_image ||
+    FALLBACK_IMAGE;
+
+  const title = titleOverride || data?.title || data?.name || 'Untitled';
+  let subtitle = subtitleOverride;
+
+  if (subtitle === undefined) {
+    if (type === 'song') {
+      const playlistName = data?.playlistTitle || data?.playlist_name;
+      subtitle = playlistName ? `${playlistName}` : '';
+    } else {
+      const categoryName = data?.category_name;
+      subtitle = categoryName ? `${categoryName}` : '';
+    }
+  }
+
+  const defaultLink =
+    type === 'song'
+      ? `/dashboard/song/${data?.slug || data?.song_slug || data?.id}`
+      : `/dashboard/playlist/${data?.slug || data?.playlist_slug || data?.id}`;
+  const link = linkOverride || defaultLink;
+
+  const handleLocked = () => {
+    if (onLocked) {
+      onLocked(type, data);
+    }
+  };
+
+  return (
+    <div
+      className={`relative flex cursor-pointer items-center gap-4 rounded-lg bg-secondary/20 p-2 transition ${
+        locked ? 'bg-black/35' : 'hover:bg-secondary/30'
+      } ${className}`.trim()}
+      onClick={() => {
+        if (locked) {
+          handleLocked();
+          return;
+        }
+        navigate(link);
+      }}
+    >
+      <OptimizedImage
+        src={image}
+        widths={[56, 112, 168]}
+        sizes="3.5rem"
+        width={STRIP_IMAGE_SIZE}
+        height={STRIP_IMAGE_SIZE}
+        alt={title}
+        fallback={FALLBACK_IMAGE}
+        className="h-14 w-14 shrink-0 rounded-md object-cover"
+      />
+
+      <div className="min-w-0 flex-1 overflow-hidden">
+        {badge && (
+          <span className="mb-1 inline-flex max-w-full items-center truncate rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] leading-none text-white/80">
+            {badge}
+          </span>
+        )}
+        <p className="font-semibold leading-tight line-clamp-2">
+          {title}
+        </p>
+
+        {subtitle && (
+          <p className="line-clamp-1 text-xs leading-tight text-gray-400">
+            {subtitle}
+          </p>
+        )}
+      </div>
+
+      {locked && (
+        <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/45 backdrop-blur-[2px]" />
+      )}
+
+      {locked && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLocked();
+          }}
+          aria-label="View subscription details"
+          className="relative z-10 cursor-pointer rounded-full bg-white/10 p-2 transition hover:bg-white/20"
+        >
+          <Lock className="h-4 w-4 text-white" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- Component ---------------- */
 
 export default function VerticalStripCarousel({
   title,
   items = [],
   isLoading = false,
-  disableTierCheck = false
+  itemsPerPage = DEFAULT_ITEMS_PER_PAGE,
+  disableTierCheck = false,
+  renderItem,
+  wrapperClassName = '',
+  titleClassName = '',
+  pageClassName = 'w-full shrink-0 grid grid-cols-2 auto-rows-min gap-3 h-fit content-start',
 }) {
   const [page, setPage] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
   const navigate = useNavigate();
-  const { userTier, loading: subscriptionLoading } = useSubscription();
 
   /* Reset page when items change (important on tag change) */
   useEffect(() => {
@@ -50,13 +187,17 @@ export default function VerticalStripCarousel({
 
   const pages = useMemo(() => {
     const chunks = [];
-    for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
-      chunks.push(items.slice(i, i + ITEMS_PER_PAGE));
+    for (let i = 0; i < items.length; i += itemsPerPage) {
+      chunks.push(items.slice(i, i + itemsPerPage));
     }
     return chunks;
-  }, [items]);
+  }, [items, itemsPerPage]);
 
   const totalPages = pages.length;
+  const hasTitle = Boolean(title);
+  const showControls = totalPages > 1;
+  const wrapperClasses = ['space-y-4 px-4 py-2', wrapperClassName].filter(Boolean).join(' ');
+  const titleClasses = ['text-2xl font-semibold', titleClassName].filter(Boolean).join(' ');
 
   const canScrollLeft = page > 0;
   const canScrollRight = page < totalPages - 1;
@@ -75,44 +216,24 @@ export default function VerticalStripCarousel({
     setShowPopup(true);
   };
 
-  const isItemLocked = ({ type, data }) => {
-    if (disableTierCheck || subscriptionLoading || !data) {
-      return false;
-    }
+  const header = (hasTitle || showControls) ? (
+    <div
+      className={`flex items-center ${
+        hasTitle ? 'justify-between relative' : 'justify-end'
+      }`}
+    >
+      {hasTitle && <h2 className={titleClasses}>{title}</h2>}
 
-    if (type === 'playlist') {
-      return !canAccessContent(userTier, data);
-    }
-
-    if (type === 'song') {
-      const playlist = data?.playlist || data?.playlistData || null;
-      return !canAccessContent(userTier, playlist, data);
-    }
-
-    return false;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4 px-6 py-2">
-        {Array.from({ length: ITEMS_PER_PAGE }).map((_, idx) => (
-          <StripSkeleton key={idx} />
-        ))}
-      </div>
-    );
-  }
-
-
-  return (
-    <div className="space-y-4 px-4 py-2">
-      {/* Header */}
-      <div className="flex items-center justify-between relative">
-        <h2 className="text-2xl font-semibold">{title}</h2>
-
-        <div className="flex top-2 absolute -right-1 space-x-2 z-50">
+      {showControls && (
+        <div
+          className={`flex space-x-2 z-50 ${
+            hasTitle ? 'top-2 absolute -right-1' : ''
+          }`}
+        >
           <button
             onClick={() => scroll('left')}
             disabled={!canScrollLeft}
+            aria-label={`Previous ${title || 'items'} page`}
             className={`
               p-2 rounded-full border border-white text-white
               transition-all duration-300 ease-out
@@ -127,6 +248,7 @@ export default function VerticalStripCarousel({
           <button
             onClick={() => scroll('right')}
             disabled={!canScrollRight}
+            aria-label={`Next ${title || 'items'} page`}
             className={`
               p-2 rounded-full border border-white text-white
               transition-all duration-300 ease-out
@@ -138,7 +260,25 @@ export default function VerticalStripCarousel({
             <FiChevronRight size={16} />
           </button>
         </div>
+      )}
+    </div>
+  ) : null;
+
+  if (isLoading) {
+    return (
+      <div className={wrapperClasses}>
+        {header}
+        {Array.from({ length: itemsPerPage }).map((_, idx) => (
+          <StripSkeleton key={idx} />
+        ))}
       </div>
+    );
+  }
+
+
+  return (
+    <div className={wrapperClasses}>
+      {header}
 
       {/* Horizontal Sliding Viewport */}
       <div className="overflow-hidden">
@@ -151,86 +291,28 @@ export default function VerticalStripCarousel({
           {pages.map((group, groupIndex) => (
             <div
               key={groupIndex}
-              className="w-full shrink-0 grid grid-cols-2 auto-rows-min gap-3 h-fit content-start"
+              className={pageClassName}
             >
-              {group.map(({ type, data }, idx) => {
-                const locked = isItemLocked({ type, data });
-                const image =
-                  data.image ||
-                  data.artwork_filename ||
-                  data.cover_image ||
-                  FALLBACK_IMAGE;
+              {group.map((item, idx) => {
+                const { type, data } = item;
+                const key = `${type}-${data?.id ?? idx}-${idx}`;
 
-                const artist =
-                  data.artist || data.author || 'Align Alternative Therapy';
+                if (renderItem) {
+                  const rendered = renderItem(item, idx, openLockPopup);
 
-                let subtitle = '';
-
-                if (type === 'song') {
-                  const playlistName = data.playlistTitle || data.playlist_name;
-                  subtitle = playlistName ? `${playlistName}` : '';
-                } else {
-                  const categoryName = data.category_name;
-                  subtitle = categoryName ? `${categoryName}` : '';
+                  return React.isValidElement(rendered)
+                    ? React.cloneElement(rendered, { key: rendered.key ?? key })
+                    : <React.Fragment key={key}>{rendered}</React.Fragment>;
                 }
 
-                const link =
-                  type === 'song'
-                    ? `/dashboard/song/${data.slug || data.song_slug || data.id}`
-                    : `/dashboard/playlist/${data.slug || data.playlist_slug || data.id}`;
-
                 return (
-                  <div
-                    key={`${type}-${data.id}-${idx}`}
-                    className={`relative flex items-center gap-4 p-2 rounded-lg cursor-pointer transition bg-secondary/20 ${
-                      locked ? 'bg-black/35' : 'hover:bg-secondary/30'
-                    }`}
-                    onClick={() => {
-                      if (locked) {
-                        openLockPopup(type);
-                        return;
-                      }
-                      navigate(link);
-                    }}
-                  >
-                    <img
-                      src={image}
-                      alt={data.title}
-                      className="w-14 h-14 rounded-md object-cover shrink-0"
-                    />
-
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="font-semibold wrap-break-word leading-tight line-clamp-2">
-                        {data.title}
-                      </p>
-
-                      {/* <p className="text-sm text-gray-300 truncate">
-                        {artist}
-                      </p> */}
-
-                      {subtitle && (
-                        <p className="text-xs text-gray-400 wrap-break-word leading-tight">
-                          {subtitle}
-                        </p>
-                      )}
-                    </div>
-
-                    {locked && (
-                      <div className="absolute inset-0 rounded-lg bg-black/45 backdrop-blur-[2px] pointer-events-none" />
-                    )}
-
-                    {locked && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openLockPopup(type);
-                        }}
-                        className="relative z-10 p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 cursor-pointer transition"
-                      >
-                        <Lock className="w-4 h-4 text-white" />
-                      </button>
-                    )}
-                  </div>
+                  <VerticalStripItem
+                    key={key}
+                    type={type}
+                    data={data}
+                    disableTierCheck={disableTierCheck}
+                    onLocked={openLockPopup}
+                  />
                 );
               })}
             </div>
@@ -255,6 +337,7 @@ export default function VerticalStripCarousel({
             >
               <button
                 onClick={() => setShowPopup(false)}
+                aria-label="Close subscription prompt"
                 className="absolute top-3 right-3 text-white/70 hover:text-white transition"
               >
                 <X className="w-5 h-5" />

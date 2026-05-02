@@ -4,18 +4,24 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, X } from 'lucide-react';
 import { useListMyPbRecommendationsQuery } from '../../../utils/api';
-import { useSubscription } from '../../../context/SubscriptionContext';
 import CarouselSection from '../../dashboard/CarouselSection';
 import PlaylistCard from '../../custom-ui/PlaylistCard';
 import SongCard from '../../custom-ui/SongCard';
 import MobilePagedGrid from '../../custom-ui/MobilePagedGrid';
 import { SquareMediaCard } from '../../custom-ui/SquareMediaCard';
+import VerticalStripCarousel, {
+  VerticalStripItem,
+} from '../../custom-ui/VerticalStripCarousel';
 
-export default function PBMyRecommendations() {
+export default function PBMyRecommendations({
+  desktopVariant = 'carousel',
+  hideMobile = false,
+  hideDesktop = false,
+  desktopWrapperClassName = '',
+}) {
 
   const location = useLocation();
   const { data, isLoading, isError, refetch } = useListMyPbRecommendationsQuery();
-  const { baseEntitled } = useSubscription();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -40,11 +46,12 @@ export default function PBMyRecommendations() {
   ), []);
 
 
-  if (isError || !Array.isArray(data) || data.length === 0) return null;
+  if (isError) return null;
 
   const unified = [];
+  const recommendationRows = Array.isArray(data) ? data : [];
 
-  for (const entry of data) {
+  for (const entry of recommendationRows) {
     const rec = entry?.recommendation;
     if (!rec) continue;
 
@@ -90,8 +97,19 @@ export default function PBMyRecommendations() {
     }
   }
 
-  if (unified.length === 0) return null;
+  if (!isLoading && unified.length === 0) return null;
 
+  const openRecommendationLock = (meta) => {
+    if (meta.paymentLinkUrl) {
+      setPopupMessage('This recommendation is locked. Complete payment to unlock access.');
+      setPaymentUrl(meta.paymentLinkUrl);
+    } else {
+      setPopupMessage('Payment link not generated yet. Please contact support or wait for the admin to set up payment.');
+      setPaymentUrl(null);
+    }
+
+    setShowPopup(true);
+  };
 
   function CardWithMeta({ kind, item, meta, k }) {
 
@@ -101,15 +119,7 @@ export default function PBMyRecommendations() {
       e.stopPropagation();
       if (!locked) return;
 
-      if (meta.paymentLinkUrl) {
-        setPopupMessage('This recommendation is locked. Complete payment to unlock access.');
-        setPaymentUrl(meta.paymentLinkUrl);
-      } else {
-        setPopupMessage('Payment link not generated yet. Please contact support or wait for the admin to set up payment.');
-        setPaymentUrl(null);
-      }
-
-      setShowPopup(true);
+      openRecommendationLock(meta);
     };
 
     return (
@@ -182,11 +192,70 @@ export default function PBMyRecommendations() {
     );
   }
 
+  function StripItemWithMeta({ entry }) {
+    const kind = entry.type === 'playlist' ? 'playlist' : 'song';
+    const locked = entry.meta.paymentStatus !== 'paid' && entry.meta.paymentStatus !== 'free';
+    const prescription = entry.meta.prescription?.trim();
+    const itemSlug = entry.data?.slug || entry.data?.playlist_slug || entry.data?.song_slug;
+    const link = kind === 'song'
+      ? `/dashboard/song/${itemSlug || entry.data?.id}`
+      : itemSlug
+        ? `/dashboard/playlist/${itemSlug}`
+        : `/dashboard/user-playlist/${entry.data?.id}`;
+
+    return (
+      <VerticalStripItem
+        type={kind}
+        data={entry.data}
+        disableTierCheck
+        lockedOverride={locked}
+        badge={entry.meta.recTitle}
+        subtitleOverride={prescription ? `Note - ${prescription}` : undefined}
+        linkOverride={link}
+        onLocked={() => openRecommendationLock(entry.meta)}
+        className="min-h-[4.5rem]"
+      />
+    );
+  }
+
+  const desktopContent = desktopVariant === 'strip' ? (
+    <VerticalStripCarousel
+      title="For You"
+      items={unified}
+      isLoading={isLoading}
+      itemsPerPage={4}
+      wrapperClassName={`min-w-0 px-0 py-0 ${desktopWrapperClassName}`.trim()}
+      pageClassName="w-full shrink-0 grid grid-cols-1 auto-rows-min gap-3 h-fit content-start"
+      renderItem={(entry) => (
+        <StripItemWithMeta
+          key={entry.key}
+          entry={entry}
+        />
+      )}
+    />
+  ) : (
+    <CarouselSection
+      title="For You"
+      items={unified}
+      isLoading={isLoading}
+      renderItem={(entry) => (
+        <CardWithMeta
+          key={entry.key}
+          kind={entry.type === 'playlist' ? 'playlist' : 'song'}
+          item={entry.data}
+          meta={entry.meta}
+          k={entry.key}
+        />
+      )}
+    />
+  );
+
 
   return (
     <>
 
       {/* MOBILE GRID */}
+      {!hideMobile && (
       <div className="md:hidden">
         <MobilePagedGrid
           title="For You"
@@ -196,24 +265,14 @@ export default function PBMyRecommendations() {
           renderItem={renderGridItem}
         />
       </div>
+      )}
 
       {/* DESKTOP CAROUSEL */}
-      <div className="hidden md:block">
-        <CarouselSection
-          title="For You"
-          items={unified}
-          isLoading={isLoading}
-          renderItem={(entry) => (
-            <CardWithMeta
-              key={entry.key}
-              kind={entry.type === 'playlist' ? 'playlist' : 'song'}
-              item={entry.data}
-              meta={entry.meta}
-              k={entry.key}
-            />
-          )}
-        />
-      </div>
+      {!hideDesktop && (
+        <div className="hidden md:block">
+          {desktopContent}
+        </div>
+      )}
 
 
       {/* PAYMENT POPUP */}

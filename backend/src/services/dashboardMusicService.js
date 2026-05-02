@@ -3,6 +3,83 @@ const db = require('../db');
 const { withAccessNormalization } = require('../utils/withAccessNormalization');
 const { attachAccessFlags } = require('../utils/attachAccessFlags');
 
+const DEFAULT_DASHBOARD_LIMIT = 24;
+const MAX_DASHBOARD_LIMIT = 48;
+
+function normalizePagination({ limit, offset } = {}) {
+  const parsedLimit = Number.parseInt(limit, 10);
+  const parsedOffset = Number.parseInt(offset, 10);
+
+  return {
+    limit: Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), MAX_DASHBOARD_LIMIT)
+      : DEFAULT_DASHBOARD_LIMIT,
+    offset: Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0,
+  };
+}
+
+function hasPagination(args = {}) {
+  return args.limit !== undefined || args.offset !== undefined;
+}
+
+function toPagedResponse(items, total, pagination) {
+  const nextOffset = pagination.offset + items.length;
+
+  return {
+    items,
+    total,
+    nextOffset: nextOffset < total ? nextOffset : null,
+  };
+}
+
+async function attachPreviewSongsToPlaylists(playlists) {
+  if (!Array.isArray(playlists) || playlists.length === 0) return playlists;
+
+  const playlistIds = playlists.map((playlist) => playlist.id).filter(Boolean);
+  if (!playlistIds.length) return playlists;
+
+  const [rows] = await db.query(
+    `
+      SELECT
+        playlistIds.playlistId,
+        s.id,
+        s.name,
+        s.title,
+        s.slug,
+        s.artist,
+        s.description,
+        s.artwork_filename AS image,
+        s.cdn_url          AS audioUrl,
+        s.is_free
+      FROM (
+        SELECT DISTINCT ps.playlist_id AS playlistId
+        FROM playlist_songs ps
+        WHERE ps.playlist_id IN (?)
+      ) playlistIds
+      JOIN audio_metadata s ON s.id = (
+        SELECT
+          ps2.song_id
+        FROM playlist_songs ps2
+        JOIN audio_metadata s2 ON s2.id = ps2.song_id
+        WHERE ps2.playlist_id = playlistIds.playlistId
+        AND s2.is_discoverable = 1
+        ORDER BY ps2.created_at DESC, s2.created DESC, s2.id DESC
+        LIMIT 1
+      )
+    `,
+    [playlistIds]
+  );
+
+  const previewSongs = new Map(
+    attachAccessFlags(rows, 'song').map((song) => [song.playlistId, song])
+  );
+
+  return playlists.map((playlist) => ({
+    ...playlist,
+    previewSong: previewSongs.get(playlist.id) || null,
+  }));
+}
+
 /** GET /categories */
 async function fetchDashboardCategories() {
   const [rows] = await db.query(
@@ -41,7 +118,9 @@ async function fetchDashboardPlaylistsByCategory(categoryId) {
 }
 
 /** GET /playlists */
-async function fetchDashboardAllPlaylists({ tagSlug } = {}) {
+async function fetchDashboardAllPlaylists({ tagSlug, limit, offset } = {}) {
+  const paginated = hasPagination({ limit, offset });
+  const pagination = normalizePagination({ limit, offset });
   let sql = `
     SELECT
       p.id,
@@ -70,9 +149,30 @@ async function fetchDashboardAllPlaylists({ tagSlug } = {}) {
     console.log("TAG RECEIVED:", tagSlug);
   }
 
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM playlists p
+    WHERE p.is_discoverable = 1
+    ${tagSlug ? `
+      AND p.id IN (
+        SELECT pt.playlist_id
+        FROM playlist_tags pt
+        INNER JOIN tags t ON t.id = pt.tag_id
+        WHERE t.slug = ?
+      )
+    ` : ''}
+  `;
+
   sql += ` ORDER BY p.created DESC`;
 
+  if (paginated) {
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(pagination.limit, pagination.offset);
+  }
+
   const [rows] = await db.query(sql, params);
+  const countParams = tagSlug ? [tagSlug] : [];
+  const [[countRow]] = paginated ? await db.query(countSql, countParams) : [[{ total: rows.length }]];
 
   // KEEP EXISTING CATEGORY LOGIC INTACT
   const [links] = await db.query(
@@ -93,7 +193,11 @@ async function fetchDashboardAllPlaylists({ tagSlug } = {}) {
     }
   });
 
-  return attachAccessFlags(rows, 'playlist');
+  const playlists = await attachPreviewSongsToPlaylists(attachAccessFlags(rows, 'playlist'));
+
+  return paginated
+    ? toPagedResponse(playlists, Number(countRow?.total || 0), pagination)
+    : playlists;
 }
 
 async function fetchDashboardPlaylistBySlug(slug) {
@@ -141,9 +245,13 @@ async function canUserAccessPlaylist(userId, playlistId) {
   return Array.isArray(rows) && rows.length > 0;
 }
 
-async function fetchDashboardFreePlaylists() {
-  const [rows] = await db.query(
-    `SELECT
+async function fetchDashboardFreePlaylists({ limit, offset } = {}) {
+  const paginated = hasPagination({ limit, offset });
+  const pagination = normalizePagination({ limit, offset });
+  const params = [];
+
+  let sql = `
+    SELECT
        id,
        title   AS name,
        slug,
@@ -156,9 +264,33 @@ async function fetchDashboardFreePlaylists() {
      FROM playlists
      WHERE paid = 0
      AND is_discoverable = 1
-     ORDER BY createdAt DESC`
+     ORDER BY createdAt DESC
+  `;
+
+  if (paginated) {
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(pagination.limit, pagination.offset);
+  }
+
+  const [rows] = await db.query(
+    sql,
+    params
   );
-  return attachAccessFlags(rows, 'playlist');
+
+  const [[countRow]] = paginated
+    ? await db.query(
+      `SELECT COUNT(*) AS total
+       FROM playlists
+       WHERE paid = 0
+       AND is_discoverable = 1`
+    )
+    : [[{ total: rows.length }]];
+
+  const playlists = await attachPreviewSongsToPlaylists(attachAccessFlags(rows, 'playlist'));
+
+  return paginated
+    ? toPagedResponse(playlists, Number(countRow?.total || 0), pagination)
+    : playlists;
 }
 
 /** GET /playlists/:playlistId/songs */
@@ -357,7 +489,7 @@ async function searchDashboardEverything(term) {
 
 
 async function fetchDashboardNewReleases(
-  { playlistLimit = 12, songLimit = 8, tagSlug } = {}
+  { playlistLimit = 12, songLimit = 8, playlistOffset = 0, songOffset = 0, tagSlug } = {}
 ) {
   const playlistParams = [];
   const songParams = [];
@@ -391,9 +523,12 @@ async function fetchDashboardNewReleases(
 
   playlistSql += `
     ORDER BY p.created DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `;
-  playlistParams.push(playlistLimit);
+  playlistParams.push(
+    Math.min(Math.max(Number.parseInt(playlistLimit, 10) || 12, 1), MAX_DASHBOARD_LIMIT),
+    Math.max(Number.parseInt(playlistOffset, 10) || 0, 0)
+  );
 
   const [plRows] = await db.query(playlistSql, playlistParams);
 
@@ -431,16 +566,20 @@ async function fetchDashboardNewReleases(
 
   songSql += `
     ORDER BY s.created DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `;
-  songParams.push(songLimit);
+  songParams.push(
+    Math.min(Math.max(Number.parseInt(songLimit, 10) || 8, 1), MAX_DASHBOARD_LIMIT),
+    Math.max(Number.parseInt(songOffset, 10) || 0, 0)
+  );
 
   const [songRows] = await db.query(songSql, songParams);
 
   const songsWithFlags = attachAccessFlags(songRows, 'song');
+  const playlistsWithFlags = await attachPreviewSongsToPlaylists(attachAccessFlags(plRows, 'playlist'));
 
   return {
-    playlists: attachAccessFlags(plRows, 'playlist'),
+    playlists: playlistsWithFlags,
     songs: songsWithFlags
   };
 }

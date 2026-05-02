@@ -33,7 +33,6 @@ function clearAccessTokenCookie() {
 }
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
-console.log('API baseUrl is', baseUrl);
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl,
@@ -793,14 +792,24 @@ getPlaylistSongs: build.query({
     }),
 
     getDashboardFreePlaylists: build.query({
-      query: () => 'dashboard/playlists/free',
+      query: ({ limit, offset } = {}) => ({
+        url: 'dashboard/playlists/free',
+        params: {
+          ...(limit && { limit }),
+          ...(offset && { offset }),
+        },
+      }),
       providesTags: ['Playlists'],
     }),
 
     getDashboardAllPlaylists: build.query({
-      query: ({ tag } = {}) => ({
+      query: ({ tag, limit, offset } = {}) => ({
         url: 'dashboard/playlists',
-        params: tag ? { tag } : undefined
+        params: {
+          ...(tag && { tag }),
+          ...(limit && { limit }),
+          ...(offset && { offset }),
+        },
       }),
       providesTags: ['Playlists'],
     }),
@@ -842,11 +851,14 @@ getPlaylistSongs: build.query({
       /**
        * @arg {{ playlistLimit?: number, songLimit?: number }}
        */
-      query: ({ playlistLimit = 12, songLimit = 8, tag } = {}) => ({
+      query: ({ playlistLimit = 12, songLimit = 8, playlistOffset, songOffset, offset, tag } = {}) => ({
         url: 'dashboard/playlists/new-releases',
         params: {
           playlistLimit,
           songLimit,
+          ...(playlistOffset !== undefined && { playlistOffset }),
+          ...(songOffset !== undefined && { songOffset }),
+          ...(offset !== undefined && { offset }),
           ...(tag && { tag })
         }
       }),

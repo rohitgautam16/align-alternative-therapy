@@ -58,7 +58,7 @@ const router = express.Router();
 
 router.get("/admin/r2/presign", async (req, res, next) => {
   try {
-    const { filename, contentType, folder = "uploads", cacheControl = "public, max-age=31536000" } = req.query;
+    const { filename, contentType, folder = "uploads" } = req.query;
     const key = `${folder}/${Date.now()}-${filename}`;
 
     console.log('🔑 Generating presigned URL:', {

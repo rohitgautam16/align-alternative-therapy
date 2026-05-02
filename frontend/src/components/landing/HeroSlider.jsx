@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Splide, SplideSlide } from "@splidejs/react-splide";
 import "@splidejs/splide/css";
 import "@splidejs/react-splide/css";
+import OptimizedImage from "../common/OptimizedImage";
+import { getOptimizedBackgroundImage } from "../../utils/imageHelpers";
 
 const HeroSlider = () => {
   const splideRef = useRef(null);
@@ -88,7 +90,12 @@ const HeroSlider = () => {
             {/* Background image */}
             <div
               className="absolute inset-0 w-full h-full bg-cover bg-center"
-              style={{ backgroundImage: `url(${slide.backgroundImage})` }}
+              style={{
+                backgroundImage: getOptimizedBackgroundImage(slide.backgroundImage, {
+                  width: 1600,
+                  quality: 85,
+                }),
+              }}
             />
             {/* Subtle dark overlay for contrast */}
             <div className="absolute inset-0 bg-black/50" />
@@ -131,8 +138,12 @@ const HeroSlider = () => {
                 onClick={() => splideRef.current?.splide.go(index)}
                 aria-label={`Go to slide ${index + 1}`}
               >
-                <img
+                <OptimizedImage
                   src={slide.backgroundImage}
+                  width={144}
+                  height={80}
+                  widths={[112, 144, 288]}
+                  sizes="(min-width: 768px) 9rem, 7rem"
                   alt={`Slide ${index + 1}`}
                   className="w-full h-full object-cover"
                 />

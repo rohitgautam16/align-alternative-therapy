@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import OptimizedImage from '../common/OptimizedImage';
 
 const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
@@ -32,10 +33,13 @@ export default function BlogCard({ blog, variant = 'list' }) {
         <div className="flex flex-col sm:flex-row border-b pb-5 border-b-white/10">
           {/* IMAGE */}
           <div className="w-full relative overflow-hidden sm:w-64 h-48 sm:h-72 flex-shrink-0">
-            <img
+            <OptimizedImage
               src={img}
+              width={320}
+              height={288}
+              widths={[256, 320, 480]}
+              sizes="(min-width: 640px) 16rem, 100vw"
               alt={blog.title}
-              loading="lazy"
               className="w-full h-full absolute inset-0 object-cover rounded-lg transition-transform duration-500 ease-out
                          group-hover:scale-110"
             />
@@ -95,10 +99,13 @@ export default function BlogCard({ blog, variant = 'list' }) {
     {/* IMAGE */}
     <div className="p-3">
       <div className="relative aspect-[16/10] overflow-hidden rounded-lg">
-        <img
+        <OptimizedImage
           src={img}
+          width={640}
+          height={400}
+          widths={[320, 480, 640, 960]}
+          sizes="(min-width: 1024px) 33vw, 100vw"
           alt={blog.title}
-          loading="lazy"
           className="absolute inset-0 w-full h-full object-cover 
                      transition-transform duration-500 ease-out
                      group-hover:scale-110"

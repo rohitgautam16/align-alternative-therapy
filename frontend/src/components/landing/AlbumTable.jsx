@@ -3,10 +3,8 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useNavigate } from "react-router-dom";
-import MemoryImg from "../../assets/images/Memory.png";
-import PeakStateImg from "../../assets/images/Peak State.jpg";
-import OptimismImg from "../../assets/images/optimism.jpg";
-import IntuitionImg from "../../assets/images/Intuition.jpg";
+import OptimizedImage from "../common/OptimizedImage";
+import { STATIC_IMAGES } from "../../constants/imageSources";
 
 const AlbumTable = () => {
   const navigate = useNavigate();
@@ -23,10 +21,10 @@ const AlbumTable = () => {
   const rowsRef               = useRef([]);
 
   const albumData = [
-    { Name: "Memory",     Genre: "Soulful", Category: "Mind", image: MemoryImg },
-    { Name: "Peak State Gamma", Genre: "Soulful", Category: "Mind", image: PeakStateImg },
-    { Name: "Optimism",   Genre: "Soulful", Category: "Mind", image: OptimismImg },
-    { Name: "Intuition",  Genre: "Soulful", Category: "Mind", image: IntuitionImg },
+    { Name: "Memory",     Genre: "Soulful", Category: "Mind", image: STATIC_IMAGES.memory },
+    { Name: "Peak State Gamma", Genre: "Soulful", Category: "Mind", image: STATIC_IMAGES.peakState },
+    { Name: "Optimism",   Genre: "Soulful", Category: "Mind", image: STATIC_IMAGES.optimism },
+    { Name: "Intuition",  Genre: "Soulful", Category: "Mind", image: STATIC_IMAGES.intuition },
   ];
 
   // 1) Throttle mousemove with RAF
@@ -179,8 +177,12 @@ const AlbumTable = () => {
           }}
         >
           {currentImage !== null && (
-            <img
+            <OptimizedImage
               src={albumData[currentImage].image}
+              width={360}
+              height={216}
+              widths={[240, 360, 480]}
+              sizes="15rem"
               alt={albumData[currentImage].Name}
               className="w-60 h-36 object-cover rounded-md border border-gray-500 shadow-lg"
               style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}

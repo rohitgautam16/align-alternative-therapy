@@ -1,6 +1,6 @@
 // src/layout/DashboardLayout.jsx
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
 import { PlayerUIProvider, usePlayerUI } from '../../context/PlayerUIContext';
@@ -11,15 +11,25 @@ import PlayerShell from '../music/PlayerShell';
 import { usePlayerBarPadding } from '../music/usePlayerBarPadding';
 import useScrollToTop from '../../hooks/useScrollToTop';
 import DashboardFooter from './DashboardFooter';
+import DashboardHomeRail from './DashboardHomeRail';
 
 function InnerLayout() {
   useScrollToTop();
+  const location = useLocation();
   const { currentTrack } = useSelector(s => s.player);
   const { expanded } = usePlayerUI();
-  const { drawerOpen, toggleDrawer } = useSidebar(); 
+  const { drawerOpen, toggleDrawer, rightRailOpen, closeRightRail } = useSidebar();
+  const isDashboardHome =
+    location.pathname === '/dashboard' || location.pathname === '/dashboard/';
 
   //const padBottom = currentTrack ? (expanded ? PLAYER_HEIGHT : HANDLE_HEIGHT) : 0;
   const padBottom = usePlayerBarPadding();
+
+  React.useEffect(() => {
+    if (!isDashboardHome) {
+      closeRightRail();
+    }
+  }, [closeRightRail, isDashboardHome]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -37,9 +47,23 @@ function InnerLayout() {
           </div>
         </div>
 
-        <main className="flex-1 bg-black space-between rounded-lg overflow-y-auto scroll-smooth">
-          <Outlet />
-          <DashboardFooter />
+        <main className="flex flex-1 min-w-0 gap-1.5 overflow-hidden">
+          <div className="min-w-0 flex-1 bg-black space-between rounded-lg overflow-y-auto scroll-smooth">
+            <Outlet />
+            <DashboardFooter />
+          </div>
+
+          {isDashboardHome && (
+            <div
+              className={[
+                'hidden lg:block shrink-0 overflow-hidden transition-all duration-300 ease-in-out',
+                rightRailOpen ? 'w-[20rem] opacity-100' : 'w-0 opacity-0 pointer-events-none',
+              ].join(' ')}
+              aria-hidden={!rightRailOpen}
+            >
+              <DashboardHomeRail />
+            </div>
+          )}
         </main>
       </div>
 

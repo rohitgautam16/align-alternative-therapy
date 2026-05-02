@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLoginUserMutation, useRegisterUserMutation } from '../../utils/api';
-import Logo from '../../assets/images/logo-with-text-removebg-preview.png';
+import OptimizedImage from '../common/OptimizedImage';
 import { useAuthActions } from '../../hooks/useAuthActions';
+import { getOptimizedBackgroundImage } from '../../utils/imageHelpers';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -97,7 +98,10 @@ export default function Login() {
         <div 
           className="absolute inset-0 bg-cover bg-center rounded-r-4xl bg-no-repeat"
           style={{
-            backgroundImage: `url('https://cdn.align-alternativetherapy.com/static-pages-media/pexels-shvetsa-4557398.jpg')`,
+            backgroundImage: getOptimizedBackgroundImage(
+              'https://cdn.align-alternativetherapy.com/static-pages-media/pexels-shvetsa-4557398.jpg',
+              { width: 1200, quality: 85 }
+            ),
           }}
         >
           {/* Overlay gradient */}
@@ -146,7 +150,13 @@ export default function Login() {
           {/* Logo for mobile */}
           <motion.div variants={itemVariants} className="lg:hidden text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 mb-4">
-              <img src={Logo} alt="Align Logo" className="h-14 mx-auto mb-6" />
+              <OptimizedImage 
+                src="https://cdn.align-alternativetherapy.com/static-pages-media/logo-with-text-removebg-preview.png" 
+                alt="Align Logo" 
+                widths={[100, 200, 300]} 
+                sizes="100px" 
+                className="h-14 mx-auto mb-6 w-auto" 
+              />
             </div>
             <p className="text-xs text-white/60 tracking-[0.2em] uppercase mb-8">
               ALIGN Alternative Therapy
@@ -155,8 +165,14 @@ export default function Login() {
 
           {/* Logo for desktop */}
           <motion.div variants={itemVariants} className="hidden lg:block text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 mb-4">
-                <img src={Logo} alt="Align Logo" className="h-14 mx-auto mb-6" />
+            <div className="inline-flex items-center justify-center w-12 h-12 mb-4">
+              <OptimizedImage 
+                src="https://cdn.align-alternativetherapy.com/static-pages-media/logo-with-text-removebg-preview.png" 
+                alt="Align Logo" 
+                widths={[100, 200, 300]} 
+                sizes="100px" 
+                className="h-14 mx-auto mb-6 w-auto" 
+              />
             </div>
             <p className="text-xs text-white/60 tracking-[0.2em] uppercase">
               ALIGN Alternative Therapy

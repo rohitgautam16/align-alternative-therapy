@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import { useAuthStatus } from '../../../hooks/useAuthStatus';
+import OptimizedImage from '../../common/OptimizedImage';
 
 const BG_IMG =
   'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0';
@@ -60,13 +61,16 @@ export default function PersonalizeBanner() {
       "
     >
       {/* Background image */}
-      <img
+      <OptimizedImage
         src={imgSrc}
         onError={onImgError}
         alt=""
-        loading="lazy"
+        width={1280}
+        height={512}
+        widths={[640, 960, 1280]}
+        sizes="100vw"
+        fallback={FALLBACK_IMG}
         className="absolute inset-0 h-full w-full object-cover"
-        decoding="async"
       />
 
       {/* Gradient overlay */}

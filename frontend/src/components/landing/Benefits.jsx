@@ -1,13 +1,8 @@
 import React, { useEffect, useRef, useCallback, useMemo } from "react";
 import { cn } from "../../lib/utils";
-import BinuralBeats from "../../assets/images/binural beats.jpg";
-import Stress from "../../assets/images/stress.png";
-import SleepQuality from "../../assets/images/sleep quality.jpg";
-import Focus from "../../assets/images/focus.jpg";
-import OverallBeing from "../../assets/images/overall-being.jpg";
-import Meditation from "../../assets/images/meditation.jpg";
-import Creative from "../../assets/images/creativeness.jpg";
 import { useNavigate } from 'react-router-dom';
+import OptimizedImage from "../common/OptimizedImage";
+import { STATIC_IMAGES } from "../../constants/imageSources";
 
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -21,11 +16,14 @@ const Card = React.memo(({ card, onNavigate, index }) => (
       className="relative overflow-hidden rounded-xl will-change-transform"
       style={{ height: `${card.height}px` }}
     >
-      <img
+      <OptimizedImage
         src={card.image}
+        width={560}
+        height={card.height}
+        widths={[360, 560, 720]}
+        sizes="(min-width: 768px) 30vw, 90vw"
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         alt={card.title}
-        loading="lazy"
       />
 
       <button
@@ -140,12 +138,12 @@ const Benefits = () => {
   const navigate = useNavigate();
 
   const cards = useMemo(() => [
-    { title: "Reduce Stress", description: "Find inner peace...", image: Stress, height: 400 },
-    { title: "Improve Sleep Quality", description: "Experience deeper...", image: SleepQuality, height: 350 },
-    { title: "Enhanced Focus", description: "Sharpen your mind...", image: Focus, height: 380 },
-    { title: "Overall Well-being", description: "Transform your life...", image: OverallBeing, height: 450 },
-    { title: "Create Balance", description: "Harmonize your emotions...", image: Meditation, height: 370 },
-    { title: "Explore New Ideas", description: "Clear your mind...", image: Creative, height: 390 },
+    { title: "Reduce Stress", description: "Find inner peace...", image: STATIC_IMAGES.stress, height: 400 },
+    { title: "Improve Sleep Quality", description: "Experience deeper...", image: STATIC_IMAGES.sleepQuality, height: 350 },
+    { title: "Enhanced Focus", description: "Sharpen your mind...", image: STATIC_IMAGES.focus, height: 380 },
+    { title: "Overall Well-being", description: "Transform your life...", image: STATIC_IMAGES.overallBeing, height: 450 },
+    { title: "Create Balance", description: "Harmonize your emotions...", image: STATIC_IMAGES.meditation, height: 370 },
+    { title: "Explore New Ideas", description: "Clear your mind...", image: STATIC_IMAGES.creativeness, height: 390 },
   ], []);
 
   const handleCardNavigate = useCallback(card => {
@@ -208,11 +206,15 @@ const Benefits = () => {
               ref={mainImageRef}
               className="relative group w-full h-full min-h-[500px] lg:min-h-full overflow-hidden rounded-3xl will-change-transform"
             >
-              <img
-                src={BinuralBeats}
+              <OptimizedImage
+                src={STATIC_IMAGES.binauralBeats}
+                width={900}
+                height={1100}
+                widths={[480, 720, 900, 1200]}
+                sizes="(min-width: 1024px) 40vw, 100vw"
                 alt="Binaural Beats"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="eager"
+                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent flex flex-col items-center justify-end pb-12">
                 <h2 className="text-3xl font-bold mb-4 text-white tracking-wider text-center">

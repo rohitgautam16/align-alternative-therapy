@@ -1,7 +1,8 @@
 // src/components/about/AboutBanner.jsx
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import portrait from '../../assets/images/focus.jpg';
+import OptimizedImage from '../common/OptimizedImage';
+import { STATIC_IMAGES } from '../../constants/imageSources';
 
 export default function AboutBanner() {
   const sectionRef = useRef(null);
@@ -112,9 +113,13 @@ export default function AboutBanner() {
 
       {/* Portrait - bottom-left, behind text */}
       <div className="absolute bottom-0 left-0 w-1/2 h-3/5 overflow-hidden z-10">
-        <img
+        <OptimizedImage
           ref={imgRef}
-          src={portrait}
+          src={STATIC_IMAGES.focus}
+          width={720}
+          height={860}
+          widths={[360, 540, 720, 960]}
+          sizes="50vw"
           alt="Portrait"
           className="w-full h-full object-contain"
         />

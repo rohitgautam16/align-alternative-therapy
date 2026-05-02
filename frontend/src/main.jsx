@@ -7,7 +7,6 @@ import App from './App'
 import { MenuProvider } from './context/MenuContext'
 import { PlayerUIProvider } from './context/PlayerUIContext'
 import './styles/index.css'
-import './styles/fonts.css'
 import 'slick-carousel/slick/slick.css'
 import 'slick-carousel/slick/slick-theme.css'
 

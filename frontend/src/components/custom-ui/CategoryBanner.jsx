@@ -1,11 +1,13 @@
 // src/components/custom-ui/CategoryBanner.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import OptimizedImage from '../common/OptimizedImage';
 
 const FALLBACK_IMAGE = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
-const FALLBACK_DESC = 'Explore this category';
+const BANNER_WIDTH = 960;
+const BANNER_HEIGHT = 360;
 
-export default function CategoryBanner({ category }) {
+export default function CategoryBanner({ category, priority = false }) {
   const navigate = useNavigate();
 
   // Safety check
@@ -32,13 +34,18 @@ export default function CategoryBanner({ category }) {
       onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
     >
       {/* Background Image */}
-      <img
+      <OptimizedImage
         src={category.image || category.artwork_filename || FALLBACK_IMAGE}
+        widths={[480, 720, 960]}
+        sizes="(min-width: 1024px) 45vw, 100vw"
+        width={BANNER_WIDTH}
+        height={BANNER_HEIGHT}
         alt={category.title || 'Category'}
+        priority={priority}
+        fallback={FALLBACK_IMAGE}
         className="absolute inset-0 w-full h-full object-cover"
         onError={(e) => {
           console.log('Category image failed to load:', category.image || category.artwork_filename);
-          e.target.src = FALLBACK_IMAGE;
         }}
       />
 

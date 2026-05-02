@@ -13,6 +13,7 @@ import { buildImageUrl } from '../utils/imageHelpers';
 
 const FALLBACK_IMG = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = '';
+const RECORD_DEBOUNCE_MS = 30000;
 
 export default function SongView() {
   const { slug } = useParams();

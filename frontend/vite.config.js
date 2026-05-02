@@ -1,3 +1,4 @@
+/* global process, __dirname */
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -31,7 +32,7 @@ export default defineConfig({
   },
 
   build: {
-    sourcemap: true,
+    sourcemap: process.env.VITE_BUILD_SOURCEMAP === "true",
     rollupOptions: {
       input: "index.html",
     },

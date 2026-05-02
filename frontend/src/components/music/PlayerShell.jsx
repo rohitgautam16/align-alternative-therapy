@@ -9,7 +9,7 @@ import { usePlayerUI } from '../../context/PlayerUIContext';
 import { useHowler } from '../../hooks/useHowler';
 import { useIsMobile } from './useIsMobile';
 
-const FALLBACK = '/rain.mp3';
+const FALLBACK = import.meta.env.VITE_FALLBACK_AUDIO;
 
 export default function PlayerShell() {
   const dispatch = useDispatch();

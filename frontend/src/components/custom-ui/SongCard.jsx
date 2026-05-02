@@ -8,9 +8,12 @@ import { setQueue, setTrack, setIsPlaying } from '../../store/playerSlice';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { canAccessContent } from '../../utils/permissions';
 import { useRecordPlayMutation } from '../../utils/api';
+import OptimizedImage from '../common/OptimizedImage';
 
 const FALLBACK_IMAGE =
   'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
+const RECORD_DEBOUNCE_MS = 30000;
+const CARD_IMAGE_SIZE = 360;
 
 export default function SongCard({ song, playlist, disableTierCheck = false }) {
   const navigate = useNavigate();
@@ -78,16 +81,20 @@ export default function SongCard({ song, playlist, disableTierCheck = false }) {
   return (
     <div className="flex flex-col items-start relative">
       <div
-        className="relative group/item w-35 md:w-65 aspect-square shrink-0 overflow-hidden rounded-lg cursor-pointer
+        className="relative group/item w-35 md:w-45 aspect-square shrink-0 overflow-hidden rounded-lg cursor-pointer
                    transition-all duration-500 hover:scale-100"
         onClick={handleCardClick}
         tabIndex={0}
       >
-        <img
+        <OptimizedImage
           src={song.image || FALLBACK_IMAGE}
+          widths={[180, 360, 540]}
+          sizes="(min-width: 768px) 11.25rem, 8.75rem"
+          width={CARD_IMAGE_SIZE}
+          height={CARD_IMAGE_SIZE}
           alt={song.title || 'Song'}
+          fallback={FALLBACK_IMAGE}
           className="w-full h-full object-cover transition-transform duration-700 group-hover/item:scale-110"
-          onError={(e) => (e.target.src = FALLBACK_IMAGE)}
         />
 
         {/* LOCK OVERLAY */}
@@ -101,6 +108,7 @@ export default function SongCard({ song, playlist, disableTierCheck = false }) {
                 );
                 setShowPopup(true);
               }}
+              aria-label="View song subscription details"
               className="p-4 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 cursor-pointer transition"
             >
               <Lock className="w-8 h-8 text-white" />
@@ -115,6 +123,7 @@ export default function SongCard({ song, playlist, disableTierCheck = false }) {
             />
             <button
               onClick={handlePlay}
+              aria-label={`Play ${song.name || song.title || 'song'}`}
               className="absolute bottom-4 right-4 w-12 h-12 bg-secondary rounded-full flex 
                          items-center justify-center transform translate-y-4 opacity-0 
                          group-hover/item:translate-y-0 group-hover/item:opacity-100 cursor-pointer
@@ -150,6 +159,7 @@ export default function SongCard({ song, playlist, disableTierCheck = false }) {
             >
               <button
                 onClick={() => setShowPopup(false)}
+                aria-label="Close subscription prompt"
                 className="absolute top-3 right-3 text-white/70 hover:text-white transition"
               >
                 <X className="w-5 h-5" />

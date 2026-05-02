@@ -8,6 +8,7 @@ import {
 } from '../../../utils/api';
 import { canAccessCTA } from '../../../utils/permissions';
 import { useSubscription } from '../../../context/SubscriptionContext';
+import OptimizedImage from '../../common/OptimizedImage';
 
 const btnGlass =
   'inline-flex items-center justify-center cursor-pointer gap-2 px-5 py-2.5 rounded-lg ' +
@@ -209,14 +210,22 @@ export default function PersonalizeCTA() {
   }, [refetch]);
 
   const heroImg =
-    'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1600&q=80';
+    'https://cdn.align-alternativetherapy.com/static-pages-media/photo-1766117751602-2532cb12c1c9.avif';
 
   return (
     <>
       <section className="relative rounded-3xl overflow-hidden ring-1 ring-white/10 py-20 m-6">
         {/* Background */}
         <div className="absolute inset-0">
-          <img src={heroImg} alt="" className="w-full h-full object-cover" />
+          <OptimizedImage
+            src={heroImg}
+            alt=""
+            width={1600}
+            height={900}
+            widths={[640, 960, 1280, 1600]}
+            sizes="100vw"
+            className="w-full h-full object-cover"
+          />
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-black/65" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/60" />

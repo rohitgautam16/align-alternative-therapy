@@ -22,6 +22,7 @@ import DescriptionModal from '../components/custom-ui/DescriptionModal';
 const FALLBACK_BG = 'https://cdn.align-alternativetherapy.com/static-pages-media/Align-fallback-img.png';
 const FALLBACK_DESC = '';
 const FALLBACK_SONG_IMG = FALLBACK_BG;
+const RECORD_DEBOUNCE_MS = 30000;
 
 const myPlaylistsStub = [
   { id: 'mpl1', name: 'Chill Vibes' },

@@ -18,6 +18,15 @@ const {
 
 const { attachAccessFlags } = require('../utils/attachAccessFlags');
 
+function getPaginationQuery(query = {}) {
+  const { limit, offset } = query;
+
+  return {
+    limit: limit !== undefined ? Number(limit) : undefined,
+    offset: offset !== undefined ? Number(offset) : undefined,
+  };
+}
+
 async function getDashboardCategoriesController(req, res, next) {
   try {
     const categories = await fetchDashboardCategories();
@@ -47,7 +56,8 @@ async function getDashboardAllPlaylistsController(req, res, next) {
   try {
     const { tag } = req.query;
     const playlists = await fetchDashboardAllPlaylists({
-      tagSlug: tag
+      tagSlug: tag,
+      ...getPaginationQuery(req.query)
     });
     res.json(playlists);
   } catch (err) {
@@ -56,10 +66,10 @@ async function getDashboardAllPlaylistsController(req, res, next) {
   }
 }
 
-async function getDashboardFreePlaylistsController(_req, res, next) {
+async function getDashboardFreePlaylistsController(req, res, next) {
   try {
     
-    const free = await fetchDashboardFreePlaylists();
+    const free = await fetchDashboardFreePlaylists(getPaginationQuery(req.query));
     res.json(free);
   } catch (err) {
     console.error('getDashboardFreePlaylistsController error:', err);
@@ -139,10 +149,12 @@ async function searchDashboardController(req, res, next) {
 
 async function getDashboardNewReleasesController(req, res, next) {
   try {
-    const { playlistLimit, songLimit, tag } = req.query;
+    const { playlistLimit, songLimit, playlistOffset, songOffset, offset, tag } = req.query;
     const data = await fetchDashboardNewReleases({
       playlistLimit: parseInt(playlistLimit, 10) || 12,
       songLimit:     parseInt(songLimit, 10)     || 8,
+      playlistOffset: parseInt(playlistOffset ?? offset, 10) || 0,
+      songOffset: parseInt(songOffset ?? offset, 10) || 0,
       tagSlug: tag
     });
     res.json(data);
@@ -152,7 +164,7 @@ async function getDashboardNewReleasesController(req, res, next) {
   }
 }
 
-async function getDashboardAllSongsController(_req, res, next) {
+async function getDashboardAllSongsController(req, res, next) {
   try {
     const { tag } = req.query;
 

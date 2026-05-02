@@ -1,5 +1,5 @@
 // src/context/SidebarContext.jsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 const SidebarContext = createContext();
 
@@ -10,6 +10,7 @@ const isMobile = () =>
 export function SidebarProvider({ children }) {
   // collapse (desktop/tablet control)
   const [collapsed, setCollapsed] = useState(() => (isMobile() ? false : false)); // always expanded by default; tweak if you want desktop=true
+  const [rightRailOpen, setRightRailOpen] = useState(false);
 
   // keep it expanded whenever we’re on mobile (also on resize)
   useEffect(() => {
@@ -23,27 +24,31 @@ export function SidebarProvider({ children }) {
     return () => mql.removeEventListener('change', handle);
   }, []);
 
-  const toggleSidebar = () => setCollapsed((c) => !c);
+  const toggleSidebar = useCallback(() => setCollapsed((c) => !c), []);
+  const toggleRightRail = useCallback(() => setRightRailOpen((open) => !open), []);
+  const openRightRail = useCallback(() => setRightRailOpen(true), []);
+  const closeRightRail = useCallback(() => setRightRailOpen(false), []);
 
   // mobile drawer (independent)
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const openDrawer = () => {
+  const openDrawer = useCallback(() => {
     setCollapsed(false);       // ensure full sidebar in drawer
     setDrawerOpen(true);
-  };
-  const closeDrawer = () => setDrawerOpen(false);
-  const toggleDrawer = () => {
+  }, []);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const toggleDrawer = useCallback(() => {
     setDrawerOpen((v) => {
       const next = !v;
       if (next) setCollapsed(false); // opening → expand
       return next;
     });
-  };
+  }, []);
 
   return (
     <SidebarContext.Provider
       value={{
         collapsed, toggleSidebar,
+        rightRailOpen, toggleRightRail, openRightRail, closeRightRail,
         drawerOpen, openDrawer, closeDrawer, toggleDrawer,
       }}
     >

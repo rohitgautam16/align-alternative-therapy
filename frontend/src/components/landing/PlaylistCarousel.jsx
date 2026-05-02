@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Slider from 'react-slick';
 import { useNavigate } from 'react-router-dom';
 import { useGetCategoriesQuery } from '../../utils/api';
+import { getOptimizedBackgroundImage } from '../../utils/imageHelpers';
 
 export default function CategoryCarousel() {
   const { data: categories = [], isLoading, isError } = useGetCategoriesQuery();
@@ -77,7 +78,11 @@ export default function CategoryCarousel() {
                     activeIndex === index ? 'active' : ''
                   }`}
                   style={{
-                    backgroundImage: `url(${cat.image})`,
+                    backgroundImage: getOptimizedBackgroundImage(cat.image, {
+                      width: 560,
+                      height: 760,
+                      quality: 85,
+                    }),
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundColor: '#343434'

@@ -11,6 +11,8 @@ import {
   User,
   Star,
   CreditCard,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useLocation, createSearchParams, Link } from 'react-router-dom';
@@ -19,7 +21,7 @@ import { useSubscription } from '../../context/SubscriptionContext';
 
 export default function Topbar() {
   const { data: user, isLoading } = useGetUserQuery();
-  const { collapsed, toggleSidebar, toggleDrawer } = useSidebar();
+  const { collapsed, toggleSidebar, toggleDrawer, rightRailOpen, toggleRightRail } = useSidebar();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,6 +34,8 @@ export default function Topbar() {
 
   // Show "Manage subscription" if user has any entitlement or active subscription
   const showManage = Boolean(isEntitled);
+  const isDashboardHome =
+    location.pathname === '/dashboard' || location.pathname === '/dashboard/';
 
   const handleLogout = () => {
     logout(); 
@@ -130,6 +134,26 @@ export default function Topbar() {
           <div className="w-8 h-8 bg-gray-600 rounded-full animate-pulse" />
         ) : (
           <>
+            {isDashboardHome && (
+              <button
+                onClick={toggleRightRail}
+                aria-label={rightRailOpen ? 'Close right rail' : 'Open right rail'}
+                className="hidden lg:inline-flex p-2 hover:bg-secondary rounded-full transition"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={rightRailOpen ? 'rail-close' : 'rail-open'}
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 10, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {rightRailOpen ? <PanelRightClose size={20} /> : <PanelRightOpen size={20} />}
+                  </motion.div>
+                </AnimatePresence>
+              </button>
+            )}
+
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu((v) => !v)}

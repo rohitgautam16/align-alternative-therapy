@@ -6,6 +6,8 @@ import {
   Shuffle, SkipBack, PlayCircle, PauseCircle, SkipForward, Repeat,
   Volume2, ChevronDown, ChevronUp
 } from 'lucide-react';
+import OptimizedImage from '../common/OptimizedImage';
+import { getOptimizedBackgroundImage } from '../../utils/imageHelpers';
 
 // slick CSS (ensure imported once in your app)
 import 'slick-carousel/slick/slick.css';
@@ -195,11 +197,15 @@ useEffect(() => {
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="h-20 rounded-xl overflow-hidden ring-1 ring-white/10 min-w-20">
-                <img
+                <OptimizedImage
                   src={currentTrack.image || FALLBACK_IMAGE}
+                  width={80}
+                  height={80}
+                  widths={[80, 160]}
+                  sizes="5rem"
                   alt=""
+                  fallback={FALLBACK_IMAGE}
                   className="w-full h-full object-cover"
-                  onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                 />
               </div>
               <div className="min-w-0">
@@ -256,7 +262,10 @@ useEffect(() => {
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{
-                  backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.2)), url("${bgSrc}")`,
+                  backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.2)), ${getOptimizedBackgroundImage(bgSrc, {
+                    width: 900,
+                    quality: 85,
+                  }) || 'none'}`,
                   filter: 'blur(16px)',
                   transform: 'scale(1.12)',
                   willChange: 'transform'
@@ -290,11 +299,15 @@ useEffect(() => {
                       <div key={t.id || t.title} className="px-0">
                         <div className="flex flex-col justify-center">
                           <div className="w-64 h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-                            <img
+                            <OptimizedImage
                               src={t.image || FALLBACK_IMAGE}
+                              width={256}
+                              height={256}
+                              widths={[256, 384, 512]}
+                              sizes="16rem"
                               alt={t.title}
+                              fallback={FALLBACK_IMAGE}
                               className="w-full h-full object-cover block"
-                              onError={(e) => (e.currentTarget.src = FALLBACK_IMAGE)}
                             />
                           </div>
                           <div className="relative text-center mt-2 w-64 mb-1 px-1">

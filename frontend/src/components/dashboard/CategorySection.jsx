@@ -114,9 +114,9 @@ export default function CategorySection() {
         {...settings}
         className="-mx-6"
       >
-        {categories.map((cat) => (
+        {categories.map((cat, index) => (
           <div key={cat.id} className="px-6">
-            <CategoryBanner category={cat} />
+            <CategoryBanner category={cat} priority={index === 0} />
           </div>
         ))}
       </Slider>

@@ -3,6 +3,12 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import PlaylistCard from '../custom-ui/PlaylistCard';
 import SongCard     from '../custom-ui/SongCard';
 
+const EMPTY_ITEMS = Object.freeze([]);
+
+function useNoQuery() {
+  return null;
+}
+
 function SkeletonCard() {
   return (
     <div className="w-65 flex-shrink-0 animate-pulse">
@@ -27,13 +33,45 @@ export default function CarouselSection({
   const carouselRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const queryArgKey = JSON.stringify(queryArg || {});
+  const [pagedQueryArg, setPagedQueryArg] = useState(queryArg);
+  const [pagedItems, setPagedItems] = useState([]);
 
   // ---- Query Handling (SAFE HOOK USAGE) ----
-  const queryResult = useQuery ? useQuery(queryArg) : null;
+  const useActiveQuery = useQuery || useNoQuery;
+  const queryResult = useActiveQuery(pagedQueryArg);
+  const queryData = queryResult?.data;
+  const responseItems = Array.isArray(queryData)
+    ? queryData
+    : (queryData?.items || EMPTY_ITEMS);
+  const isPagedQuery = Boolean(useQuery && queryArg && queryArg.limit);
+  const nextOffset = isPagedQuery && !Array.isArray(queryData)
+    ? queryData?.nextOffset
+    : null;
+
+  useEffect(() => {
+    setPagedQueryArg(queryArg);
+    setPagedItems([]);
+  }, [queryArgKey]);
+
+  useEffect(() => {
+    if (Array.isArray(items) || !Array.isArray(responseItems)) return;
+
+    if (!isPagedQuery || !pagedQueryArg?.offset) {
+      setPagedItems(responseItems);
+      return;
+    }
+
+    setPagedItems((current) => {
+      const seen = new Set(current.map((item) => item?.id));
+      const next = responseItems.filter((item) => !seen.has(item?.id));
+      return [...current, ...next];
+    });
+  }, [items, isPagedQuery, pagedQueryArg?.offset, responseItems]);
 
   const data = Array.isArray(items)
     ? items
-    : (queryResult?.data || []);
+    : (isPagedQuery ? pagedItems : responseItems);
 
   const showSkeleton = !Array.isArray(items) &&
     (queryResult?.isLoading || queryResult?.isFetching);
@@ -46,6 +84,14 @@ export default function CarouselSection({
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 0);
     setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+
+    const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - el.clientWidth * 1.5;
+    if (nearEnd && nextOffset !== null && !queryResult?.isFetching) {
+      setPagedQueryArg({
+        ...(queryArg || {}),
+        offset: nextOffset,
+      });
+    }
   };
 
   useEffect(() => {
@@ -95,6 +141,7 @@ export default function CarouselSection({
       <button
         onClick={() => scroll('left')}
         disabled={!canScrollLeft}
+        aria-label={`Scroll ${title} left`}
         className={`absolute left-2 top-1/2 -translate-y-1/2 z-50 p-2 rounded-full
         text-white transition-opacity cursor-pointer backdrop-blur-xs
         ${canScrollLeft ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}
@@ -106,6 +153,7 @@ export default function CarouselSection({
       <button
         onClick={() => scroll('right')}
         disabled={!canScrollRight}
+        aria-label={`Scroll ${title} right`}
         className={`absolute right-2 top-1/2 -translate-y-1/2 z-50 p-2 rounded-full
         text-white transition-opacity cursor-pointer backdrop-blur-xs
         ${canScrollRight ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}
@@ -118,6 +166,7 @@ export default function CarouselSection({
           <button
             onClick={() => scroll('left')}
             disabled={!canScrollLeft}
+            aria-label={`Scroll ${title} left`}
             className={`
               p-2 rounded-full border border-white text-white
               transition-all duration-300 ease-out
@@ -132,6 +181,7 @@ export default function CarouselSection({
           <button
             onClick={() => scroll('right')}
             disabled={!canScrollRight}
+            aria-label={`Scroll ${title} right`}
             className={`
               p-2 rounded-full border border-white text-white
               transition-all duration-300 ease-out

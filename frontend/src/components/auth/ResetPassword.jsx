@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useResetPasswordMutation } from '../../utils/api';
-import Logo from '../../assets/images/logo-with-text-removebg-preview.png';
+import OptimizedImage from '../common/OptimizedImage';
 import Header from '../common/Header';
 
 const containerVariants = {
@@ -67,7 +67,13 @@ export default function ResetPassword() {
         variants={containerVariants}
       >
         <div className="flex items-center gap-3 mb-4">
-          <img src={Logo} alt="Logo" className="h-12" />
+          <OptimizedImage 
+            src="https://cdn.align-alternativetherapy.com/static-pages-media/logo-with-text-removebg-preview.png" 
+            alt="Logo" 
+            widths={[100, 200, 300]} 
+            sizes="100px" 
+            className="h-12 w-auto" 
+          />
           <div className="text-white font-semibold">Align Alternative Therapy</div>
         </div>
 

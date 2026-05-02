@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from "react";
-import Image1 from '../../assets/images/binural beats (7).jpg';
+import OptimizedImage from "../common/OptimizedImage";
+import { STATIC_IMAGES } from "../../constants/imageSources";
 
 const Features = () => {
   const slides = [
     {
-      image: Image1,
+      image: STATIC_IMAGES.binauralBeatsFeature,
       quote:
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut ",
       author: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
       location: "Lorem ipsum dolor ",
     },
     {
-        image: Image1,
+        image: STATIC_IMAGES.binauralBeatsFeature,
         quote:
           "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut ",
         author: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
         location: "Lorem ipsum dolor ",
     },
     {
-        image: Image1,
+        image: STATIC_IMAGES.binauralBeatsFeature,
         quote:
           "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut ",
         author: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
@@ -55,8 +56,12 @@ const Features = () => {
         <div className="relative flex items-start">
           {/* Image */}
           <div className="relative w-2/4">
-            <img
+            <OptimizedImage
               src={slides[currentSlide].image}
+              width={720}
+              height={720}
+              widths={[360, 540, 720, 960]}
+              sizes="50vw"
               alt={`Slide ${currentSlide + 1}`}
               className="rounded-full border-l border-white w-full h-auto shadow-lg transform hover:scale-105 transition-transform duration-500"
             />

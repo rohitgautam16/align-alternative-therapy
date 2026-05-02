@@ -157,6 +157,7 @@ export default React.memo(function MobilePagedGrid({
             <button
               onClick={() => scroll('left')}
               disabled={!canScrollLeft}
+              aria-label={`Previous ${title || 'items'} page`}
               className={`
                 p-2 rounded-full border border-white
                 text-white
@@ -172,6 +173,7 @@ export default React.memo(function MobilePagedGrid({
             <button
               onClick={() => scroll('right')}
               disabled={!canScrollRight}
+              aria-label={`Next ${title || 'items'} page`}
               className={`
                 p-2 rounded-full border border-white
                 text-white
@@ -231,6 +233,7 @@ export default React.memo(function MobilePagedGrid({
                             e.stopPropagation();
                             openLockPopup(item.type);
                           }}
+                          aria-label="View subscription details"
                           className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 cursor-pointer transition"
                         >
                           <Lock className="w-6 h-6 text-white" />
@@ -252,6 +255,7 @@ export default React.memo(function MobilePagedGrid({
             <button
               key={idx}
               onClick={() => goToPage(idx)}
+              aria-label={`Go to ${title || 'items'} page ${idx + 1}`}
               className={`
                 w-2.5 h-2.5 rounded-full transition-all duration-300
                 ${page === idx ? 'bg-secondary scale-110' : 'bg-white/40'}
@@ -278,6 +282,7 @@ export default React.memo(function MobilePagedGrid({
             >
               <button
                 onClick={() => setShowPopup(false)}
+                aria-label="Close subscription prompt"
                 className="absolute top-3 right-3 text-white/70 hover:text-white transition"
               >
                 <X className="w-5 h-5" />
