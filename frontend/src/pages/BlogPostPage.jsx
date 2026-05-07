@@ -5,6 +5,7 @@ import {
   useListBlogsByCategorySlugQuery,
 } from '../utils/api';
 import BlogContent from '../components/blog/BlogContent';
+import useDocumentMeta, { truncateDescription } from '../hooks/useDocumentMeta';
 
 const BlogPostPage = () => {
   const { slug } = useParams();
@@ -13,10 +14,6 @@ const BlogPostPage = () => {
   const { data, isLoading } = useGetBlogBySlugQuery(slug);
   const blog = data?.data;
 
-
-  /* ----------------------------
-     HERO SCROLL ZOOM
-  ----------------------------- */
   const heroRef = useRef(null);
   const heroImgRef = useRef(null);
 
@@ -43,9 +40,6 @@ const BlogPostPage = () => {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  /* ----------------------------
-     DERIVED
-  ----------------------------- */
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
     return window.location.origin + location.pathname;
@@ -57,9 +51,6 @@ const BlogPostPage = () => {
     return Math.max(1, Math.round(words / 200));
   }, [blog?.content]);
 
-  /* ----------------------------
-     RELATED (by first category)
-  ----------------------------- */
   const primaryCategory = blog?.categories?.[0];
   const { data: relatedData } = useListBlogsByCategorySlugQuery(
     primaryCategory?.slug,
@@ -69,34 +60,65 @@ const BlogPostPage = () => {
   const related = (relatedData?.data || [])
     .filter(b => b.slug !== slug)
     .slice(0, 3);
+  const publishedTime = blog?.published_at
+    ? new Date(blog.published_at).toISOString()
+    : undefined;
+
+  useDocumentMeta({
+    title: blog?.title || 'Member Blog Article',
+    description: truncateDescription(
+      blog?.excerpt || blog?.content || `Read ${blog?.title || 'this article'} from Align Alternative Therapy.`
+    ),
+    path: `/dashboard/blog/${slug}`,
+    robots: 'noindex,nofollow',
+    author: blog?.author,
+    publishedTime,
+  });
 
   if (isLoading) {
-    return <div className="p-10 text-white">Loading…</div>;
+    return <div className="p-10 text-white">Loading...</div>;
   }
 
   if (!blog) {
     return <div className="p-6 text-center text-red-400">Post not found.</div>;
   }
 
+  const breadcrumbItems = [
+    { label: 'Home', to: '/' },
+    { label: 'Blog', to: '/dashboard/blog' },
+    ...(primaryCategory
+      ? [{ label: primaryCategory.name, to: `/dashboard/blog/category/${primaryCategory.slug}` }]
+      : []),
+    { label: blog.title },
+  ];
+
   return (
     <article className="bg-black text-white">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-white/70">
+          {breadcrumbItems.map((item, index) => {
+            const isLast = index === breadcrumbItems.length - 1;
 
-        {/* Breadcrumb */}
-        <Link
-          to="/dashboard/blog"
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← All articles
-        </Link>
+            return (
+              <React.Fragment key={`${item.label}-${index}`}>
+                {index > 0 && <span aria-hidden="true">/</span>}
+                {isLast ? (
+                  <span className="text-white">{item.label}</span>
+                ) : (
+                  <Link to={item.to} className="hover:text-white">
+                    {item.label}
+                  </Link>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </nav>
 
-        {/* TITLE */}
         <header className="space-y-4">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold">
             {blog.title}
           </h1>
 
-          {/* Categories */}
           {Array.isArray(blog.categories) && blog.categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {blog.categories.map(cat => (
@@ -110,19 +132,17 @@ const BlogPostPage = () => {
             </div>
           )}
 
-          {/* Meta */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-white/60">
-            {blog.author && <span>{blog.author}</span>}
+            <span>{blog.author || 'Align Alternative Therapy'}</span>
             {blog.published_at && (
-              <span>
-                • {new Date(blog.published_at).toLocaleDateString()}
-              </span>
+              <time dateTime={publishedTime}>
+                - {new Date(blog.published_at).toLocaleDateString()}
+              </time>
             )}
-            <span>• {readingMinutes} min read</span>
+            <span>- {readingMinutes} min read</span>
           </div>
         </header>
 
-        {/* HERO */}
         <div
           ref={heroRef}
           className="relative w-full aspect-[16/9] overflow-hidden rounded-2xl border border-white/10"
@@ -136,12 +156,10 @@ const BlogPostPage = () => {
           />
         </div>
 
-        {/* CONTENT */}
         <div>
           <BlogContent html={blog.content} />
         </div>
 
-        {/* SHARE */}
         <section className="pt-8 border-t border-white/10">
           <p className="text-xs uppercase mb-4 text-white/60">Share</p>
           <div className="flex gap-3 flex-wrap">
@@ -164,7 +182,6 @@ const BlogPostPage = () => {
           </div>
         </section>
 
-        {/* RELATED */}
         {primaryCategory && related.length > 0 && (
           <section className="pt-10 border-t border-white/10">
             <h2 className="text-xl sm:text-2xl font-semibold mb-6">
@@ -178,7 +195,6 @@ const BlogPostPage = () => {
                   to={`/dashboard/blog/${item.slug}`}
                   className="group block"
                 >
-                  {/* Image */}
                   <div className="relative w-full aspect-[16/10] overflow-hidden rounded-xl bg-white/5">
                     <img
                       src={item.cover_image || '/images/blog-placeholder.jpg'}
@@ -188,7 +204,6 @@ const BlogPostPage = () => {
                     />
                   </div>
 
-                  {/* Text */}
                   <div className="pt-3">
                     <div className="text-xs text-white/60 uppercase tracking-wide mb-1">
                       {primaryCategory.name}
@@ -205,7 +220,7 @@ const BlogPostPage = () => {
                     )}
 
                     <div className="mt-3 text-sm text-white/80">
-                      Read article →
+                      Read article
                     </div>
                   </div>
                 </Link>

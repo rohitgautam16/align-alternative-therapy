@@ -89,6 +89,33 @@ function escapeHtml(text = '') {
     .replace(/'/g, '&#039;');
 }
 
+function hasBrevoConfig() {
+  return Boolean(process.env.BREVO_API_KEY);
+}
+
+function hasSmtpConfig() {
+  return Boolean(process.env.MAIL_SMTP_USER && process.env.MAIL_SMTP_PASS);
+}
+
+function resolveMailDriver() {
+  const configuredDriver = String(process.env.MAIL_DRIVER || '').trim().toLowerCase();
+
+  if (configuredDriver) return configuredDriver;
+  if (process.env.NODE_ENV === 'production' && hasBrevoConfig()) return 'brevo';
+  if (hasSmtpConfig()) return 'smtp';
+  if (hasBrevoConfig()) return 'brevo';
+  return 'console';
+}
+
+function shouldAllowSmtpFallback(driver) {
+  const fallbackSetting = String(process.env.MAIL_ALLOW_SMTP_FALLBACK || '').trim().toLowerCase();
+
+  if (fallbackSetting === 'true') return true;
+  if (fallbackSetting === 'false') return false;
+
+  return driver !== 'brevo';
+}
+
 // ---------- Normalize ----------
 function normalizePayload({ to, cc, bcc, subject, html, text, replyTo, tags, attachments }) {
   const fromEmail = process.env.MAIL_FROM_EMAIL || 'no-reply@example.com';
@@ -124,6 +151,10 @@ function normalizePayload({ to, cc, bcc, subject, html, text, replyTo, tags, att
 
 // ---------- Brevo driver ----------
 async function sendViaBrevo(norm) {
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error('BREVO_API_KEY is missing');
+  }
+
   const api = new Brevo.TransactionalEmailsApi();
   api.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
@@ -144,7 +175,9 @@ async function sendViaBrevo(norm) {
     return { ok: true, provider: 'brevo', res };
   } catch (err) {
     const detail = err?.response?.body || err?.response?.data || err?.message || err;
-    const e = new Error('Brevo send failed');
+    const detailText =
+      typeof detail === 'string' ? detail : JSON.stringify(detail);
+    const e = new Error(`Brevo send failed: ${detailText}`);
     e.provider = 'brevo';
     e.detail = detail;
     throw e;
@@ -180,11 +213,6 @@ function getSmtpTransporter() {
     maxConnections: Number(process.env.MAIL_SMTP_MAX_CONNECTIONS || 5),
     maxMessages: Number(process.env.MAIL_SMTP_MAX_MESSAGES || 100),
   };
-
-  console.log('SMTP_USER =', process.env.SMTP_USER);
-console.log('SMTP_PASS length =', process.env.SMTP_PASS ? process.env.SMTP_PASS.length : 0);
-
-
   cachedTransporter = nodemailer.createTransport(opts);
 
   // Optional verify in startup (non-blocking)
@@ -231,7 +259,10 @@ async function withRetries(fn, args = [], attempts = 3) {
       attempt++;
       const backoff = Math.pow(2, attempt) * 100; // exponential backoff: 200ms, 400ms, 800ms...
       // log minimal error info; don't leak secrets
-      console.warn(`Mail driver attempt ${attempt} failed:`, err.provider || err.message || err.toString());
+      console.warn(
+        `Mail driver attempt ${attempt} failed:`,
+        err?.detail || err?.provider || err?.message || err?.toString()
+      );
       if (attempt < attempts) await new Promise(r => setTimeout(r, backoff));
     }
   }
@@ -258,18 +289,28 @@ async function sendViaConsole(norm) {
 // ---------- Public API ----------
 async function sendMail(opts = {}) {
   const norm = normalizePayload(opts);
-  const driver = (process.env.MAIL_DRIVER || 'smtp').toLowerCase();
+  const driver = resolveMailDriver();
+  const allowSmtpFallback = shouldAllowSmtpFallback(driver);
 
   if (driver === 'console') return sendViaConsole(norm);
-  if (driver === 'brevo') return withRetries(sendViaBrevo, [norm], Number(process.env.MAIL_RETRIES || 3));
+  if (driver === 'brevo') {
+    try {
+      return await withRetries(sendViaBrevo, [norm], Number(process.env.MAIL_RETRIES || 3));
+    } catch (err) {
+      if (!allowSmtpFallback || !hasSmtpConfig()) throw err;
+      console.warn('Brevo failed, falling back to SMTP', err.message || err);
+      return withRetries(sendViaSmtp, [norm], Number(process.env.MAIL_RETRIES || 2));
+    }
+  }
   if (driver === 'smtp') return withRetries(sendViaSmtp, [norm], Number(process.env.MAIL_RETRIES || 3));
 
-  // fallback: try smtp then brevo
+  // fallback: try Brevo first, then SMTP
   try {
-    return await withRetries(sendViaSmtp, [norm], Number(process.env.MAIL_RETRIES || 2));
+    return await withRetries(sendViaBrevo, [norm], Number(process.env.MAIL_RETRIES || 2));
   } catch (err) {
-    console.warn('SMTP failed, falling back to Brevo', err.message || err);
-    return withRetries(sendViaBrevo, [norm], Number(process.env.MAIL_RETRIES || 2));
+    if (!allowSmtpFallback || !hasSmtpConfig()) throw err;
+    console.warn('Brevo failed, falling back to SMTP', err.message || err);
+    return withRetries(sendViaSmtp, [norm], Number(process.env.MAIL_RETRIES || 2));
   }
 }
 

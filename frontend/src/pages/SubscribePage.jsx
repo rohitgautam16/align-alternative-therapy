@@ -8,6 +8,7 @@ import {
   useValidatePromoCodeMutation
 } from '../utils/api';
 import { useAuthStatus } from '../hooks/useAuthStatus';
+import useDocumentMeta from '../hooks/useDocumentMeta';
 
 
 const cardVariants = {
@@ -49,6 +50,13 @@ function useAuthGate() {
 }
 
 export default function SubscribePage() {
+  useDocumentMeta({
+    title: 'Pricing and Subscription Plans',
+    description:
+      'Choose an Align Alternative Therapy subscription for premium sound healing audios, therapeutic playlists, and personalized wellness support.',
+    path: '/pricing',
+  });
+
   const navigate = useNavigate();
   const { requireAuthThen, loginPromptOpen, setLoginPromptOpen, proceedToLogin } =
     useAuthGate();
@@ -77,7 +85,7 @@ export default function SubscribePage() {
 
       setValidatedPromo(result);
       setPromoError("");
-    } catch (err) {
+    } catch {
       setPromoError("Could not validate promo code");
     }
   }
@@ -99,8 +107,6 @@ export default function SubscribePage() {
 
   const handleBasePlanClick = (plan) =>
     requireAuthThen(() => startCheckout(plan));
-
-  const handeConatctSales = () => navigate('/contact-us');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">

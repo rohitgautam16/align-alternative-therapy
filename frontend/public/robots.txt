@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /dashboard
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /restore
+Disallow: /subscribe/success
+
+Sitemap: https://align-alternativetherapy.com/sitemap.xml

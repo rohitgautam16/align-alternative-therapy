@@ -253,7 +253,7 @@ useEffect(() => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            className="pointer-events-auto text-white h-svh pb-15 pt-5"
+            className="pointer-events-auto text-white h-svh pb-2"
             style={{ height: '100svh' }}
           >
             {/* Background with fallback */}
@@ -275,7 +275,7 @@ useEffect(() => {
             </div>
 
             {/* Top bar */}
-            <div className="relative pt-[env(safe-area-inset-top,0px)] pb-10">
+            <div className="relative pt-[env(safe-area-inset-top,0px)]">
               <div className="flex items-center justify-between px-4 py-3">
                 <button
                   onClick={onToggleExpanded}

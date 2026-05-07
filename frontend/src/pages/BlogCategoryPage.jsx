@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useListBlogsByCategorySlugQuery } from '../utils/api';
 import BlogCard from '../components/blog/BlogCard';
 import { List, LayoutGrid } from "lucide-react";
+import useDocumentMeta from '../hooks/useDocumentMeta';
 
 export default function BlogCategoryPage() {
   const { slug } = useParams();
@@ -10,8 +11,18 @@ export default function BlogCategoryPage() {
 
   const blogs = data?.data || [];
   const categoryName = blogs[0]?.categories?.find(c => c.slug === slug)?.name || slug;
+  const readableName = categoryName
+    .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 
   const [layout, setLayout] = useState('list');
+  useDocumentMeta({
+    title: `${readableName} Articles`,
+    description: `Browse member articles about ${readableName}, sound healing, therapeutic audio, and holistic wellness from Align Alternative Therapy.`,
+    path: `/dashboard/blog/category/${slug}`,
+    robots: 'noindex,nofollow',
+  });
 
   if (isLoading) {
     return <div className="p-10 text-white">Loading…</div>;

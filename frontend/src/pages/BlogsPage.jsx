@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useListBlogsPublicQuery } from '../utils/api';
 import BlogCard from '../components/blog/BlogCard';
 import { List, LayoutGrid } from "lucide-react";
+import useDocumentMeta from '../hooks/useDocumentMeta';
 
 const BlogsPage = () => {
+  useDocumentMeta({
+    title: 'Member Blog',
+    description:
+      'Explore member articles from Align on sound healing, frequency therapy, therapeutic audio, sleep, focus, and holistic well-being.',
+    path: '/dashboard/blog',
+    robots: 'noindex,nofollow',
+  });
+
   const { data, isLoading } = useListBlogsPublicQuery();
   const blogs = data?.data || [];
 

@@ -1,10 +1,11 @@
 // src/components/auth/Login.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/* eslint-disable react/no-unescaped-entities */
+import { useCallback, useContext, useState } from 'react';
+import { UNSAFE_NavigationContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLoginUserMutation, useRegisterUserMutation } from '../../utils/api';
+import { useDispatch } from 'react-redux';
+import { api, useLoginUserMutation, useRegisterUserMutation } from '../../utils/api';
 import OptimizedImage from '../common/OptimizedImage';
-import { useAuthActions } from '../../hooks/useAuthActions';
 import { getOptimizedBackgroundImage } from '../../utils/imageHelpers';
 
 const containerVariants = {
@@ -30,10 +31,47 @@ const formVariants = {
   exit: { x: -50, opacity: 0 },
 };
 
+function setAccessTokenCookie(token) {
+  if (!token) return;
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] || ''));
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expSec = payload?.exp ?? (nowSec + 60 * 60 * 8);
+    const maxAge = Math.max(0, expSec - nowSec);
+    const secure = window.location.protocol === 'https:';
+
+    document.cookie =
+      `_auth=${encodeURIComponent(token)};` +
+      ` Path=/;` +
+      ` Max-Age=${maxAge};` +
+      `${secure ? ' Secure;' : ''}` +
+      ` SameSite=Strict`;
+  } catch {
+    document.cookie =
+      `_auth=${encodeURIComponent(token)}; Path=/; Max-Age=${60 * 60 * 8}; SameSite=Strict`;
+  }
+}
+
 export default function Login() {
-  const navigate = useNavigate();
-  const { loginAndFetch } = useAuthActions();
+  const navigationContext = useContext(UNSAFE_NavigationContext);
+  const dispatch = useDispatch();
+  const safeNavigate = useCallback((to, options = {}) => {
+    const navigator = navigationContext?.navigator;
+    if (navigator) {
+      if (options.replace) {
+        navigator.replace(to, options.state);
+      } else {
+        navigator.push(to, options.state);
+      }
+      return;
+    }
+
+    window.location.assign(typeof to === 'string' ? to : '/');
+  }, [navigationContext]);
+
   const [isLoading, setIsLoading] = useState(false);
+  const [loginUser] = useLoginUserMutation();
   const [registerUser, { isLoading: registering }] = useRegisterUserMutation();
 
   // form state
@@ -51,14 +89,17 @@ export default function Login() {
     if (!email || !password) return setError('Please fill in both fields');
     setIsLoading(true);
     try {
-      const { accessToken, refreshToken, user } = await loginAndFetch({
+      const { accessToken } = await loginUser({
         email,
         password
-      });
-      //console.log('Logged in payload:', { accessToken, refreshToken, user });
+      }).unwrap();
+
+      setAccessTokenCookie(accessToken);
+      dispatch(api.util.resetApiState());
+      safeNavigate('/dashboard', { replace: true });
     } catch (err) {
       if (err.originalStatus === 403 || err.data?.code === 'ACCOUNT_DELETED') {
-        navigate('/restore', {
+        safeNavigate('/restore', {
           replace: true,
           state: { userId: err.data?.userId || null }
         });
@@ -391,7 +432,7 @@ export default function Login() {
                 >
                   <button
                     type="button"
-                    onClick={() => navigate('/forgot-password')}
+                    onClick={() => safeNavigate('/forgot-password')}
                     className="text-sm text-white/60 hover:text-secondary cursor-pointer transition-colors"
                   >
                     Forgot Password ?
